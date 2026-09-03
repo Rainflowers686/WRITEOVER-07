@@ -46,7 +46,7 @@ Color MaterialBase(uint8_t material) {
     }
 }
 
-Color MaterialColor(uint8_t material, float distance, int row, int col) {
+Color MaterialColor(uint8_t material, float distance, int row, int col, uint8_t light) {
     const Color base = MaterialBase(material);
     float r = static_cast<float>(base.r);
     float g = static_cast<float>(base.g);
@@ -65,7 +65,8 @@ Color MaterialColor(uint8_t material, float distance, int row, int col) {
     g *= panel * (0.92f + 0.08f * pattern);
     b *= panel * (0.92f + 0.08f * pattern);
 
-    return {Clamp8(r), Clamp8(g), Clamp8(b)};
+    const float l = static_cast<float>(light) / 255.0f;
+    return {Clamp8(r * l), Clamp8(g * l), Clamp8(b * l)};
 }
 
 Color FloorColor(int row, int logical_h, float distance) {
@@ -129,7 +130,7 @@ void RenderProductionFrame(const GridCell* cells, int grid_w, int grid_h,
             const int bottom = std::min(logical_h - 1,
                                         static_cast<int>(std::floor(p.screen_bottom_y)));
             for (int y = top; y <= bottom; ++y) {
-                const Color c = MaterialColor(p.material, p.distance, y, x);
+                const Color c = MaterialColor(p.material, p.distance, y, x, res.segments[i].light);
                 out_pixels[static_cast<size_t>(y) * logical_w + x] = c;
             }
         }

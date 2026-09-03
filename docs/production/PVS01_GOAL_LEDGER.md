@@ -41,8 +41,8 @@ Target first normal playthrough: 5-10 minutes. Quality over quantity.
 
 ## Current Work
 
-- BLOCK 1 in progress: production renderer implemented, unit test added, PPM golden frame dumped.
-- Next: visual/effect red team on production renderer, then continue BLOCK 1 polish (sprites/lighting/props) or move toward BLOCK 2 as appropriate.
+- BLOCK 1/4 progress: production renderer implemented, wall lighting now uses grid light, B1 revival room authored and wired as primary runtime room, PPM golden frame dumped.
+- Next: visual/effect red team on production renderer/B1, then continue BLOCK 2 sprites/viewmodel or BLOCK 4 polish.
 
 ## Visual Decisions
 

@@ -57,8 +57,12 @@ public:
     void Init(const EngineContext& ctx) override {
         ctx_ = ctx;
         if (!ctx_.data_dir.empty()) {
-            const std::string path = ctx_.data_dir + "/rooms/room_01_calibration.woc";
-            auto room = LoadRoomFile(path);
+            const std::string primary = ctx_.data_dir + "/rooms/room_b1_revival.woc";
+            auto room = LoadRoomFile(primary);
+            if (room.IsError()) {
+                const std::string fallback = ctx_.data_dir + "/rooms/room_01_calibration.woc";
+                room = LoadRoomFile(fallback);
+            }
             if (room.IsOk()) {
                 loaded_room_ = room.Value();
                 query_ = std::make_unique<GridWorldQuery>(&loaded_room_.grid);
@@ -135,6 +139,7 @@ private:
 class PlayerModule final : public IEngineModule {
 public:
     void Init(const EngineContext& ctx) override {
+        ctx_ = ctx;
         ctx_ = ctx;
         // Initialize mapper from Settings context-aware bindings.
         mapper_ = InputMapper();
@@ -241,6 +246,7 @@ private:
 class NarrativeModule final : public IEngineModule {
 public:
     void Init(const EngineContext& ctx) override {
+        ctx_ = ctx;
         ctx_ = ctx;
         if (!ctx_.data_dir.empty()) {
             const auto result = engine_.LoadBinary(
