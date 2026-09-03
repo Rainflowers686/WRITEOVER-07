@@ -875,6 +875,20 @@ bool ValidateWorld(const SystemicWorld& w, std::string& error) {
 
 } // namespace
 
+SystemicEventBridge::SystemicEventBridge(SystemicWorld* world) : world_(world) {}
+
+void SystemicEventBridge::Register(EventBus& bus) {
+    consumer_id_ = bus.Register([this](const WorldEvent& event) { OnWorldEvent(event); });
+}
+
+void SystemicEventBridge::OnWorldEvent(const WorldEvent& event) {
+    if (!world_) return;
+    if (world_->BridgeWorldEventOnce(event)) {
+        ++bridged_count_;
+    }
+}
+
+
 // ---------------------------------------------------------------------------
 // SystemicWorld implementation
 // ---------------------------------------------------------------------------
@@ -907,6 +921,7 @@ const ItemRecord* SystemicWorld::GetItem(ItemId id) const {
 bool SystemicWorld::TransferItem(ItemId id, EntityId to) {
     ItemRecord* item = const_cast<ItemRecord*>(GetItem(id));
     if (!item || !to.IsValid()) return false;
+    // Physical transfer only: current_holder changes, legal_holder does not.
     item->current_holder = to;
     item->location = ItemLocationKind::Holder;
     item->container = ContainerId::Invalid();
@@ -915,25 +930,50 @@ bool SystemicWorld::TransferItem(ItemId id, EntityId to) {
 
 bool SystemicWorld::LoanItem(ItemId id, EntityId to) {
     if (!TransferItem(id, to)) return false;
+    // Loan keeps the original legal holder.
     return true;
 }
 
 bool SystemicWorld::AuthorizedTransferItem(ItemId id, EntityId to) {
-    return TransferItem(id, to);
+    ItemRecord* item = const_cast<ItemRecord*>(GetItem(id));
+    if (!item || !to.IsValid()) return false;
+    // Authorized transfer updates both current and legal holder.
+    item->current_holder = to;
+    item->legal_holder = to;
+    item->location = ItemLocationKind::Holder;
+    item->container = ContainerId::Invalid();
+    return true;
 }
 
 bool SystemicWorld::TheftItem(ItemId id, EntityId to, uint64_t frame) {
     if (!TransferItem(id, to)) return false;
-    ItemRecord* item = const_cast<ItemRecord*>(GetItem(id));
-    if (item) item->reported_stolen = true;
+    // Theft is not automatically reported; discovery is a separate transition.
     SystemicEvent e;
     e.id = EventId::New(events_.size() + 1);
     e.type = SystemicEventType::Theft;
     e.actor = to;
-    e.target = item ? item->owner : EntityId::Invalid();
+    e.target = GetItem(id) ? GetItem(id)->owner : EntityId::Invalid();
     e.frame = frame;
     e.legality = LegalityClass::Illegal;
     e.tags.push_back("item_theft");
+    e.tags.push_back("not_reported_automatically");
+    events_.push_back(e);
+    return true;
+}
+
+bool SystemicWorld::ReportItemStolen(ItemId id, uint64_t frame) {
+    ItemRecord* item = const_cast<ItemRecord*>(GetItem(id));
+    if (!item) return false;
+    item->reported_stolen = true;
+    SystemicEvent e;
+    e.id = EventId::New(events_.size() + 1);
+    e.type = SystemicEventType::Generic;
+    e.actor = item->owner;
+    e.target = item->current_holder;
+    e.frame = frame;
+    e.method = "reported_stolen";
+    e.legality = LegalityClass::Legal;
+    e.tags.push_back("reported_stolen");
     events_.push_back(e);
     return true;
 }
@@ -942,9 +982,10 @@ bool SystemicWorld::ReturnItem(ItemId id, uint64_t frame) {
     const ItemRecord* item = GetItem(id);
     if (!item) return false;
     ItemRecord* it = const_cast<ItemRecord*>(item);
+    // Return goes to the current legal holder, not necessarily the original owner.
     it->current_holder = it->legal_holder;
     it->location = ItemLocationKind::Holder;
-    it->reported_stolen = false;
+    it->container = ContainerId::Invalid();
     SystemicEvent e;
     e.id = EventId::New(events_.size() + 1);
     e.type = SystemicEventType::ItemReturn;

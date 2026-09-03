@@ -486,3 +486,13 @@ L. Data authoring schema / validators
 - Search, item lifecycle, social exchange, knowledge assets, quests, and terminal access are typed contract seams, not full gameplay systems.
 - Systemic save is fail-closed.
 - Seed JSON compiles to binary and is loaded by the runtime.
+
+## 42. Item Ownership Micro-Patch
+
+- Owner does not change on loan.
+- Legal holder changes only on authorized transfer.
+- Current holder is physical holder.
+- Theft is not automatically reported.
+- Reported stolen does not revoke a credential.
+- Revoke blocks readers.
+- Return uses current legal holder.

@@ -78,3 +78,18 @@ All others rejected. Expired is not recorded as Broken.
 - `SaveSectionId::Systemic` is part of the runtime save.
 - `SystemicWorld::Deserialize` is fail-closed and returns `Result<SystemicWorld>`.
 - Seed binary is compiled from `data/systemic/systemic_seed.json` by Python and loaded by `LoadSeedBinary`.
+## 11. Item Ownership Semantics
+
+- owner: original asset owner, does not change on loan/transfer.
+- legal_holder: current authorized holder.
+- current_holder: actual physical holder.
+- reported_stolen: only set by explicit `ReportItemStolen`.
+- revoked: blocks reader acceptance.
+
+`TransferItem` changes current_holder only.
+`LoanItem` changes current_holder, preserves legal_holder.
+`AuthorizedTransferItem` changes current_holder and legal_holder.
+`TheftItem` changes current_holder and records theft, but does not auto-report.
+`ReportItemStolen` sets reported_stolen without revoking.
+`RevokeCredential` blocks reader.
+`ReturnItem` returns to current legal_holder.

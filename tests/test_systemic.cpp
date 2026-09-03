@@ -335,20 +335,72 @@ bool SystemicEventBridgeExactlyOnce() {
     return true;
 }
 
-bool SystemicItemTheftReturnAuthorization() {
+bool SystemicItemTheftNotReportedUntilDiscovered() {
     SystemicWorld w;
     ItemRecord item = MakeBadge(ItemId::New(1), kGuard);
     item.current_holder = kGuard;
     WO_CHECK(w.AddItem(item));
     WO_CHECK(w.TheftItem(ItemId::New(1), kPlayer, 10));
     WO_CHECK(w.GetItem(ItemId::New(1))->current_holder == kPlayer);
+    WO_CHECK(!w.GetItem(ItemId::New(1))->reported_stolen);
+    WO_CHECK(w.ReportItemStolen(ItemId::New(1), 20));
     WO_CHECK(w.GetItem(ItemId::New(1))->reported_stolen);
-    WO_CHECK(w.RevokeCredential(ItemId::New(1), 20));
-    WO_CHECK(!w.ReaderAcceptsItem(ItemId::New(1), 2));
-    WO_CHECK(w.RestoreAuthorization(ItemId::New(1), 30));
+    return true;
+}
+
+bool SystemicItemReportStolenDoesNotRevokeReader() {
+    SystemicWorld w;
+    ItemRecord item = MakeBadge(ItemId::New(1), kGuard);
+    item.current_holder = kPlayer;
+    item.reported_stolen = true;
+    WO_CHECK(w.AddItem(item));
     WO_CHECK(w.ReaderAcceptsItem(ItemId::New(1), 2));
-    WO_CHECK(w.ReturnItem(ItemId::New(1), 40));
-    WO_CHECK(w.GetItem(ItemId::New(1))->current_holder == kGuard);
+    return true;
+}
+
+bool SystemicItemRevokeBlocksReader() {
+    SystemicWorld w;
+    ItemRecord item = MakeBadge(ItemId::New(1), kGuard);
+    WO_CHECK(w.AddItem(item));
+    WO_CHECK(w.RevokeCredential(ItemId::New(1), 10));
+    WO_CHECK(!w.ReaderAcceptsItem(ItemId::New(1), 2));
+    WO_CHECK(w.RestoreAuthorization(ItemId::New(1), 20));
+    WO_CHECK(w.ReaderAcceptsItem(ItemId::New(1), 2));
+    return true;
+}
+
+bool SystemicItemLoanPreservesLegalHolder() {
+    SystemicWorld w;
+    ItemRecord item = MakeBadge(ItemId::New(1), kGuard);
+    item.legal_holder = kGuard;
+    WO_CHECK(w.AddItem(item));
+    WO_CHECK(w.LoanItem(ItemId::New(1), kPlayer));
+    WO_CHECK(w.GetItem(ItemId::New(1))->current_holder == kPlayer);
+    WO_CHECK(w.GetItem(ItemId::New(1))->legal_holder == kGuard);
+    WO_CHECK(!w.GetItem(ItemId::New(1))->reported_stolen);
+    return true;
+}
+
+bool SystemicItemAuthorizedTransferChangesLegalHolder() {
+    SystemicWorld w;
+    ItemRecord item = MakeBadge(ItemId::New(1), kGuard);
+    item.legal_holder = kGuard;
+    WO_CHECK(w.AddItem(item));
+    WO_CHECK(w.AuthorizedTransferItem(ItemId::New(1), kPlayer));
+    WO_CHECK(w.GetItem(ItemId::New(1))->current_holder == kPlayer);
+    WO_CHECK(w.GetItem(ItemId::New(1))->legal_holder == kPlayer);
+    WO_CHECK(w.GetItem(ItemId::New(1))->owner == kGuard);
+    return true;
+}
+
+bool SystemicItemReturnUsesCurrentLegalHolder() {
+    SystemicWorld w;
+    ItemRecord item = MakeBadge(ItemId::New(1), kGuard);
+    item.legal_holder = kGuard;
+    WO_CHECK(w.AddItem(item));
+    WO_CHECK(w.AuthorizedTransferItem(ItemId::New(1), kPlayer));
+    WO_CHECK(w.ReturnItem(ItemId::New(1), 50));
+    WO_CHECK(w.GetItem(ItemId::New(1))->current_holder == kPlayer);
     return true;
 }
 
@@ -535,6 +587,42 @@ bool SystemicRuntimeSaveLoadRoundtrip() {
     WO_CHECK(loaded.ItemCount() == 1);
     return true;
 }
+bool SystemicRuntimeWorldEventReachesLedger() {
+    SystemicWorld w;
+    SystemicEventBridge bridge(&w);
+    EventBus bus;
+    bridge.Register(bus);
+    const EventId posted = bus.Post(
+        EventNpcSpeak{NpcId::New(1), StringId::New(1)},
+        EventKind::Notification, EntityId::New(1), EntityId::Invalid(),
+        EventId::Invalid(), 42);
+    bus.Dispatch();
+    bus.Dispatch();
+    WO_CHECK(w.EventCount() == 1);
+    if (w.EventCount() > 0) {
+        WO_CHECK(w.Events().back().source_world_event_id == posted);
+    }
+    WO_CHECK(bridge.BridgedCount() == 1);
+    return true;
+}
+
+bool SystemicRuntimeBridgeNoDuplicate() {
+    SystemicWorld w;
+    SystemicEventBridge bridge(&w);
+    EventBus bus;
+    bridge.Register(bus);
+    bus.Post(EventNpcSpeak{NpcId::New(1), StringId::New(2)},
+             EventKind::Notification, EntityId::New(1), EntityId::Invalid(),
+             EventId::Invalid(), 10);
+    bus.Dispatch();
+    bus.Dispatch();
+    WO_CHECK(w.EventCount() == 1);
+    if (bus.JournalCount() > 0) {
+        bridge.OnWorldEvent(bus.JournalSnapshot().front());
+    }
+    WO_CHECK(w.EventCount() == 1);
+    return true;
+}
 } // namespace
 
 bool SystemicRuntimeSeedLoadsFile();
@@ -550,8 +638,15 @@ void RegisterSystemicTests(TestHarness& test) {
     test.Add("systemic.directed_relationship", &SystemicDirectedRelationship);
     test.Add("systemic.promise_transition_matrix", &SystemicPromiseTransitionMatrix);
     test.Add("systemic.event_bridge_exactly_once", &SystemicEventBridgeExactlyOnce);
+    test.Add("systemic.runtime_world_event_reaches_ledger", &SystemicRuntimeWorldEventReachesLedger);
+    test.Add("systemic.runtime_bridge_no_duplicate", &SystemicRuntimeBridgeNoDuplicate);
     test.Add("systemic.quest_transition_matrix", &SystemicQuestTransitionMatrix);
-    test.Add("systemic.item_theft_return_authorization", &SystemicItemTheftReturnAuthorization);
+    test.Add("systemic.item_theft_not_reported_until_discovered", &SystemicItemTheftNotReportedUntilDiscovered);
+    test.Add("systemic.item_report_stolen_does_not_revoke_reader", &SystemicItemReportStolenDoesNotRevokeReader);
+    test.Add("systemic.item_revoke_blocks_reader", &SystemicItemRevokeBlocksReader);
+    test.Add("systemic.item_loan_preserves_legal_holder", &SystemicItemLoanPreservesLegalHolder);
+    test.Add("systemic.item_authorized_transfer_changes_legal_holder", &SystemicItemAuthorizedTransferChangesLegalHolder);
+    test.Add("systemic.item_return_uses_current_legal_holder", &SystemicItemReturnUsesCurrentLegalHolder);
     test.Add("systemic.terminal_session_audit", &SystemicTerminalSessionAudit);
     test.Add("systemic.narrator_observability_per_source", &SystemicNarratorObservabilityPerSource);
     test.Add("systemic.narrator_authority_vs_observability", &SystemicNarratorAuthorityVsObservability);

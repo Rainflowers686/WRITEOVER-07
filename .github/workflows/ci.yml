@@ -57,6 +57,10 @@ jobs:
       - name: Smoke test (boot + 60 frames + exit)
         run: .\out\build\ci\Debug\writeover_app.exe --smoke --data-dir data
 
+      - name: Invalid systemic seed startup test
+        run: python tools/systemic/test_runtime_invalid_seed.py
+        shell: pwsh
+
       - name: Configure Release
         run: cmake --preset release
 

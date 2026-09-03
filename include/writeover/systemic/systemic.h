@@ -601,6 +601,23 @@ struct SystemicEvent {
     std::vector<std::string> tags;
 };
 
+class SystemicWorld;
+
+// Canonical runtime adapter: EventBus WorldEvents -> SystemicEvent ledger.
+class SystemicEventBridge {
+public:
+    explicit SystemicEventBridge(SystemicWorld* world);
+
+    void Register(EventBus& bus);
+    void OnWorldEvent(const WorldEvent& event);
+    size_t BridgedCount() const { return bridged_count_; }
+    bool IsRegistered() const { return consumer_id_ != 0; }
+
+private:
+    SystemicWorld* world_ = nullptr;
+    EventBus::ConsumerId consumer_id_ = 0;
+    size_t bridged_count_ = 0;
+};
 // ---------------------------------------------------------------------------
 // SystemicWorld
 // ---------------------------------------------------------------------------
@@ -621,6 +638,7 @@ public:
     bool LoanItem(ItemId id, EntityId to);
     bool AuthorizedTransferItem(ItemId id, EntityId to);
     bool TheftItem(ItemId id, EntityId to, uint64_t frame);
+    bool ReportItemStolen(ItemId id, uint64_t frame);
     bool ReturnItem(ItemId id, uint64_t frame);
     bool DropItem(ItemId id, const Vec3& pos, RoomId room, uint64_t frame);
     bool PlaceItemInContainer(ItemId id, ContainerId container, uint64_t frame);

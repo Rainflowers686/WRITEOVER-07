@@ -417,7 +417,7 @@ private:
 // Builds the four semantic modules against one shared EngineContext.
 // The render module and terminal backend are wired by the app entry after
 // probing the terminal (they need wall resolution decisions).
-GameServices BuildGame(const EngineContext& ctx, const GameConfig& config) {
+Result<GameServices> BuildGame(const EngineContext& ctx, const GameConfig& config) {
     (void)config;
     GameServices g;
     g.world = std::make_unique<WorldModule>();
@@ -438,11 +438,10 @@ GameServices BuildGame(const EngineContext& ctx, const GameConfig& config) {
         const std::string seed_path = ctx.data_dir + "/systemic/systemic_seed.bin";
         const auto seed = g.systemic->LoadSeedBinary(seed_path);
         if (seed.IsError()) {
-            std::fprintf(stderr, "systemic seed load failed: %s\n",
-                         seed.Error().message.c_str());
+            return Result<GameServices>::Err(seed.Error().code, seed.Error().message);
         }
     }
-    return g;
+    return Result<GameServices>::Ok(std::move(g));
 }
 
 int RunComposition(const GameConfig& config) {
@@ -461,7 +460,15 @@ int RunComposition(const GameConfig& config) {
     ctx.logger = &logger;
     ctx.data_dir = config.data_dir;
 
-    GameServices services = BuildGame(ctx, config);
+    auto build_result = BuildGame(ctx, config);
+    if (build_result.IsError()) {
+        std::fprintf(stderr, "systemic seed startup failed: %s\n",
+                     build_result.Error().message.c_str());
+        return 8;
+    }
+    GameServices services = std::move(build_result.Value());
+    SystemicEventBridge systemic_bridge(services.systemic.get());
+    systemic_bridge.Register(events);
 
     // Runtime input bridge (ISSUE B): polls keyboard + mouse backends every
     // tick and maps them into PlayerModule's InputState.
