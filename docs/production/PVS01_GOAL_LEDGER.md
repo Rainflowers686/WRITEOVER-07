@@ -42,7 +42,7 @@ Target first normal playthrough: 5-10 minutes. Quality over quantity.
 ## Current Work
 
 - BLOCK 1/2 progress: production renderer, grid lighting, B1 room, weapon viewmodel, and first sprite/prop pipeline (NPC/terminal sprites with occlusion) are in the runtime path.
-- Next: visual/effect red team, then systemic interactions and slice integration.\n- Added PVS render workload benchmark for production framebuffer/sprite/viewmodel at 240x67.
+- Added room override CLI --room.\n- Added 1F security checkpoint room and golden G05 evidence.\n- Next: visual/effect red team, then systemic interactions and slice integration.
 
 ## Visual Decisions
 
@@ -60,7 +60,8 @@ Target first normal playthrough: 5-10 minutes. Quality over quantity.
 
 ## Golden Scene Evidence
 
-- Not yet captured.
+- evidence/pvs01/G01_B1_WAKE.ppm
+- evidence/pvs01/G05_SECURITY_CHECKPOINT.ppm
 
 ## Current Benchmarks
 

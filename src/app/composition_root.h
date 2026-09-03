@@ -20,6 +20,7 @@ struct GameConfig {
     int terminal_h = 67;
     bool save_after_smoke = true;
     std::string frame_dump_path;
+    std::string room_id;
 };
 
 // Builds the world/player/ai/narrative modules, the terminal backend, the

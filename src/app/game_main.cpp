@@ -24,7 +24,7 @@ GameConfig ParseArgs(int argc, char** argv) {
         const std::string arg = argv[i];
         if (arg == "--smoke") {
             config.smoke = true;
-            config.max_frames = 61;  // 60 ticks + boundary
+            config.max_frames = 61;
         } else if (arg == "--frames" && i + 1 < argc) {
             config.max_frames = std::strtoull(argv[++i], nullptr, 10);
         } else if (arg == "--seed" && i + 1 < argc) {
@@ -37,6 +37,8 @@ GameConfig ParseArgs(int argc, char** argv) {
             config.terminal_h = std::atoi(argv[++i]);
         } else if (arg == "--dump-frame" && i + 1 < argc) {
             config.frame_dump_path = argv[++i];
+        } else if (arg == "--room" && i + 1 < argc) {
+            config.room_id = argv[++i];
         }
     }
     return config;

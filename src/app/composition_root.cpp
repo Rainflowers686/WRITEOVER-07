@@ -54,10 +54,13 @@ public:
 
 class WorldModule final : public IEngineModule {
 public:
+    void SetRoomOverride(const std::string& id) { room_override_ = id; }
     void Init(const EngineContext& ctx) override {
         ctx_ = ctx;
         if (!ctx_.data_dir.empty()) {
-            const std::string primary = ctx_.data_dir + "/rooms/room_b1_revival.woc";
+            const std::string primary = !room_override_.empty()
+                ? ctx_.data_dir + "/rooms/" + room_override_ + ".woc"
+                : ctx_.data_dir + "/rooms/room_b1_revival.woc";
             auto room = LoadRoomFile(primary);
             if (room.IsError()) {
                 const std::string fallback = ctx_.data_dir + "/rooms/room_01_calibration.woc";
@@ -128,6 +131,7 @@ private:
     }
 
     EngineContext ctx_{};
+    std::string room_override_;
     Room loaded_room_;
     Grid synthetic_grid_{16, 12};
     std::unique_ptr<GridWorldQuery> query_;
@@ -444,6 +448,7 @@ Result<GameServices> BuildGame(const EngineContext& ctx, const GameConfig& confi
     (void)config;
     GameServices g;
     g.world = std::make_unique<WorldModule>();
+    g.world->SetRoomOverride(config.room_id);
     g.world->Init(ctx);
     g.player = std::make_unique<PlayerModule>();
     g.player->Init(ctx);
