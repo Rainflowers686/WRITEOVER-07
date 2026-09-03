@@ -674,6 +674,8 @@ int RunComposition(const GameConfig& config) {
             }
             if (has_badge) {
                 render->SetSubtitleOnce("Access granted: Security checkpoint.", 180);
+            } else if (p.y > 13.0f && p.x < 22.0f) {
+                render->SetSubtitleOnce("Maintenance route: side path accessible.", 180);
             } else {
                 render->SetSubtitleOnce("Access denied: no valid credential.", 180);
             }
