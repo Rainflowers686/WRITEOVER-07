@@ -1,24 +1,131 @@
 {
   "schemaVersion": 1,
   "actors": [
-    {"id": "guard_7", "faction": "Security", "class": "Guard", "occupation": "Security_Guard", "fullHumanIllusion": false, "knownIdentities": ["officer_davis"], "personalityTags": ["professional", "loyal"]},
-    {"id": "officer_davis", "faction": "Security", "class": "SemiHuman", "role": "Guard", "occupation": "Security_Guard", "fullHumanIllusion": false, "personalityTags": ["officer"]},
-    {"id": "facility_security", "faction": "Security", "class": "SemiHuman", "role": "Administrator", "occupation": "Security_Command", "fullHumanIllusion": false, "personalityTags": ["command"]},
-    {"id": "cleaner_b1", "faction": "Maintenance", "class": "SemiHuman", "role": "Cleaner", "occupation": "Cleaner", "fullHumanIllusion": false, "personalityTags": ["routine", "observant"]},
-    {"id": "npc_doctor", "faction": "Medical", "class": "SemiHuman", "role": "Doctor", "occupation": "Doctor", "fullHumanIllusion": false, "personalityTags": ["medical"]}
+    {
+      "id": "guard_7",
+      "faction": "Security",
+      "class": "Guard",
+      "occupation": "Security_Guard",
+      "fullHumanIllusion": false,
+      "knownIdentities": [
+        "officer_davis"
+      ],
+      "personalityTags": [
+        "professional",
+        "loyal"
+      ]
+    },
+    {
+      "id": "officer_davis",
+      "faction": "Security",
+      "class": "SemiHuman",
+      "role": "Guard",
+      "occupation": "Security_Guard",
+      "fullHumanIllusion": false,
+      "personalityTags": [
+        "officer"
+      ]
+    },
+    {
+      "id": "facility_security",
+      "faction": "Security",
+      "class": "SemiHuman",
+      "role": "Administrator",
+      "occupation": "Security_Command",
+      "fullHumanIllusion": false,
+      "personalityTags": [
+        "command"
+      ]
+    },
+    {
+      "id": "cleaner_b1",
+      "faction": "Maintenance",
+      "class": "SemiHuman",
+      "role": "Cleaner",
+      "occupation": "Cleaner",
+      "fullHumanIllusion": false,
+      "personalityTags": [
+        "routine",
+        "observant"
+      ]
+    },
+    {
+      "id": "npc_doctor",
+      "faction": "Medical",
+      "class": "SemiHuman",
+      "role": "Doctor",
+      "occupation": "Doctor",
+      "fullHumanIllusion": false,
+      "personalityTags": [
+        "medical"
+      ]
+    }
   ],
   "items": [
-    {"id": "badge_guard_7", "type": "Badge", "owner": "officer_davis", "issuer": "facility_security", "legalHolder": "officer_davis", "reportedStolen": false, "credentialLevel": 2, "provenanceTags": ["security", "badge"]}
+    {
+      "id": "badge_guard_7",
+      "type": "Badge",
+      "owner": "officer_davis",
+      "issuer": "facility_security",
+      "legalHolder": "officer_davis",
+      "reportedStolen": false,
+      "credentialLevel": 2,
+      "provenanceTags": [
+        "security",
+        "badge"
+      ]
+    },
+    {
+      "id": "cash_pocket",
+      "type": "Cash",
+      "owner": "player",
+      "issuer": "player",
+      "legalHolder": "player",
+      "currentHolder": "player",
+      "reportedStolen": false,
+      "credentialLevel": 0,
+      "provenanceTags": [
+        "cash"
+      ]
+    }
   ],
   "containers": [
-    {"id": "cart_b1_clean", "kind": "CleaningCart", "room": "B1_Maintenance", "capacity": 0.6, "concealment": 95, "accessibility": 80, "routineTags": ["Cleaner"]}
+    {
+      "id": "cart_b1_clean",
+      "kind": "CleaningCart",
+      "room": "B1_Maintenance",
+      "capacity": 0.6,
+      "concealment": 95,
+      "accessibility": 80,
+      "routineTags": [
+        "Cleaner"
+      ]
+    }
   ],
   "evidenceSeeds": [
-    {"id": "ev_broken_glass_b1", "type": "BrokenGlass", "subject": "window_b1_04", "room": "B1_Corridor", "visibility": 0.8, "persists": true}
+    {
+      "id": "ev_broken_glass_b1",
+      "type": "BrokenGlass",
+      "subject": "window_b1_04",
+      "room": "B1_Corridor",
+      "visibility": 0.8,
+      "persists": true
+    }
   ],
   "promiseSeeds": [
-    {"id": "promise_find_intern", "giver": "npc_doctor", "receiver": "player", "subject": "find_intern", "status": "Offered"}
+    {
+      "id": "promise_find_intern",
+      "giver": "npc_doctor",
+      "receiver": "player",
+      "subject": "find_intern",
+      "status": "Offered"
+    }
   ],
-  "alertDefaults": {"level": "Normal"},
-  "narratorDefaults": {"authorityStage": 0, "interventionCost": 0.0}
+  "alertDefaults": {
+    "level": "Normal"
+  },
+  "narratorDefaults": {
+    "authorityStage": 0,
+    "interventionCost": 0.0
+  }
 }

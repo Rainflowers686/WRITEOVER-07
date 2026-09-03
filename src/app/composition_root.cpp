@@ -703,7 +703,7 @@ int RunComposition(const GameConfig& config) {
             const float ndx = p.x - 10.5f; const float ndy = p.y - 5.5f;
             if (ndx * ndx + ndy * ndy < 4.0f) {
                 for (const auto& item : services.systemic->Items()) {
-                    if (item.type == ItemType::Badge && item.owner == EntityId::New(10)) {
+                    if (item.type == ItemType::Badge && item.current_holder != EntityId::New(1)) {
                         services.systemic->TheftItem(item.id, EntityId::New(1), 0);
                         MemoryRecord mem;
                         mem.id = MemoryId::New(services.systemic->MemoryCount() + 1);
@@ -741,6 +741,19 @@ int RunComposition(const GameConfig& config) {
                 render->SetSubtitleOnce("Access granted: Security checkpoint.", 180);
             } else if (p.y > 13.0f && p.x < 22.0f) {
                 render->SetSubtitleOnce("Maintenance route: side path accessible.", 180);
+            } else if (p.x > 12.0f && p.x < 18.0f && p.y > 7.0f && p.y < 12.0f) {
+                for (const auto& item : services.systemic->Items()) {
+                    if (item.type == ItemType::Cash) {
+                        SocialExchangeRecord ex;
+                        ex.id = SocialExchangeId::New(services.systemic->SocialExchangeCount() + 1);
+                        ex.type = SocialExchangeType::Bribe;
+                        ex.actor = EntityId::New(1); ex.target = EntityId::New(2);
+                        ex.cash = 50; ex.outcome = SocialExchangeOutcome::Accepted;
+                        services.systemic->AddSocialExchange(ex);
+                        render->SetSubtitleOnce("Bribe accepted: checkpoint.", 180);
+                        break;
+                    }
+                }
             } else if (p.x < 8.0f && p.y < 5.0f) {
                 KnowledgeAssetRecord asset;
                 asset.id = KnowledgeAssetId::New(services.systemic->KnowledgeCount() + 1);
