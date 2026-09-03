@@ -1,0 +1,65 @@
+#pragma once
+// Input vocabulary (platform-agnostic). Gameplay code reads GameAction, never
+// Win32 virtual key codes. PhysicalKey is the raw event vocabulary; the
+// InputMapper (player module) maps PhysicalKey -> GameAction with a
+// serializable binding table (M-013 closure: no `uint8_t keyBindings` pointer).
+
+#include <cstddef>
+#include <cstdint>
+
+namespace writeover {
+
+enum class PhysicalKey : uint16_t {
+    // Keyboard
+    W = 0, A, S, D, Q, E, R, F, Z, X, C, V, B, N, M,
+    Space, Shift, Ctrl, Tab, Escape,
+    Up, Down, Left, Right,
+    F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
+    Num0, Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9,
+    // Mouse
+    MouseLeft, MouseRight, MouseMiddle, MouseX1, MouseX2,
+    // Gamepad
+    GamepadDPadUp, GamepadDPadDown, GamepadDPadLeft, GamepadDPadRight,
+    GamepadA, GamepadB, GamepadX, GamepadY,
+    GamepadLB, GamepadRB, GamepadLT, GamepadRT,
+    GamepadStart, GamepadBack, GamepadLStick, GamepadRStick,
+    Count,          // NOT a key; array sizing only
+    Unknown = 0xFFFF,
+};
+
+inline constexpr size_t kPhysicalKeyCount = static_cast<size_t>(PhysicalKey::Count);
+
+enum class GameAction : uint8_t {
+    MoveForward = 0, MoveBackward, MoveLeft, MoveRight,
+    Sprint, Jump, Crouch, Prone,
+    LeanLeft, LeanRight, Interact, Reload,
+    Fire, AimDownSights, Melee,
+    WeaponSlot1, WeaponSlot2, WeaponSlot3,
+    Pause, DevPanel, Help,
+    DialogOption1, DialogOption2, DialogOption3, DialogOption4,
+    Count,
+};
+
+inline constexpr size_t kGameActionCount = static_cast<size_t>(GameAction::Count);
+
+// Raw per-frame input event produced by a backend.
+struct InputEvent {
+    PhysicalKey key = PhysicalKey::Unknown;
+    bool pressed = false;       // true = down this frame, false = released
+    float analog = 0.0f;        // 0..1 for analog inputs
+};
+
+// Input backend interface. Implementations live in the platform layer;
+// gameplay code only ever sees the resolved InputState.
+class IInputBackend {
+public:
+    virtual ~IInputBackend() = default;
+    virtual bool Init() = 0;
+    virtual void Shutdown() = 0;
+    // Non-blocking. Returns false when no more events are available.
+    virtual bool Poll(InputEvent& out_event) = 0;
+    virtual bool HasFocus() const = 0;
+    virtual const char* Name() const = 0;
+};
+
+} // namespace writeover

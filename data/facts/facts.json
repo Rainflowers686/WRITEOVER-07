@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "facts": [
+    {"id": "fact_player_has_gun", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_r1_engineer_met", "predicate": 0, "initial": false, "subject": 2},
+    {"id": "fact_r1_power_cut", "predicate": 0, "initial": false, "subject": 3},
+    {"id": "fact_r1_guard_dead", "predicate": 0, "initial": false, "subject": 4}
+  ]
+}

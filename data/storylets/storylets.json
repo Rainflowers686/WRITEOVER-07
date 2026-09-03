@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "storylets": [
+    {
+      "id": "storylet_r1_01",
+      "textId": "text_r1_01",
+      "priority": 100,
+      "once": true,
+      "conditions": [
+        {"type": "fact", "fact": "fact_player_has_gun", "equals": true},
+        {"type": "frame", "minFrame": 60, "maxFrame": 7200}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_r1_narr_01", "persona": 1},
+        {"type": "endgame", "ending": 0}
+      ]
+    },
+    {
+      "id": "storylet_r1_02",
+      "textId": "text_r1_02",
+      "priority": 50,
+      "once": false,
+      "conditions": [
+        {"type": "fact", "fact": "fact_r1_guard_dead", "equals": false},
+        {"type": "difficulty", "minLevel": 1}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_r1_narr_02", "persona": 2}
+      ]
+    }
+  ]
+}

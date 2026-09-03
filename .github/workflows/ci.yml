@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python (content compiler)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile authoring JSON to runtime content
+        run: python tools/contentc/contentc.py --data-dir data --out-dir data --check
+        shell: pwsh
+
+      - name: Configure (ci preset)
+        run: cmake --preset ci
+
+      - name: Build (ci preset, Debug)
+        run: cmake --build --preset ci
+
+      - name: Run unit tests
+        run: ctest --preset ci --output-on-failure
+
+      - name: Validate content with mapc
+        run: |
+          $room = Get-ChildItem -Path data\rooms -Filter *.woc | Select-Object -First 1
+          if ($room) { .\out\build\ci\Debug\mapc.exe $room.FullName }
+
+      - name: Smoke test (boot + 60 frames + exit)
+        run: .\out\build\ci\Debug\writeover_app.exe --smoke --data-dir data
+
+      - name: Forbidden pattern scan
+        run: powershell -ExecutionPolicy Bypass -File tools\contract_check\check_forbidden.ps1
+
+      - name: Dependency boundary scan
+        run: powershell -ExecutionPolicy Bypass -File tools\contract_check\check_deps.ps1

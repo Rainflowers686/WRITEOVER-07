@@ -1,0 +1,27 @@
+# Build output
+out/
+build/
+cmake-build-*/
+
+# Runtime artifacts
+saves/
+logs/
+dist/
+*.wo07
+*.wo07p
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
