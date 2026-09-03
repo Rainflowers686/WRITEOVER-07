@@ -28,6 +28,14 @@ jobs:
         run: python tools/systemic/systemic_schema_check.py --data-dir data
         shell: pwsh
 
+      - name: Systemic schema negative tests
+        run: python tools/systemic/test_systemic_schema.py
+        shell: pwsh
+
+      - name: Compile systemic seed binary
+        run: python tools/systemic/compile_systemic_seed.py --src data/systemic/systemic_seed.json --out data/systemic/systemic_seed.bin
+        shell: pwsh
+
       - name: Configure (ci preset)
         run: cmake --preset ci
 
@@ -48,6 +56,20 @@ jobs:
 
       - name: Smoke test (boot + 60 frames + exit)
         run: .\out\build\ci\Debug\writeover_app.exe --smoke --data-dir data
+
+      - name: Configure Release
+        run: cmake --preset release
+
+      - name: Build Release
+        run: cmake --build --preset release
+
+      - name: Release tests
+        run: .\out\build\release\Release\writeover_tests.exe
+        shell: pwsh
+
+      - name: Release benchmark gate
+        run: .\out\build\release\Release\writeover_bench.exe
+        shell: pwsh
 
       - name: Forbidden pattern scan
         run: powershell -ExecutionPolicy Bypass -File tools\contract_check\check_forbidden.ps1

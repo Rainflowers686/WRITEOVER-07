@@ -18,6 +18,7 @@
 #include "writeover/player/input.h"
 #include "writeover/player/input_runtime.h"
 #include "writeover/player/weapon.h"
+#include "writeover/systemic/systemic.h"
 #include "writeover/render/hud.h"
 #include "writeover/render/raycaster.h"
 #include "writeover/render/reference_renderer.h"
@@ -375,6 +376,7 @@ struct GameServices {
     std::unique_ptr<PlayerModule> player;
     std::unique_ptr<AiModule> ai;
     std::unique_ptr<NarrativeModule> narrative;
+    std::unique_ptr<SystemicWorld> systemic;  // M1-owned runtime systemic state
 };
 
 // InputModule: private integration class that samples the keyboard and mouse
@@ -431,6 +433,15 @@ GameServices BuildGame(const EngineContext& ctx, const GameConfig& config) {
     g.narrative = std::make_unique<NarrativeModule>();
     g.narrative->Init(ctx);
     g.narrative->SetFacts(&g.world->Facts());
+    g.systemic = std::make_unique<SystemicWorld>();
+    if (!ctx.data_dir.empty()) {
+        const std::string seed_path = ctx.data_dir + "/systemic/systemic_seed.bin";
+        const auto seed = g.systemic->LoadSeedBinary(seed_path);
+        if (seed.IsError()) {
+            std::fprintf(stderr, "systemic seed load failed: %s\n",
+                         seed.Error().message.c_str());
+        }
+    }
     return g;
 }
 
@@ -499,7 +510,7 @@ int RunComposition(const GameConfig& config) {
         // runtime, RNG, and event journal (F-15 closure).
         std::vector<SaveSection> sections;
         std::vector<uint8_t> rng_bytes, events_bytes, player_bytes,
-            world_bytes, narrative_bytes;
+            world_bytes, narrative_bytes, systemic_bytes;
         {
             Serializer s(rng_bytes);
             sim_rng.Save(s);
@@ -541,6 +552,8 @@ int RunComposition(const GameConfig& config) {
         sections.push_back({SaveSectionId::Rng, std::move(rng_bytes)});
         sections.push_back({SaveSectionId::Events, std::move(events_bytes)});
         sections.push_back({SaveSectionId::Narrative, std::move(narrative_bytes)});
+        systemic_bytes = services.systemic->Serialize();
+        sections.push_back({SaveSectionId::Systemic, std::move(systemic_bytes)});
         // Ensure the runtime saves directory exists (best-effort).
         std::error_code ec;
         std::filesystem::create_directories("saves", ec);
@@ -552,6 +565,36 @@ int RunComposition(const GameConfig& config) {
                          "smoke save write failed (real error): %s\n",
                          res.Error().message.c_str());
             return 3;
+        }
+
+        // Runtime save/load proof: load the real saved file, find the
+        // Systemic section, and restore into a fresh SystemicWorld.
+        const auto loaded_save = save.LoadWorld(save_path);
+        if (loaded_save.IsError()) {
+            std::fprintf(stderr, "smoke save reload failed: %s\n",
+                         loaded_save.Error().message.c_str());
+            return 4;
+        }
+        bool found_systemic = false;
+        for (const auto& sec : loaded_save.Value()) {
+            if (sec.id == SaveSectionId::Systemic) {
+                found_systemic = true;
+                const auto restored = SystemicWorld::Deserialize(
+                    sec.data.data(), sec.data.size());
+                if (restored.IsError()) {
+                    std::fprintf(stderr, "systemic section restore failed\n");
+                    return 5;
+                }
+                if (restored.Value().ActorCount() != services.systemic->ActorCount()) {
+                    std::fprintf(stderr, "systemic save/load mismatch\n");
+                    return 6;
+                }
+                break;
+            }
+        }
+        if (!found_systemic) {
+            std::fprintf(stderr, "systemic save section missing\n");
+            return 7;
         }
     }
     return result;

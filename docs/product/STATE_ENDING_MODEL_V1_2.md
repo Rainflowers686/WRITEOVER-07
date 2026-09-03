@@ -1,79 +1,82 @@
 # STATE / ENDING MODEL v1.2 — WRITEOVER-07
 
-## 1. Player / Social / Meta State Axes
+## 1. Canonical Ranges
 
-Frozen axes (mostly hidden from normal UI; F3 may show exact values):
+All axes listed below are normalized unless explicitly noted.
 
-- Humanity
-- Violence
-- Reliability
-- Coercion
-- PublicTrust
-- SecurityStanding
-- MedicalResearchStanding
-- MaintenanceStanding
-- NarratorAlignment
-- NarratorDominance
-- Autonomy
-- TruthExposure
-- SelfKnowledge
-- FacilityAlert
-- InfrastructureIntegrity
-- TimelineInstability
-- ResidualMemoryPressure
-- CivilianCasualties
-- SecurityCasualties
-- PromisesBroken
-- EvidenceSet
+| Axis | Range |
+|---|---|
+| Humanity | [0,1] |
+| Violence | [0,1] |
+| Reliability | [0,1] |
+| Coercion | [0,1] |
+| PublicTrust | [0,1] |
+| SecurityStanding | [0,1] |
+| MedicalResearchStanding | [0,1] |
+| MaintenanceStanding | [0,1] |
+| NarratorAlignment | [-1,1] |
+| NarratorDominance | [0,1] |
+| Autonomy | [0,1] |
+| TruthExposure | [0,1] |
+| SelfKnowledge | [0,1] |
+| InfrastructureIntegrity | [0,1] |
+| TimelineInstability | [0,1] |
+| ResidualMemoryPressure | [0,1] |
+| CivilianCasualties | integer >= 0 |
+| SecurityCasualties | integer >= 0 |
+| PromisesBroken | integer >= 0 |
+| EvidenceSet | collection, canonical count = evidence records |
+| PreviousCycleEvidenceCount | integer >= 0 |
+| OperatorRoomFound | bool |
 
-## 2. Macro Ending Formula
+## 2. Macro Ending Resolution
 
-The four Macro Endings are determined by:
+Four Macro Endings are deterministic, resolved from the final save snapshot.
 
-**Truth × NarratorDominance**
+Fixed bands:
 
-Truth and NarratorDominance are not just labels; they are accumulated from
-evidence, secrets, promise outcomes, Narrator interventions, and player
-autonomy.
+- TruthBand: LOW < 0.60, HIGH >= 0.60
+- DominanceBand: LOW < 0.50, HIGH >= 0.50
 
-## 3. Ending Variation
+Quadrants:
 
-Other variables do not open a fifth macro ending, but they determine:
+- LOW Truth + HIGH Dominance = COMPLIANCE
+- HIGH Truth + HIGH Dominance = CURATOR
+- LOW Truth + LOW Dominance = ESCAPE
+- HIGH Truth + LOW Dominance = OVERWRITE
+
+No random number is used. Build/config differences do not change the result.
+
+## 3. Hidden Meta Ending
+
+`HIDDEN_LOOP / RESIDUAL ENDING` is not a fifth macro quadrant.
+
+Deterministic condition (must all be true):
+
+- SelfKnowledge >= 0.75
+- TimelineInstability >= 0.60
+- ResidualMemoryPressure >= 0.50
+- OperatorRoomFound = true
+- PreviousCycleEvidenceCount >= 3
+- At least one selected NPC has a ResidualMemory callback
+- At least one death/load/rewind history condition
+
+## 4. Non-Macro Axis Use
+
+Other axes do not create additional Macro Endings. They drive:
 
 - NPC epilogue
 - building outcome
 - social outcome
+- presentation
+- post-credit variation
 - storylet eligibility
-- residual memory / hidden meta ending eligibility
+- HIDDEN_LOOP / RESIDUAL ENDING preconditions
 
-## 4. Narrative Sovereignty and Protected Recovery
+## 5. Hysteresis
 
-- VisibleNarrativeSave: Narrator may control presentation, naming, visibility,
-  and even fake corruption within rules.
-- ProtectedRecovery: never irreversibly deleted by Narrator.
-- The ending model must not rely on destroying the last recoverable progress.
+Presentation may use hysteresis. Ending evaluation always resolves from final snapshot deterministically with the bands above. `>=` belongs to the high side.
 
-## 5. Observation / Authority Separation
+## 6. Save Fiction
 
-The Narrator may have authority over infrastructure without having
-observability of every player position. Ending dominance cannot be derived
-from omniscience by default.
-
-## 6. Promise / Favor Impact
-
-Promise status transitions feed:
-
-- Reliability
-- Trust
-- Debt
-- Storylet eligibility
-- Ending state
-
-Broken promises increase `PromisesBroken` and lower Reliability; fulfilled
-promises raise Reliability and can improve trust/debt.
-
-## 7. Evidence Set
-
-`EvidenceSet` is not a simple score. It is the collection of discovered
-evidence records. It matters for Truth exposure and narrative claims, and it
-persists through save/load.
+VisibleNarrativeSave and ProtectedRecovery remain separate. The Narrator may manipulate visible save presentation, but never irreversibly deletes last recoverable progress.

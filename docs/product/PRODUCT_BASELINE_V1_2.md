@@ -146,3 +146,13 @@ no complete 36F maps, no full weapon set, no complete NPC schedules.
 
 `PRODUCT_BASELINE_V1_1.md` is preserved as the prior frozen baseline. It is
 superseded by this document and should not be used as the active product input.
+
+## 10. Final Correction Freeze
+
+- Runtime owns exactly one `SystemicWorld`.
+- Cognition/Role separated from Faction.
+- Directed relationships with canonical ranges.
+- Fail-closed systemic deserialization.
+- Systemic section included in runtime save/load.
+- Seed JSON compiles to binary and loads at runtime.
+- Full floor directory, ending model, visual production contract, and active product sources frozen.

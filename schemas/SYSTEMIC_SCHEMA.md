@@ -1,31 +1,39 @@
 # SYSTEMIC SCHEMA v1.2 — WRITEOVER-07
 
-Human-readable authoring JSON schema for systemic seed/content.
+Human-readable authoring JSON schema v1.2.
 
 ## Enumerations
 
-Faction:
+### CognitionTier
+`Full`, `SemiHuman`
+
+### Role
+`Guard`, `Cleaner`, `Doctor`, `Researcher`, `Technician`, `Administrator`,
+`Executive`, `Detained`, `Civilian`, `Other`
+
+### Faction
 `GeneralStaff`, `Security`, `Medical`, `Research`, `Maintenance`,
 `Executive`, `Detained`, `Civilian`
 
-ActorClass:
-`Full`, `SemiHuman`, `Guard`
-
-ItemType:
+### ItemType
 `Badge`, `Weapon`, `Ammo`, `Cash`, `Medical`, `KeyItem`, `Tool`, `Battery`,
 `Fuse`, `Decoy`, `FlashSmoke`, `PersonalItem`, `Credential`, `Other`
 
-ContainerKind:
+### ContainerKind
 `IndustrialRefuseBin`, `CleaningCart`, `LaundryCart`, `LargeLocker`,
 `VehicleTrunk`, `MaintenanceCompartment`, `RestroomStall`, `SealedRoom`
 
-RoutineTag:
+### RoutineTag
 `Cleaner`, `Maintenance`, `Security`, `Owner`, `RoutineUser`
 
-PromiseStatus:
+### PromiseStatus
 `Offered`, `Accepted`, `Fulfilled`, `Broken`, `Expired`, `Cancelled`
 
-AlertLevel:
+### QuestStatus
+`Offered`, `Accepted`, `Active`, `Completed`, `Failed`, `Expired`,
+`Abandoned`, `Betrayed`
+
+### AlertLevel
 `Normal`, `Suspicious`, `LocalAlert`, `Search`, `Lockdown`, `Critical`
 
 ## Root Object
@@ -38,6 +46,10 @@ AlertLevel:
   "containers": [],
   "evidenceSeeds": [],
   "promiseSeeds": [],
+  "questSeeds": [],
+  "knowledgeSeeds": [],
+  "terminalSeeds": [],
+  "observationSeeds": [],
   "alertDefaults": {},
   "narratorDefaults": {}
 }
@@ -49,13 +61,16 @@ AlertLevel:
 {
   "id": "guard_7",
   "faction": "Security",
-  "class": "Guard",
+  "cognition": "SemiHuman",
+  "role": "Guard",
   "occupation": "Security_Guard",
   "fullHumanIllusion": false,
   "knownIdentities": ["officer_davis"],
   "personalityTags": ["professional", "loyal"]
 }
 ```
+
+Legacy `"class": "Guard"` migrates to `cognition=SemiHuman`, `role=Guard`.
 
 ## Item
 
@@ -86,20 +101,7 @@ AlertLevel:
 }
 ```
 
-## Evidence Seed
-
-```json
-{
-  "id": "ev_broken_glass_b1",
-  "type": "BrokenGlass",
-  "subject": "window_b1_04",
-  "room": "B1_Corridor",
-  "visibility": 0.8,
-  "persists": true
-}
-```
-
-## Promise Seed
+## Promise
 
 ```json
 {
@@ -113,5 +115,6 @@ AlertLevel:
 
 ## Validation
 
-The Python validator enforces closed enum values, numeric ranges, required
-fields, and stable string ID references.
+The Python validator enforces closed enums, required fields, ranges, finite
+values, unique IDs, and cross-file references. It fails when no systemic seed
+exists.

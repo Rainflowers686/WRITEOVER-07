@@ -13,8 +13,8 @@ Reference: 120Hz, 8.33ms frame budget.
 
 ## Simulation Budget Suggestions
 
-| System | Suggested p99 |
-|--------|---------------|
+| System | Suggested worst1% |
+|--------|------------------|
 | NPC perception | <= 0.35 ms |
 | NPC decision | <= 0.35 ms |
 | Memory/social | <= 0.20 ms |
@@ -24,24 +24,52 @@ Reference: 120Hz, 8.33ms frame budget.
 | Player/weapon | <= 0.20 ms |
 | Misc sim | <= 0.35 ms |
 
-These are initial contracts. If benchmarks prove adjustments are necessary,
-the change must be documented and justified.
+## Stated Bench Metric
 
-## Systemic Benchmark Contract
+The current benchmark API reports `worst_1pct_avg_ms` (average of the slowest
+1% samples). It is not called a strict p99 quantile in code or documentation.
 
-The synthetic benchmark `SYSTEMIC_BENCH` must use real kernel state:
+## Systemic Kernel Lookup Benchmark
+
+Name: `systemic_kernel_lookup`
+
+This proves the storage/lookup baseline only:
 
 - 25 identity-bearing NPCs
-  - 5 Full-style high-frequency nearby
-  - 20 Semi-Human/offscreen
 - 500 evidence records
 - 500 memory records
 - 100 world events
 - 30 hideable containers
 - 100 items
-- 120Hz simulation loop
+- 120Hz loop
 
-The measured Simulation p99 must be <= 2.0 ms.
+Budget: worst1% <= 2.0 ms.
 
-No fake benchmark: the loop must perform actual systemic lookups/updates
-against the in-memory kernel.
+## Systemic Update Workload Benchmark
+
+Name: `systemic_update_workload`
+
+This uses only current foundation capabilities:
+
+- relationship lookup/update
+- memory read/write
+- evidence creation/query
+- body drag state update
+- discovery observation
+- response application
+- item transfer
+- promise transition
+- quest transition
+- search outcome creation
+- social exchange record
+- terminal audit
+- observability state updates
+- event bridge
+
+Synthetic scale ≈25 NPC, ≈500 memories, ≈500 evidence, ≈100 items,
+≈30 containers, ≈100 events. 120Hz loop.
+
+Budget: worst1% <= 2.0 ms.
+
+Future full-M5 AI workload will be added as a separate benchmark when the AI
+capabilities exist; it is not claimed by the current benchmark.

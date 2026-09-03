@@ -474,3 +474,15 @@ I. Alert level
 J. Narrator Authority vs Observability state
 K. World persistence save serialization
 L. Data authoring schema / validators
+
+## 41. Final Correction Freeze
+
+- Actor identity separates `CognitionTier`, `Faction`, and `Role`.
+- Relationships are directed and debt direction is `A feels indebted to B`.
+- Promise and Quest use explicit FSM transitions.
+- Alert canonical owner is `AlertState`; evidence canonical owner is the evidence collection.
+- DiscoverBody creates observation only; response is typed and explicit.
+- Narrator authority and observability are separate; observability is per ObservationSource.
+- Search, item lifecycle, social exchange, knowledge assets, quests, and terminal access are typed contract seams, not full gameplay systems.
+- Systemic save is fail-closed.
+- Seed JSON compiles to binary and is loaded by the runtime.

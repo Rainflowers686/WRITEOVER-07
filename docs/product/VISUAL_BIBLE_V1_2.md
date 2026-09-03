@@ -1,126 +1,110 @@
 # VISUAL BIBLE v1.2 — WRITEOVER-07
 
-> Freeze for the Half-block TrueColor Pixel Framebuffer direction.
+Production contract for M2. No TBD / maybe / defined later in this file.
 
-## 1. Core Framebuffer
+## 1. Framebuffer
 
-- Terminal cell glyph: `▀` (U+2580)
-- Foreground RGB = upper logical pixel
-- Background RGB = lower logical pixel
-- ULTRA target: **240×67 terminal cells = 240×134 logical pixels**
-- Normal world is a pixel FPS
-- Character/text corruption is reserved for Narrator intrusion, glitch, HUD,
-  and terminals
+- Half-block cells: `▀`
+- ULTRA: 240x67 cells = 240x134 logical pixels
+- Normal world is pixel FPS.
+- Text/corruption is for Narrator/HUD/terminal only.
 
-## 2. Rejected Reference Visual
+## 2. Coordinate Convention
 
-The current bright/light-gray `ReferenceRenderer` floor is explicitly
-**rejected** as final art direction.
+- Logical pixel coordinates: x right, y down.
+- World x/y maps to screen horizontal/vertical with fixed aspect.
+- World up is +Z; projection convention is vertical screen y from top.
 
-It remains only as:
+## 3. Aspect Correction
 
-- technical reference
-- test raster
-- calibration for rays/depth
+- Terminal cells are not square.
+- Logical pixel aspect ratio is fixed at 1:1 after half-block split.
+- Render must scale world-projected x by `aspect_correction = 0.5` relative to y when composing half-block cells.
+- Horizontal FOV: 60 degrees vertical / 90 degrees horizontal at ULTRA default.
+- Vertical projection: standard centered perspective, y=0 top, y=logical_height-1 bottom.
 
-## 3. Color Policy
+## 4. Textures / Atlases
 
-Large-area world colors must not use pure `255,255,255` white.
+- Material atlas logical size: 64x64 half-block pixels per material tile.
+- Wall U/V: u across wall face, v down the wall.
+- Floor/ceiling sampling: nearest-neighbor, v aligned to world axes.
+- Orientation shading: +x, +y, +z faces use precomputed face shade multipliers.
+- Distance shading/fog: exponential fog with near 0m, far 40m.
+- Lighting is multiplicative on texture RGB.
 
-White is allowed only for:
+## 5. Sprites
 
-- flash
-- glitch
-- highlight
-- very short duration
-- very small area
+- Sprite projection: billboard, centered at logical pixel position.
+- Sprite occlusion: same depth buffer as walls; if a wall sample is closer, sprite is hidden.
+- Sprite LOD: 3 tiers (near/medium/far).
+- Sprite screen-size rule: max 96 logical px tall near, 48 medium, 24 far.
 
-## 4. Material Atlas
+## 6. Weapon Viewmodel
 
-Materials are authored in a small atlas with distinct half-block patterns and
-palettes:
+- Anchor: bottom-right, 24 logical pixels from right edge, 12 from bottom.
+- Max screen occupation: 22% width, 30% height.
+- Animation frame guidance: 3-frame recoil, 2-frame idle, 4-frame reload.
 
-| Material | Language |
-|----------|----------|
-| Metal | cold desaturated blue/gray, subtle vertical striations |
-| Concrete | warm dark gray, noise speckle |
-| Glass | lower alpha-like cyan, edge highlight |
-| Dirt/grime | brown-black mottling |
-| Wood | warm brown, grain line pairs |
-| Grate | black gaps on dark steel |
-| Hazard | yellow/black diagonal, low-frequency |
+## 7. HUD / Subtitle Safe Zones
 
-## 5. Wall / Floor / Ceiling Language
+- HUD safe zone: 2 logical pixels from each edge at ULTRA.
+- Subtitle safe zone: bottom 6 logical pixels, centered, max 80% width.
 
-- Walls: upper/lower pair chosen to imply vertical extent; not flat white
-- Floors: darker, warmer, low contrast speckle
-- Ceilings: near-black with occasional panel seams
-- Doors: readable color-coded frame; no text dump unless terminal context
+## 8. Effects Budget
 
-## 6. Sprite Atlas & NPC Sprites
+- Particle budget: 512 logical particles max.
+- Screen effect budget: no more than 2 full-screen effects simultaneously.
+- Muzzle flash: 1-3 frames.
+- Spark: max 8 particles per impact, 12 frames.
+- Explosion: 1 flash frame + smoke plume of max 40 particles.
+- Smoke: max 60 logical particles per hazard zone.
 
-- NPC sprites are small half-block pixel sprites, not bitmap photographs
-- Each identity-bearing NPC has a silhouette palette tag:
-  - Security: blue-gray with reflective accent
-  - Medical: red/cross accent
-  - Research: teal/white lab accent
-  - Maintenance: orange/dark accent
-  - Staff/civilian: muted neutral
-- Sprite animation is 2–4 frame arcade-style; no full skeletal animation
+## 9. Camera
 
-## 7. Weapon Viewmodels
+- Normal camera shake: max 2 logical pixels displacement, max 120ms.
+- Reduced shake: max 1 logical pixel, max 60ms.
+- Flash duration: max 2 frames.
+- Recoil range: max 6 logical pixels up + 2 pixels random horizontal.
+- Damage kick: max 4 logical pixels, max 150ms.
+- Sprint bob: max 1 logical pixel vertical, 8Hz.
 
-- 2D half-block viewmodel in lower-right
-- Muzzle flash is a short 1–3 frame additive bright burst
-- Recoil is a few logical-pixel displacement, not full-screen shake
-- Weapon hand-feel is more important than photoreal detail
+## 10. Luminance Bands
 
-## 8. Lighting
+- Ceiling: very dark, RGB max <= 90.
+- Floor: dark, RGB max <= 120.
+- Normal wall: mid-dark/mid, RGB max <= 170.
+- Emissive: high but localized, RGB max can exceed 200 only in small areas.
+- Large-area world luminance: strictly bounded by the above.
+- Pure white (255,255,255): only transient/small-area effects.
 
-- Cell light is a luminance multiplier
-- No real-time global illumination
-- Local lights use small radius falloff
-- Disabling power reduces lights to emergency/backup palette
-- Smoke/short-circuit can locally reduce visibility
+Current ReferenceRenderer bright floor: REJECTED.
 
-## 9. Effects
+## 11. Narrator Intrusion Typography
 
-- Muzzle flash: white/yellow, 1–3 frames
-- Spark: orange/white small particles, short lifespan
-- Explosion: limited flash + smoke zone, not giant fire sim
-- Smoke: dark gray translucent-looking half-block plume; temporary visibility
-  reduction
-- Camera shake: small, localized, bounded
-- Head bob: subtle, suppressed when aiming/sprinting?; defined by M3
-- Recoil: weapon viewmodel + camera pitch impulse
+### Normal Narrator
 
-## 10. Narrator Intrusion Typography
+- Earpiece
+- Subtitle
+- Typewriter progression
 
-- Normal text is terminal monospace
-- Narrator intrusion uses corrupted glyphs, inverted cells, scanline flicker
-- Reserved for glitch/HUD/terminal/narrative moments
-- Not applied to normal world rendering
+### Major Authority Intervention
 
-## 11. HUD
+- Full-screen typography using BlockFontAtlas.
+- Large glyph composition from atlas.
+- Diagonal layout.
+- Screen occupation: up to 70%.
+- Typing/block progression: staggered block reveal.
+- Shake: bounded 3 logical pixels.
+- Glitch: 2-frame inversion/color shift.
+- Color: black background + white/grey block glyphs or red warning accent.
+- World freeze/visibility: world dims to 20% luminance.
+- Duration: max 1800ms.
+- Audio ducking: -12dB.
 
-- Minimal, diegetic where possible
-- Ammo/health/status, objective only when relevant
-- F3 may show systemic raw values (developer/debug)
-- No "STEALTH +10" feedback; consequences are shown through world state
+Reference interaction: player selects Save -> brief impulse -> world/audio response -> giant diagonal text. This is a product reference, not hard-coded renderer text.
 
-## 12. Subtitle
+### Accessibility
 
-- Bottom band, high contrast, max 2 lines
-- No pure white full-width backgrounds; dark translucent backing preferred
-- Accessibility: subtitle toggle and size scaling are not blocked by Narrator
-  presentation authority
-
-## 13. Accessibility
-
-- High-contrast mode
-- Colorblind-friendly critical markers (shape + color, not color alone)
-- Subtitle on/off and size
-- Reduced camera shake option
-- Terminal text size option
-
-These settings are protected from permanent destructive changes.
+- ReduceShake: lower camera displacement, giant typography is not cancelled.
+- ReduceFlicker: no high-speed flash; use stable inversion/block/color shift.
+- Narrative information must remain readable.
