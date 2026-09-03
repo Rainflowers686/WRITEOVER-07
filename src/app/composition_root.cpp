@@ -348,6 +348,7 @@ public:
             RenderProductionFrame(grid_cells_, grid_w_, grid_h_, view,
                                   logical_pixels_.data(), width_, logical_h,
                                   focal);
+            DrawWeaponViewmodel(logical_pixels_.data(), width_, logical_h, 0, 0.0f);
             ComposeHalfBlockFrame(logical_pixels_.data(), width_, logical_h,
                                   body_.data(), width_, height_);
         }

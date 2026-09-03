@@ -152,6 +152,58 @@ void RenderProductionFrame(const GridCell* cells, int grid_w, int grid_h,
     }
 }
 
+void DrawWeaponViewmodel(Color* logical_pixels,
+                         int logical_w, int logical_h,
+                         int state, float recoil_offset) {
+    if (!logical_pixels || logical_w <= 0 || logical_h <= 0) {
+        return;
+    }
+    const int base_y = logical_h - 14;
+    const int base_x = logical_w - 42;
+    const int recoil = static_cast<int>(recoil_offset * 5.0f);
+
+    auto set = [&](int x, int y, Color c) {
+        if (x >= 0 && x < logical_w && y >= 0 && y < logical_h) {
+            logical_pixels[static_cast<size_t>(y) * logical_w + x] = c;
+        }
+    };
+
+    // Gun body: dark gunmetal with a lighter top edge.
+    const Color steel{72, 76, 84};
+    const Color steel_hi{94, 98, 108};
+    const Color grip{58, 48, 44};
+    const Color muzzle{210, 150, 60};
+
+    for (int y = 0; y < 12; ++y) {
+        for (int x = 0; x < 30; ++x) {
+            int px = base_x + x;
+            int py = base_y + y - recoil;
+            if (y < 3) {
+                set(px, py, steel_hi);
+            } else {
+                set(px, py, steel);
+            }
+        }
+    }
+    // Barrel / muzzle.
+    for (int y = 3; y < 6; ++y) {
+        for (int x = 30; x < 38; ++x) {
+            set(base_x + x, base_y + y - recoil, steel_hi);
+        }
+    }
+    if (state == 1) {
+        for (int i = 0; i < 6; ++i) {
+            set(base_x + 38 + (i % 2), base_y + 3 + (i / 2) - recoil, muzzle);
+        }
+    }
+    // Grip.
+    for (int y = 12; y < 20; ++y) {
+        for (int x = 4; x < 14; ++x) {
+            set(base_x + x, base_y + y - recoil, grip);
+        }
+    }
+}
+
 void ComposeHalfBlockFrame(const Color* logical_pixels,
                            int logical_w, int logical_h,
                            CharCell* out_cells, int cell_w, int cell_h) {

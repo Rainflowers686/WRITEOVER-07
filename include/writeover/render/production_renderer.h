@@ -27,6 +27,10 @@ void RenderProductionFrame(const GridCell* cells, int grid_w, int grid_h,
                            float focal_px_per_unit);
 
 // Composes a logical pixel framebuffer into half-block CharCell terminal frame.
+void DrawWeaponViewmodel(Color* logical_pixels,
+                          int logical_w, int logical_h,
+                          int state, float recoil_offset);
+
 void ComposeHalfBlockFrame(const Color* logical_pixels,
                            int logical_w, int logical_h,
                            CharCell* out_cells, int cell_w, int cell_h);

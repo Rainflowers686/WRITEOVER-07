@@ -41,8 +41,8 @@ Target first normal playthrough: 5-10 minutes. Quality over quantity.
 
 ## Current Work
 
-- BLOCK 1/4 progress: production renderer implemented, wall lighting now uses grid light, B1 revival room authored and wired as primary runtime room, PPM golden frame dumped.
-- Next: visual/effect red team on production renderer/B1, then continue BLOCK 2 sprites/viewmodel or BLOCK 4 polish.
+- BLOCK 1/2 progress: production renderer implemented, wall lighting uses grid light, B1 revival room authored/wired, simple production weapon viewmodel added to runtime framebuffer.
+- Next: visual/effect red team on renderer/B1/viewmodel, then add sprite/prop pipeline or continue slice integration.
 
 ## Visual Decisions
 
