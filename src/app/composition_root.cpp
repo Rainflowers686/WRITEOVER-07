@@ -239,6 +239,9 @@ public:
             debug_toggle_callback_) {
             debug_toggle_callback_();
         }
+        if (input_.action_pressed[static_cast<size_t>(GameAction::Help)] && narrator_intrusion_callback_) {
+            narrator_intrusion_callback_();
+        }
         if (input_.action_pressed[static_cast<size_t>(GameAction::Interact)] && interact_callback_) {
             interact_callback_();
         }
@@ -257,6 +260,7 @@ public:
     const std::string& CurrentRoom() const { return current_room_; }
     void SetRoomSwitchCallback(std::function<void(const std::string&, const Vec3&)> cb) { room_switch_callback_ = std::move(cb); }
     void SetInteractCallback(std::function<void()> cb) { interact_callback_ = std::move(cb); }
+    void SetNarratorIntrusionCallback(std::function<void()> cb) { narrator_intrusion_callback_ = std::move(cb); }
 
     const char* Name() const override { return "player"; }
 
@@ -271,6 +275,7 @@ private:
     std::string current_room_;
     std::function<void(const std::string&, const Vec3&)> room_switch_callback_;
     std::function<void()> interact_callback_;
+    std::function<void()> narrator_intrusion_callback_;
 };
 
 class NarrativeModule final : public IEngineModule {
@@ -348,6 +353,7 @@ public:
     void SetCombatSource(const CombatState* combat) { combat_ = combat; }
     void SetDebugOverlay(bool enabled) { debug_overlay_ = enabled; }
     void SetSubtitleOnce(const std::string& text, uint64_t frames) { subtitle_override_ = text; subtitle_override_remaining_ = frames; }
+    void TriggerNarratorIntrusion(uint64_t frames) { narrator_intrusion_remaining_ = frames; }
     bool DebugOverlay() const { return debug_overlay_; }
 
     void SetLocomotionSource(const LocomotionState* locomotion) {
@@ -431,6 +437,28 @@ public:
         hud.grid_height = grid_h_;
         hud.subtitle = subtitle_.c_str();
         hud_.Draw(body_.data(), width_, height_, hud);
+        if (narrator_intrusion_remaining_ > 0) {
+            for (int yy = 0; yy < height_; ++yy) {
+                for (int xx = 0; xx < width_; ++xx) {
+                    CharCell& c = body_[static_cast<size_t>(yy) * width_ + xx];
+                    c.bg_r = 8; c.bg_g = 4; c.bg_b = 8;
+                    c.fg_r = 180; c.fg_g = 40; c.fg_b = 60;
+                }
+            }
+            const char* text = "WRITEOVER-07 // SAVE ACCESS DENIED";
+            int len = 0; while (text[len]) ++len;
+            const int start_x = (width_ - len) / 2;
+            const int start_y = std::max(0, height_ / 2 - 2);
+            for (int i = 0; i < len && (start_x + i) < width_; ++i) {
+                for (int dy = 0; dy < 3; ++dy) {
+                    CharCell& c = body_[static_cast<size_t>(start_y + dy) * width_ + start_x + i];
+                    c.code_point = static_cast<char32_t>(text[i]);
+                    c.fg_r = 240; c.fg_g = 220; c.fg_b = 120;
+                    c.bg_r = 0; c.bg_g = 0; c.bg_b = 0;
+                }
+            }
+            --narrator_intrusion_remaining_;
+        }
         backend_->Submit(body_.data(), width_, height_);
     }
 
@@ -450,6 +478,7 @@ private:
     bool debug_overlay_ = false;
     std::string subtitle_override_;
     uint64_t subtitle_override_remaining_ = 0;
+    uint64_t narrator_intrusion_remaining_ = 0;
     const GridCell* grid_cells_ = nullptr;
     int grid_w_ = 0;
     int grid_h_ = 0;
@@ -593,6 +622,9 @@ int RunComposition(const GameConfig& config) {
     services.player->SetDebugToggleCallback([&] {
         debug_overlay = !debug_overlay;
         render->SetDebugOverlay(debug_overlay);
+    });
+    services.player->SetNarratorIntrusionCallback([&] {
+        render->TriggerNarratorIntrusion(240);
     });
     services.player->SetCurrentRoom(config.room_id.empty() ? std::string("room_b1_revival") : config.room_id);
     services.player->SetRoomSwitchCallback([&](const std::string& id, const Vec3& spawn) {
