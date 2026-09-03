@@ -73,22 +73,25 @@ Result<Room> DeserializeRoom(Deserializer& d) {
         cell.flags = d.ReadU8();
     }
 
-    // Issue D.1: NPC / storylet refs.
+    // Issue D.1 / E.1: NPC / storylet refs. Excessive counts are a hard
+    // error (fail-closed, no skip-and-continue from a wrong offset).
     const uint32_t npc_count = d.ReadU32();
-    if (npc_count <= 4096) {
-        for (uint32_t i = 0; i < npc_count; ++i) {
-            room.npc_refs.push_back(ReadId<StringId>(d));
-        }
+    if (npc_count > 4096) {
+        return Result<Room>::Err(kWocMagic + 5, "unreasonable npc ref count");
+    }
+    for (uint32_t i = 0; i < npc_count; ++i) {
+        room.npc_refs.push_back(ReadId<StringId>(d));
     }
     const uint32_t storylet_count = d.ReadU32();
-    if (storylet_count <= 4096) {
-        for (uint32_t i = 0; i < storylet_count; ++i) {
-            room.storylet_refs.push_back(ReadId<StringId>(d));
-        }
+    if (storylet_count > 4096) {
+        return Result<Room>::Err(kWocMagic + 6, "unreasonable storylet ref count");
+    }
+    for (uint32_t i = 0; i < storylet_count; ++i) {
+        room.storylet_refs.push_back(ReadId<StringId>(d));
     }
 
     if (d.HasError()) {
-        return Result<Room>::Err(kWocMagic + 4, "room file truncated or corrupted");
+        return Result<Room>::Err(kWocMagic + 7, "room file truncated or corrupted");
     }
     return Result<Room>::Ok(std::move(room));
 }

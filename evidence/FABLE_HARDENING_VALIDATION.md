@@ -159,3 +159,16 @@
 - `SIX_LUNA_PARALLEL_READY = YES`
 - `OPEN_FATAL = 0`
 - `OPEN_MAJOR = 0`
+
+---
+
+## HUMAN_REVIEW_OVERRIDE（2026-09-03 追加）
+
+> 本文件是历史证据，不删除、不改写。Human GitHub Review 复核后，
+> 上述 Verdict 被真实仓库状态部分推翻：
+
+- `SIX_LUNA_PARALLEL_READY = YES`、`OPEN_MAJOR = 0` **已否决**。
+- Human 实测 OPEN_MAJOR=5（CI/content 一致、输入 runtime 接线、Windows 输入
+  正确性、上下文感知设置持久化、真实 terminal 性能门禁）。
+- 本次 Final Foundation Closure 轮已闭环这些缺口；最新证据见
+  `evidence/FINAL_FOUNDATION_FREEZE.md`。

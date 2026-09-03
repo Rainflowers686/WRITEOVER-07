@@ -342,4 +342,44 @@ bool LadderEligibility(bool face_ladder, float ladder_height,
     return face_ladder && ladder_height > 0.5f && headroom >= kClearanceStandMin;
 }
 
+namespace {
+constexpr float kMaxPitchRad = 30.0f * 3.14159265f / 180.0f;
+} // namespace
+
+void ApplyMouseLook(LocomotionState& ls, const Vec2& mouse_delta,
+                    uint8_t sensitivity_0_100) {
+    // Raw-ish direct response; no smoothing. Sensitivity maps 0..100 onto a
+    // rad/px scale; 50 = ~0.003 rad/px default.
+    const float sens = static_cast<float>(sensitivity_0_100) / 100.0f;
+    const float scale = 0.0012f + sens * 0.0036f;  // ~0.0012..0.0048 rad/px
+    // Horizontal: yaw increases when the mouse moves right. Wrap-safe: keep
+    // the heading inside [-pi, pi) so repeated turns never accumulate error.
+    ls.yaw += mouse_delta.x * scale;
+    constexpr float kTwoPi = 2.0f * 3.14159265f;
+    if (ls.yaw > 3.14159265f) {
+        ls.yaw -= kTwoPi;
+    } else if (ls.yaw < -3.14159265f) {
+        ls.yaw += kTwoPi;
+    }
+    // Vertical: mouse up (negative dy in screen space) looks up.
+    ls.pitch -= mouse_delta.y * scale;
+    if (ls.pitch > kMaxPitchRad) {
+        ls.pitch = kMaxPitchRad;
+    } else if (ls.pitch < -kMaxPitchRad) {
+        ls.pitch = -kMaxPitchRad;
+    }
+}
+
+Vec2 CameraRelativeWish(const Vec2& local, float yaw) {
+    // forward = (cos(yaw), sin(yaw)); right = (-sin(yaw), cos(yaw)).
+    const float fwd_x = std::cos(yaw);
+    const float fwd_y = std::sin(yaw);
+    const float right_x = -std::sin(yaw);
+    const float right_y = std::cos(yaw);
+    return Vec2{
+        local.x * right_x + local.y * fwd_x,
+        local.x * right_y + local.y * fwd_y,
+    };
+}
+
 } // namespace writeover

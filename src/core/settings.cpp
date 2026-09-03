@@ -24,33 +24,50 @@ Settings Settings::Defaults() {
     s.reduce_camera_shake = false;
     s.reduce_flicker = false;
     s.high_contrast = false;
-    s.key_bindings.fill(PhysicalKey::Unknown);
-    // The array is sized by GameAction::Count; set the real defaults by name.
-    s.key_bindings[static_cast<size_t>(GameAction::MoveForward)] = PhysicalKey::W;
-    s.key_bindings[static_cast<size_t>(GameAction::MoveBackward)] = PhysicalKey::S;
-    s.key_bindings[static_cast<size_t>(GameAction::MoveLeft)] = PhysicalKey::A;
-    s.key_bindings[static_cast<size_t>(GameAction::MoveRight)] = PhysicalKey::D;
-    s.key_bindings[static_cast<size_t>(GameAction::Sprint)] = PhysicalKey::Shift;
-    s.key_bindings[static_cast<size_t>(GameAction::Jump)] = PhysicalKey::Space;
-    s.key_bindings[static_cast<size_t>(GameAction::Crouch)] = PhysicalKey::Ctrl;
-    s.key_bindings[static_cast<size_t>(GameAction::Prone)] = PhysicalKey::Z;
-    s.key_bindings[static_cast<size_t>(GameAction::LeanLeft)] = PhysicalKey::Q;
-    s.key_bindings[static_cast<size_t>(GameAction::LeanRight)] = PhysicalKey::E;
-    s.key_bindings[static_cast<size_t>(GameAction::Interact)] = PhysicalKey::F;
-    s.key_bindings[static_cast<size_t>(GameAction::Reload)] = PhysicalKey::R;
-    s.key_bindings[static_cast<size_t>(GameAction::Fire)] = PhysicalKey::MouseLeft;
-    s.key_bindings[static_cast<size_t>(GameAction::AimDownSights)] = PhysicalKey::MouseRight;
-    s.key_bindings[static_cast<size_t>(GameAction::Melee)] = PhysicalKey::V;
-    s.key_bindings[static_cast<size_t>(GameAction::WeaponSlot1)] = PhysicalKey::Num1;
-    s.key_bindings[static_cast<size_t>(GameAction::WeaponSlot2)] = PhysicalKey::Num2;
-    s.key_bindings[static_cast<size_t>(GameAction::WeaponSlot3)] = PhysicalKey::Num3;
-    s.key_bindings[static_cast<size_t>(GameAction::Pause)] = PhysicalKey::Escape;
-    s.key_bindings[static_cast<size_t>(GameAction::DevPanel)] = PhysicalKey::F3;
-    s.key_bindings[static_cast<size_t>(GameAction::Help)] = PhysicalKey::F1;
-    s.key_bindings[static_cast<size_t>(GameAction::DialogOption1)] = PhysicalKey::Num1;
-    s.key_bindings[static_cast<size_t>(GameAction::DialogOption2)] = PhysicalKey::Num2;
-    s.key_bindings[static_cast<size_t>(GameAction::DialogOption3)] = PhysicalKey::Num3;
-    s.key_bindings[static_cast<size_t>(GameAction::DialogOption4)] = PhysicalKey::Num4;
+    for (auto& table : s.key_bindings) {
+        table.fill(PhysicalKey::Unknown);
+    }
+    auto& g = s.key_bindings[static_cast<size_t>(InputContext::Gameplay)];
+    g[static_cast<size_t>(GameAction::MoveForward)] = PhysicalKey::W;
+    g[static_cast<size_t>(GameAction::MoveBackward)] = PhysicalKey::S;
+    g[static_cast<size_t>(GameAction::MoveLeft)] = PhysicalKey::A;
+    g[static_cast<size_t>(GameAction::MoveRight)] = PhysicalKey::D;
+    g[static_cast<size_t>(GameAction::Sprint)] = PhysicalKey::Shift;
+    g[static_cast<size_t>(GameAction::Jump)] = PhysicalKey::Space;
+    g[static_cast<size_t>(GameAction::Crouch)] = PhysicalKey::Ctrl;
+    g[static_cast<size_t>(GameAction::Prone)] = PhysicalKey::Z;
+    g[static_cast<size_t>(GameAction::LeanLeft)] = PhysicalKey::Q;
+    g[static_cast<size_t>(GameAction::LeanRight)] = PhysicalKey::E;
+    g[static_cast<size_t>(GameAction::Interact)] = PhysicalKey::F;
+    g[static_cast<size_t>(GameAction::Reload)] = PhysicalKey::R;
+    g[static_cast<size_t>(GameAction::Fire)] = PhysicalKey::MouseLeft;
+    g[static_cast<size_t>(GameAction::AimDownSights)] = PhysicalKey::MouseRight;
+    g[static_cast<size_t>(GameAction::Melee)] = PhysicalKey::V;
+    g[static_cast<size_t>(GameAction::WeaponSlot1)] = PhysicalKey::Num1;
+    g[static_cast<size_t>(GameAction::WeaponSlot2)] = PhysicalKey::Num2;
+    g[static_cast<size_t>(GameAction::WeaponSlot3)] = PhysicalKey::Num3;
+    g[static_cast<size_t>(GameAction::Pause)] = PhysicalKey::Escape;
+    g[static_cast<size_t>(GameAction::DevPanel)] = PhysicalKey::F3;
+    g[static_cast<size_t>(GameAction::Help)] = PhysicalKey::F1;
+
+    auto& dlg = s.key_bindings[static_cast<size_t>(InputContext::Dialogue)];
+    dlg[static_cast<size_t>(GameAction::DialogOption1)] = PhysicalKey::Num1;
+    dlg[static_cast<size_t>(GameAction::DialogOption2)] = PhysicalKey::Num2;
+    dlg[static_cast<size_t>(GameAction::DialogOption3)] = PhysicalKey::Num3;
+    dlg[static_cast<size_t>(GameAction::DialogOption4)] = PhysicalKey::Num4;
+    dlg[static_cast<size_t>(GameAction::MoveForward)] = PhysicalKey::W;
+    dlg[static_cast<size_t>(GameAction::MoveBackward)] = PhysicalKey::S;
+    dlg[static_cast<size_t>(GameAction::MoveLeft)] = PhysicalKey::A;
+    dlg[static_cast<size_t>(GameAction::MoveRight)] = PhysicalKey::D;
+    dlg[static_cast<size_t>(GameAction::Pause)] = PhysicalKey::Escape;
+
+    auto& menu = s.key_bindings[static_cast<size_t>(InputContext::Menu)];
+    menu[static_cast<size_t>(GameAction::Pause)] = PhysicalKey::Escape;
+    menu[static_cast<size_t>(GameAction::Help)] = PhysicalKey::F1;
+
+    auto& dev = s.key_bindings[static_cast<size_t>(InputContext::Developer)];
+    dev[static_cast<size_t>(GameAction::DevPanel)] = PhysicalKey::F3;
+    dev[static_cast<size_t>(GameAction::Pause)] = PhysicalKey::Escape;
     return s;
 }
 
@@ -71,13 +88,17 @@ void Settings::Save(Serializer& s) const {
     s.WriteU8(reduce_camera_shake ? 1 : 0);
     s.WriteU8(reduce_flicker ? 1 : 0);
     s.WriteU8(high_contrast ? 1 : 0);
-    s.WriteU16(static_cast<uint16_t>(key_bindings.size()));
-    for (const auto key : key_bindings) {
-        s.WriteU16(static_cast<uint16_t>(key));
+    s.WriteU16(static_cast<uint16_t>(kInputContextCount));
+    for (const auto& table : key_bindings) {
+        for (const auto key : table) {
+            s.WriteU16(static_cast<uint16_t>(key));
+        }
     }
 }
 
 void Settings::Load(Deserializer& d) {
+    // Reset to defaults FIRST so scalar fields keep the loaded values below.
+    *this = Defaults();
     preset = static_cast<QualityPreset>(d.ReadU8());
     frame_rate_cap = d.ReadU8();
     fov = d.ReadU8();
@@ -94,9 +115,13 @@ void Settings::Load(Deserializer& d) {
     reduce_camera_shake = d.ReadU8() != 0;
     reduce_flicker = d.ReadU8() != 0;
     high_contrast = d.ReadU8() != 0;
-    const uint16_t binding_count = d.ReadU16();
-    for (uint16_t i = 0; i < binding_count && i < kGameActionCount; ++i) {
-        key_bindings[i] = static_cast<PhysicalKey>(d.ReadU16());
+    const uint16_t context_count = d.ReadU16();
+    const uint16_t contexts = static_cast<uint16_t>(
+        context_count > kInputContextCount ? kInputContextCount : context_count);
+    for (uint16_t c = 0; c < contexts; ++c) {
+        for (uint16_t i = 0; i < kGameActionCount; ++i) {
+            key_bindings[c][i] = static_cast<PhysicalKey>(d.ReadU16());
+        }
     }
 }
 
@@ -193,14 +218,28 @@ void ApplyKeyValue(Settings& s, const KeyValue& kv) {
     } else if (kv.key == "highcontrast" && ParseBool(kv.value, tmpb)) {
         s.high_contrast = tmpb;
     } else if (kv.key.rfind("bind.", 0) == 0) {
-        // bind.<GameActionIndex>=<PhysicalKeyValue>
-        const std::string index_str = kv.key.substr(5);
+        // New format: bind.<contextIndex>.<actionIndex>=<PhysicalKeyValue>
+        const std::string spec = kv.key.substr(5);
+        const size_t dot = spec.find('.');
+        uint8_t ctx_index = 0;
         uint8_t action_index = 0;
         uint8_t key_value = 0;
-        if (ParseU8(index_str, action_index) &&
-            static_cast<size_t>(action_index) < kGameActionCount &&
-            ParseU8(kv.value, key_value)) {
-            s.key_bindings[action_index] = static_cast<PhysicalKey>(key_value);
+        if (dot == std::string::npos) {
+            // Legacy format: bind.<actionIndex>=<PhysicalKeyValue>
+            // Interpreted as Gameplay context (backward compatible).
+            if (ParseU8(spec, action_index) &&
+                static_cast<size_t>(action_index) < kGameActionCount &&
+                ParseU8(kv.value, key_value)) {
+                s.key_bindings[static_cast<size_t>(InputContext::Gameplay)]
+                              [action_index] = static_cast<PhysicalKey>(key_value);
+            }
+        } else if (ParseU8(spec.substr(0, dot), ctx_index) &&
+                   static_cast<size_t>(ctx_index) < kInputContextCount &&
+                   ParseU8(spec.substr(dot + 1), action_index) &&
+                   static_cast<size_t>(action_index) < kGameActionCount &&
+                   ParseU8(kv.value, key_value)) {
+            s.key_bindings[ctx_index][action_index] =
+                static_cast<PhysicalKey>(key_value);
         }
     }
 }
@@ -224,8 +263,11 @@ std::string ComposeKeyValues(const Settings& s) {
     out << "reducecamerashake=" << (s.reduce_camera_shake ? "true" : "false") << "\n";
     out << "reduceflicker=" << (s.reduce_flicker ? "true" : "false") << "\n";
     out << "highcontrast=" << (s.high_contrast ? "true" : "false") << "\n";
-    for (size_t i = 0; i < kGameActionCount; ++i) {
-        out << "bind." << i << "=" << static_cast<uint32_t>(s.key_bindings[i]) << "\n";
+    for (size_t c = 0; c < kInputContextCount; ++c) {
+        for (size_t i = 0; i < kGameActionCount; ++i) {
+            out << "bind." << c << "." << i << "="
+                << static_cast<uint32_t>(s.key_bindings[c][i]) << "\n";
+        }
     }
     return out.str();
 }

@@ -20,18 +20,6 @@
 
 namespace writeover {
 
-// Input context: which surface consumes a physical key. Gameplay and
-// Dialogue legally share keys (number row); Menu and Developer are separate.
-enum class InputContext : uint8_t {
-    Gameplay = 0,
-    Dialogue = 1,
-    Menu = 2,
-    Developer = 3,
-    Count = 4,
-};
-
-inline constexpr size_t kInputContextCount = static_cast<size_t>(InputContext::Count);
-
 // Resolved per-frame input state read by gameplay.
 struct InputState {
     Vec2 mouse_delta;             // raw, unbounded

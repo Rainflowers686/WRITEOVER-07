@@ -26,7 +26,9 @@
 - NO new dependencies (zero third-party); NO new threads.
 - NO changing save schema, sim timing (120Hz fixed), renderer paradigm, content
   schema, error policy.
-- NO network code, SDL/DirectX window, runtime LLM, P1/P2 scope.
+- NO network code, SDL/DirectX window, runtime LLM.
+- ONLY PRODUCT_BASELINE_V1_1 AUTHORIZED EXPANSIONS ARE ALLOWED. 任何未列入
+  v1.1 的旧废案仍禁止自行恢复（见 `docs/product/PRODUCT_BASELINE_V1_1.md`）。
 
 ## 3. Owned files
 Only touch files inside your module's owned directories (see module prompts).
@@ -53,18 +55,22 @@ STOP_REASON
 Never write PASS without running. `NOT_RUN` is honest; fabricated PASS is a
 contract violation.
 
-## 5. Daily rhythm
-- Feature branch off `dev`; PR <= 400 lines; CI green before review.
-- Ring code review: another human owner approves; Codex never self-approves.
-- Daily integration 18:00, dev->main auto-merge 22:00.
+## 5. Git workflow (main-only)
+- Direct commits to `main` only. No dev branch, no feature branches, no PRs.
+- 不允许六 Agent 同时无约束写同一文件。
+- Commits reviewed by a human owner before CI is treated as authoritative.
+- CI runs on every push to `main` (`ctest` + internal test executable).
 
 ## 6. Validation commands
 ```powershell
 cmake --preset ci
 cmake --build --preset ci
 ctest --preset ci --output-on-failure
+.\out\build\ci\Debug\writeover_tests.exe
 scripts/smoke.ps1
 scripts/bench.ps1 -Preset release
 scripts/contract_check.ps1
+python tools/audit/static_audit.py .
+python tools/contentc/contentc.py --data-dir data --out-dir data --check
 ```
 Stop and report if build fails twice without a new hypothesis.

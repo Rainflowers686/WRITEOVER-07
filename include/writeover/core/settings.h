@@ -1,8 +1,7 @@
 #pragma once
 // Settings registry. Persisted as UTF-8 key=value text. Key bindings are a
-// serializable binding table (std::array of PhysicalKey), NOT a pointer
-// (M-013 closure). Settings do not change simulation determinism for a fixed
-// settings snapshot.
+// serializable binding table per InputContext (M-013 closure), NOT a pointer.
+// Settings do not change simulation determinism for a fixed settings snapshot.
 
 #include "writeover/common/input_types.h"
 #include "writeover/common/result.h"
@@ -28,7 +27,10 @@ struct Settings {
     uint8_t fov = 90;                   // 60..120
     uint8_t mouse_sensitivity = 50;     // 0..100
     uint8_t gamepad_sensitivity = 50;   // 0..100
-    std::array<PhysicalKey, kGameActionCount> key_bindings;
+    // Context-aware key bindings: [context][action] -> key.
+    // InputContext lives in common/input_types.h so Settings can reference it
+    // without depending on player/input.h.
+    std::array<std::array<PhysicalKey, kGameActionCount>, kInputContextCount> key_bindings;
     bool aim_assist = false;
     uint8_t master_volume = 70;         // 0..100
     uint8_t narrator_volume = 70;       // 0..100
@@ -43,7 +45,7 @@ struct Settings {
     bool reduce_flicker = false;
     bool high_contrast = false;
 
-    // Defaults for all fields (including the binding table).
+    // Defaults for all fields (including the binding tables).
     static Settings Defaults();
 
     void Save(Serializer& s) const;

@@ -1,5 +1,6 @@
 #include "tests/test_harness.h"
 
+#include "writeover/core/settings.h"
 #include "writeover/player/combat.h"
 #include "writeover/player/controller.h"
 #include "writeover/player/input.h"
@@ -439,6 +440,126 @@ bool LocomotionSaveLoadRoundTrip() {
     return restored.jump_cooldown_frames == ls.jump_cooldown_frames;
 }
 
+// Discriminating lean regression: the same world geometry must produce a
+// DIFFERENT clamped lean when the camera yaw is rotated 90 degrees, because
+// lean is camera-LOCAL (right = -x at yaw=90, not +x). A world-X lean
+// implementation fails this test.
+bool LeanYawRegressionDiscriminating() {
+    Grid grid = MakeOpenGrid(10, 6);
+    // Asymmetric world: solid wall strip along x=4 (vertical wall at col 4).
+    // Player starts at (2.5, 2.5). At yaw=0 local right = +y (no wall there
+    // along row 2 up to a point); at yaw=90 local right = -x -> but -x is
+    // open. To discriminate, place wall at x=4.0 AND at row y=4.5 such that:
+    //   yaw=0: local right = +y -> wall at row 4 -> clamped.
+    //   yaw=90: local right = -x -> wall at col 0 (x<0.35 blocked) but far
+    //   from player at 2.5 -> free lean.
+    for (int32_t r = 0; r < 6; ++r) {
+        GridCell w;
+        w.flags = CellFlag_Solid;
+        grid.SetCell(4, r, w);  // wall at x 4..5
+        grid.SetCell(r, 4, w);  // wall at y 4..5
+    }
+    GridWorldQuery query(&grid);
+    LocomotionState ls;
+    ls.position = Vec3{2.5f, 2.5f, 0.0f};
+    ls.contact.grounded = true;
+
+    // At yaw=0: local right is +y. Wall along y=4 is 1.5m away in +y;
+    // lean offset 0.35 keeps the AABB at y 2.15..2.85, which does NOT reach
+    // the y=4 wall, so a correct LOCAL implementation leans fully right
+    // (free) while a naive WORLD-X implementation would also lean +x freely.
+    // To make this discriminating we need the wall to be the thing hit at
+    // yaw=0 in +y: move the player close to the +y wall.
+    ls.position = Vec3{2.5f, 3.5f, 0.0f};  // 0.5m from the y=4 wall
+    ls.yaw = 0.0f;  // facing +x, local right = +y -> toward y=4 wall
+    const float right_at_0 = LeanClamp(ls, Lean::Right, query);
+    WO_CHECK(right_at_0 < kLeanOffset - 0.01f);  // clamped by +y wall
+
+    // yaw=90: facing +y, local right = -x. The wall at x=4 is now BEHIND
+    // (local right = -x is open, x<0 region); the +y wall is now in front
+    // (forward), not right. So right lean is FREE at yaw=90.
+    ls.yaw = 3.14159265f * 0.5f;
+    const float right_at_90 = LeanClamp(ls, Lean::Right, query);
+    WO_CHECK_NEAR(right_at_90, kLeanOffset, 0.01f);
+
+    // The two results must differ meaningfully (that is the discriminating
+    // property the old world-X implementation would violate).
+    return (kLeanOffset - right_at_0) > 0.05f;
+}
+
+// Mouse delta increases yaw (horizontal look).
+bool MouseDeltaChangesYaw() {
+    LocomotionState ls;
+    ls.yaw = 0.0f;
+    ApplyMouseLook(ls, Vec2{100.0f, 0.0f}, 50);
+    return ls.yaw > 0.0f;
+}
+
+// Pitch clamps at +30 degrees when looking up hard.
+bool PitchClampedPlus30() {
+    LocomotionState ls;
+    ls.pitch = 0.0f;
+    constexpr float kPitchUp = -10000.0f;  // mouse up (negative dy)
+    ApplyMouseLook(ls, Vec2{0.0f, kPitchUp}, 100);
+    constexpr float kMaxPitch = 30.0f * 3.14159265f / 180.0f;
+    return ls.pitch > 0.0f && ls.pitch <= kMaxPitch + 0.0001f;
+}
+
+// Pitch clamps at -30 degrees when looking down hard.
+bool PitchClampedMinus30() {
+    LocomotionState ls;
+    ls.pitch = 0.0f;
+    constexpr float kPitchDown = 10000.0f;  // mouse down (positive dy)
+    ApplyMouseLook(ls, Vec2{0.0f, kPitchDown}, 100);
+    constexpr float kMaxPitch = 30.0f * 3.14159265f / 180.0f;
+    return ls.pitch < 0.0f && ls.pitch >= -kMaxPitch - 0.0001f;
+}
+
+// Forward wish at yaw=0 maps to world +y (depends on convention: forward is
+// the local +y axis and CameraRelativeWish converts by the yaw).
+bool ForwardRespectsYaw0() {
+    const Vec2 wish = CameraRelativeWish(Vec2{0.0f, 1.0f}, 0.0f);
+    // forward at yaw=0 is (cos0, sin0) = (1, 0) in the renderer convention,
+    // but the controller's move convention uses +y forward. We document the
+    // exact mapping here: for yaw=0, forward wish must equal (0, 1) per
+    // forward = (cos(yaw), sin(yaw)) applied to the +y local axis.
+    const float fwd_x = std::cos(0.0f);
+    const float fwd_y = std::sin(0.0f);
+    return std::fabs(wish.x - fwd_x) < 0.0001f &&
+           std::fabs(wish.y - fwd_y) < 0.0001f;
+}
+
+// Forward wish at yaw=90 maps to world (0, 1) -> (cos90, sin90) = (0, 1).
+bool ForwardRespectsYaw90() {
+    const float yaw = 3.14159265f * 0.5f;
+    const Vec2 wish = CameraRelativeWish(Vec2{0.0f, 1.0f}, yaw);
+    const float fwd_x = std::cos(yaw);
+    const float fwd_y = std::sin(yaw);
+    return std::fabs(wish.x - fwd_x) < 0.0001f &&
+           std::fabs(wish.y - fwd_y) < 0.0001f;
+}
+
+// The InputMapper and the Settings binding tables must agree: both read the
+// same [context][action]->key model and the mapper consumes Settings.
+bool SettingsMapperConsistent() {
+    Settings s = Settings::Defaults();
+    InputMapper mapper;
+    for (size_t c = 0; c < kInputContextCount; ++c) {
+        for (size_t a = 0; a < kGameActionCount; ++a) {
+            mapper.SetBinding(static_cast<InputContext>(c),
+                              static_cast<GameAction>(a),
+                              s.key_bindings[c][a]);
+        }
+    }
+    const size_t gp = static_cast<size_t>(InputContext::Gameplay);
+    return mapper.MapKey(InputContext::Gameplay, PhysicalKey::W) ==
+               GameAction::MoveForward &&
+           s.key_bindings[gp][static_cast<size_t>(GameAction::MoveForward)] ==
+               PhysicalKey::W &&
+           mapper.GetBinding(InputContext::Gameplay, GameAction::Jump) ==
+               s.key_bindings[gp][static_cast<size_t>(GameAction::Jump)];
+}
+
 } // namespace
 
 void RegisterPlayerTests(TestHarness& test) {
@@ -458,6 +579,13 @@ void RegisterPlayerTests(TestHarness& test) {
     test.Add("controller.step_up_50cm_rejected", &StepUp50cmRejected);
     test.Add("controller.lean_clamp_against_wall", &LeanClampAgainstWall);
     test.Add("controller.lean_respects_yaw_90", &LeanRespectsYaw90);
+    test.Add("controller.lean_yaw_regression_discriminating", &LeanYawRegressionDiscriminating);
+    test.Add("player.mouse_delta_changes_yaw", &MouseDeltaChangesYaw);
+    test.Add("player.pitch_clamped_plus_30", &PitchClampedPlus30);
+    test.Add("player.pitch_clamped_minus_30", &PitchClampedMinus30);
+    test.Add("player.forward_respects_yaw_0", &ForwardRespectsYaw0);
+    test.Add("player.forward_respects_yaw_90", &ForwardRespectsYaw90);
+    test.Add("input.settings_mapper_consistent", &SettingsMapperConsistent);
     test.Add("controller.head_collision_stops_jump", &HeadCollisionStopsJump);
     test.Add("controller.falling_not_grounded_in_air", &FallingNotGroundedInAir);
     test.Add("controller.no_nan_inf", &LocomotionNoNanInf);

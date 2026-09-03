@@ -678,6 +678,61 @@ bool TerminalEncoderDeterministic() {
     return out_a == out_b;
 }
 
+// Issue D: a dimension change must reset the previous frame and force a
+// full-frame encode (never index the old snapshot with the new layout).
+bool TerminalResizeForcesSafeFull() {
+    AnsiFrameEncoder enc;
+    std::vector<CharCell> small(40 * 10);
+    std::vector<CharCell> large(60 * 15);
+    std::string out;
+    // Prime with a small frame.
+    auto r1 = enc.Encode(small.data(), 40, 10, out);
+    WO_CHECK(r1.full);
+    WO_CHECK_EQ(enc.PreviousWidth(), 40);
+    WO_CHECK_EQ(enc.PreviousHeight(), 10);
+    // Change dimensions: must force a full frame and update the snapshot.
+    out.clear();
+    auto r2 = enc.Encode(large.data(), 60, 15, out);
+    WO_CHECK(r2.full);
+    WO_CHECK(!out.empty());
+    WO_CHECK_EQ(enc.PreviousWidth(), 60);
+    WO_CHECK_EQ(enc.PreviousHeight(), 15);
+    // Back to the original size: still a safe full frame after change.
+    out.clear();
+    auto r3 = enc.Encode(small.data(), 40, 10, out);
+    WO_CHECK(r3.full);
+    return enc.PreviousWidth() == 40 && enc.PreviousHeight() == 10;
+}
+
+// Issue D: a "typical delta" benchmark must measure a SMALL actual change
+// (16-64 cells), not a full-screen color phase flip.
+bool TerminalDeltaTypicalIsActualDelta() {
+    const int w = 60, h = 15;
+    std::vector<CharCell> base(static_cast<size_t>(w) * h);
+    for (auto& c : base) {
+        c.fg_r = 200; c.fg_g = 180; c.fg_b = 160;
+        c.bg_r = 30;  c.bg_g = 28;  c.bg_b = 24;
+    }
+    AnsiFrameEncoder enc;
+    std::string out;
+    enc.Encode(base.data(), w, h, out);
+    // Small local change: 16 cells.
+    std::vector<CharCell> changed = base;
+    for (int i = 0; i < 16; ++i) {
+        changed[static_cast<size_t>(i)].fg_r = 255;
+    }
+    out.clear();
+    const auto res = enc.Encode(changed.data(), w, h, out);
+    WO_CHECK_EQ(static_cast<int64_t>(res.changed_cells), 16);
+    WO_CHECK(res.changed_cells < static_cast<size_t>(w) * h / 4);
+    // Compare with a full frame: delta must be far smaller.
+    out.clear();
+    AnsiFrameEncoder full_enc;
+    full_enc.Encode(changed.data(), w, h, out);
+    WO_CHECK(out.size() < 2048);
+    return true;
+}
+
 } // namespace
 
 void RegisterRenderTests(TestHarness& test) {
@@ -714,6 +769,8 @@ void RegisterRenderTests(TestHarness& test) {
     test.Add("terminal.unchanged_frame_emits_no_payload", &TerminalUnchangedFrameNoPayload);
     test.Add("terminal.delta_smaller_than_full_for_small_change", &TerminalDeltaSmallerThanFull);
     test.Add("terminal.encoder_deterministic", &TerminalEncoderDeterministic);
+    test.Add("terminal.resize_forces_safe_full", &TerminalResizeForcesSafeFull);
+    test.Add("terminal.delta_typical_is_actual_delta", &TerminalDeltaTypicalIsActualDelta);
 }
 
 } // namespace writeover

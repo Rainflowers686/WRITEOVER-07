@@ -9,6 +9,7 @@
 - HK-1..HK-6 参考实现已落地并有测试与文档：
   `docs/reference/HK1_SIM_EVENT_SAVE.md` … `HK6_CONTENT_STORYLET.md`
 - 裁决文件：`FABLE_HARDENING_VERDICT.md`；发现清单：`docs/audit/FABLE_FINDINGS_AFTER_REPRO.md`
+- 最终闭合：`evidence/FINAL_FOUNDATION_FREEZE.md`；产品基线：`docs/product/PRODUCT_BASELINE_V1_1.md`
 - 不再需要重新仲裁产品范围 / Opus 计划 / 六模块分工。
 
 ## 1. 谁拥有什么（owned / forbidden）
@@ -39,7 +40,8 @@
 - 第二个 EntityId/Vec/EventBus；std::rand；gameplay 墙钟；无序迭代影响决策。
 - 原始 owning 指针、struct dump 序列化、`system("cls")`、逐字符 cout。
 - 静默 catch、magic payload 字节、公共 API 漂移、render/world 共享可变状态。
-- 隐藏网络、SDL/DirectX 窗口、runtime LLM、P1/P2 范围、泛型投机框架。
+- 隐藏网络、SDL/DirectX 窗口、runtime LLM。
+- **ONLY PRODUCT_BASELINE_V1_1 AUTHORIZED EXPANSIONS ARE ALLOWED（见 `docs/product/PRODUCT_BASELINE_V1_1.md`）**；任何未列入 v1.1 的旧废案仍禁止自行恢复。
 - 新增依赖（第三方=0）、新增线程、改 save schema/120Hz/渲染范式/错误政策。
 - **fake 测试/bench 结果**（hardcode PASS）——发现即驳回。
 - **回退已修复的审计项**（见 `tools/audit/static_audit.py` 回归门）。
@@ -50,6 +52,7 @@
 - 每次改动必须给出真实 build/test 证据；未运行写 `NOT_RUN`。
 - 公共 API 漂移检查：`scripts/contract_check.ps1`（含 public header hash baseline）。
 - Codex 永不自我批准；合入需要 ≥1 位非本人 Owner 人工评审。
+- **Git 工作流**：main-only。无 dev 分支、无 feature 分支、无 PR 流程。禁止六 Agent 同时无约束写同一文件。
 
 ## 5. 必跑命令（工作副本内）
 

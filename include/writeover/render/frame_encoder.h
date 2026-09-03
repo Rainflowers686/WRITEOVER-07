@@ -42,10 +42,14 @@ public:
 
     bool HasPrevious() const { return has_prev_; }
     size_t PreviousCellCount() const { return prev_.size(); }
+    int PreviousWidth() const { return prev_width_; }
+    int PreviousHeight() const { return prev_height_; }
 
 private:
     std::vector<CharCell> prev_;
     bool has_prev_ = false;
+    int prev_width_ = 0;
+    int prev_height_ = 0;
 };
 
 // Builds an ANSI TrueColor SGR prefix for a cell; returns empty when the

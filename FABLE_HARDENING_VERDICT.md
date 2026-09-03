@@ -107,3 +107,21 @@ OPEN_MAJOR                   = 0
 - 内容提交必须通过 `contentc --check` + `contract_check.ps1` + `static_audit.py`
 - 公共头冻结，改动需 ADR + Owner
 - 测试必须是真实运行输出，禁止 hardcode PASS
+
+---
+
+## HUMAN_REVIEW_OVERRIDE（2026-09-03 追加）
+
+> 本文件是历史证据，不删除、不改写。Human GitHub Review 已复核本裁决与
+> 实际仓库状态，发现以下声明被真实 CI / 代码状态推翻，故追加本覆盖声明。
+
+- **SIX_LUNA_PARALLEL_READY = YES 已被否决。**
+- Human Review 实测发现（OPEN_MAJOR=5）：
+  1. CI / generated content 不一致（compiled .woc/.bin 与编译器漂移）；
+  2. Input 组件齐备但未真正接入 runtime（Poll/Map/Consume 未进循环）；
+  3. Windows 输入事件批次存在丢事件风险（ReadConsoleInput 单事件即返回）；
+  4. Settings 与 InputMapper 两套绑定模型不一致（无上下文持久化）；
+  5. Terminal benchmark 门禁不完整（exit code 未覆盖 terminal gate）。
+- 覆盖结论：上一轮 Verdict 的 `= YES` 全部被本次 Final Foundation Closure
+  轮（ISSUE A–E + Product Baseline v1.1 Freeze）取代。
+- 最新冻结证据：`evidence/FINAL_FOUNDATION_FREEZE.md`。

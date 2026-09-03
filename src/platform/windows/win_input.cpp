@@ -82,9 +82,10 @@ PhysicalKey MapVk(UINT vk) {
 }
 } // namespace
 
-// Keyboard-only backend: reads key/mouse events from the console input
-// record. Non-blocking: GetNumberOfConsoleInputEvents probes before reading
-// (B.2 closure). Focus is tracked via FOCUS_EVENT (B.3 closure).
+// Keyboard-only backend: reads key/mouse events from the console input.
+// Non-blocking: GetNumberOfConsoleInputEvents probes before reading.
+// Uses an internal deque to preserve ALL events from a batch (no drops).
+// Focus is tracked via FOCUS_EVENT records and ENABLE_WINDOW_INPUT.
 class KeyboardOnlyBackend final : public IInputBackend {
 public:
     bool Init() override {
@@ -94,22 +95,31 @@ public:
         }
         DWORD mode = 0;
         if (GetConsoleMode(input_handle_, &mode)) {
+            old_mode_ = mode;  // save for restore on Shutdown
             mode &= ~ENABLE_QUICK_EDIT_MODE;
             mode &= ~ENABLE_INSERT_MODE;
+            // Enable window input so FOCUS_EVENT records are generated.
+            mode |= ENABLE_WINDOW_INPUT;
             SetConsoleMode(input_handle_, mode);
         }
-        // FOCUS_EVENT tracking: probe console mode for ENABLE_WINDOW_INPUT,
-        // without which FOCUS_EVENT records are never generated.
         has_focus_ = true;
         return true;
     }
 
-    void Shutdown() override {}
+    void Shutdown() override {
+        if (input_handle_ != nullptr && input_handle_ != INVALID_HANDLE_VALUE) {
+            SetConsoleMode(input_handle_, old_mode_);
+        }
+    }
 
     bool Poll(InputEvent& out_event) override {
-        // Non-blocking probe: no events available -> return false immediately
-        // (B.2 closure). This prevents ReadConsoleInput from blocking when
-        // the console input buffer is empty.
+        // First drain the internal queue (B.2 closure: no event drops).
+        if (!queue_.empty()) {
+            out_event = queue_.front();
+            queue_.pop_front();
+            return true;
+        }
+        // Non-blocking probe: no events available -> return false immediately.
         DWORD available = 0;
         if (!GetNumberOfConsoleInputEvents(input_handle_, &available)) {
             return false;
@@ -117,6 +127,7 @@ public:
         if (available == 0) {
             return false;
         }
+        // Read a batch of all available events (up to 32) and queue them.
         constexpr DWORD kMaxEvents = 32;
         INPUT_RECORD records[kMaxEvents];
         DWORD count = 0;
@@ -131,12 +142,19 @@ public:
             if (records[i].EventType == KEY_EVENT) {
                 const PhysicalKey key = MapVk(records[i].Event.KeyEvent.wVirtualKeyCode);
                 if (key != PhysicalKey::Unknown) {
-                    out_event.key = key;
-                    out_event.pressed = records[i].Event.KeyEvent.bKeyDown != FALSE;
-                    out_event.analog = 0.0f;
-                    return true;
+                    InputEvent evt;
+                    evt.key = key;
+                    evt.pressed = records[i].Event.KeyEvent.bKeyDown != FALSE;
+                    evt.analog = 0.0f;
+                    queue_.push_back(evt);
                 }
             }
+        }
+        // Pop one from the queue if available.
+        if (!queue_.empty()) {
+            out_event = queue_.front();
+            queue_.pop_front();
+            return true;
         }
         return false;
     }
@@ -147,10 +165,14 @@ public:
 
 private:
     HANDLE input_handle_ = nullptr;
+    DWORD old_mode_ = 0;
     bool has_focus_ = true;
+    std::deque<InputEvent> queue_;
 };
 
 // Cursor-delta backend with center recapture (fallback #1).
+// When the console window is foreground, reads cursor delta, then recenters
+// the cursor to avoid cursor reaching the screen edge (F-03 closure).
 class CursorDeltaBackend final : public IInputBackend {
 public:
     bool Init() override {
@@ -165,22 +187,37 @@ public:
     void Shutdown() override {}
 
     bool Poll(InputEvent& out_event) override {
+        out_event.key = PhysicalKey::Unknown;
+        out_event.pressed = false;
+        out_event.analog = 0.0f;
+        // Only accumulate delta when the console window is foreground.
+        if (!HasFocus()) {
+            return false;
+        }
         POINT p{};
         if (!GetCursorPos(&p)) {
             return false;
         }
         const double dx = static_cast<double>(p.x) - last_x_;
         const double dy = static_cast<double>(p.y) - last_y_;
-        last_x_ = static_cast<double>(p.x);
-        last_y_ = static_cast<double>(p.y);
         if (std::fabs(dx) < 0.5 && std::fabs(dy) < 0.5) {
             return false;
         }
-        out_event.key = PhysicalKey::Unknown;
-        out_event.pressed = false;
-        out_event.analog = 0.0f;
         mouse_delta_x_ += static_cast<float>(dx);
         mouse_delta_y_ += static_cast<float>(dy);
+
+        // Recenter the cursor to the console window center.
+        HWND console = GetConsoleWindow();
+        if (console != nullptr) {
+            RECT rect{};
+            if (GetWindowRect(console, &rect)) {
+                const int cx = (rect.left + rect.right) / 2;
+                const int cy = (rect.top + rect.bottom) / 2;
+                SetCursorPos(cx, cy);
+                last_x_ = static_cast<double>(cx);
+                last_y_ = static_cast<double>(cy);
+            }
+        }
         return true;
     }
 
@@ -196,7 +233,11 @@ public:
     }
 
     bool HasFocus() const override {
-        return GetConsoleWindow() != nullptr;
+        HWND fg = GetForegroundWindow();
+        if (fg == nullptr) {
+            return false;
+        }
+        return fg == GetConsoleWindow();
     }
 
     const char* Name() const override { return "cursor-delta"; }
@@ -209,11 +250,6 @@ private:
 };
 
 } // namespace writeover
-
-// The app uses these factories and interprets the cursor-delta via dynamic
-// cast-free polling: CursorDeltaBackend accumulates deltas and its Poll
-// reports movement; the composition root reads accumulated deltas through
-// the shared InputState path (mouse_delta consumed before each sim tick).
 
 std::unique_ptr<writeover::IInputBackend> writeover::CreateKeyboardOnlyBackend() {
     return std::unique_ptr<writeover::IInputBackend>(

@@ -3,8 +3,9 @@
 
 Runtime C++ reads ONLY the compiled binaries; JSON is never parsed at runtime
 (closure of M-015). The compiler is stdlib-only (json + struct) and
-deterministic: stable numeric ids are assigned 1..N in SORTED order of string
-ids per file, so identical inputs always produce identical binaries.
+deterministic: stable numeric IDs use FNV-1a64 over the canonical string id,
+so identical inputs always produce identical binaries independent of insertion
+order. Collision-checked per run.
 
 Binary formats mirror writeover C++ loaders exactly:
   rooms/<room>.woc   -> RoomCodec (writeover/world/room.h)
@@ -56,7 +57,42 @@ def stable_id(name: str, registry):
     return registry[name]
 
 
-def compile_room(json_path: Path, out_dir: Path):
+def check_id_collisions(domain: str, registry):
+    """Fails on FNV-1a64 collision within one id domain (Issue E.2 closure):
+    two distinct canonical strings mapping to the same numeric id are a hard
+    error. Deterministic; never silently resolves."""
+    numeric_to_string = {}
+    for name in sorted(registry):
+        numeric_id = registry[name]
+        if numeric_id in numeric_to_string:
+            other = numeric_to_string[numeric_id]
+            if other != name:
+                fail(domain,
+                     f"ID collision: '{other}' and '{name}' both map to "
+                     f"{numeric_id}")
+        else:
+            numeric_to_string[numeric_id] = name
+
+
+def load_id_registry(domain: str, paths, id_key="id"):
+    """Loads a deterministic {string_id: stable_id64} registry from JSON files.
+    Returns {} on malformed input (errors are collected globally)."""
+    registry = {}
+    for path in sorted(paths):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            fail(path.name, f"invalid JSON: {exc}")
+            continue
+        entries = data.get("npcs", data.get("storylets", data.get("facts", [])))
+        for entry in sorted(entries, key=lambda k: k.get(id_key, "")):
+            eid = entry.get(id_key, "")
+            if eid and eid not in registry:
+                registry[eid] = stable_id64(eid)
+    return registry
+
+
+def compile_room(json_path: Path, out_dir: Path, npc_registry, storylet_registry):
     try:
         data = json.loads(json_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -110,11 +146,20 @@ def compile_room(json_path: Path, out_dir: Path):
             for f in cell.get("flags", []):
                 flags |= flags_map.get(f, 0)
             body += struct.pack("<ffBBB", floor, ceiling, material, light, flags)
-    # Issue D.1: NPC / storylet refs round-trip. Authoring uses stable string
-    # ids; they are compiled to their stable deterministic numeric ids so the
-    # C++ Room codec can load them back.
-    npc_refs = [stable_id64(ref) for ref in data.get("npcRefs", [])]
-    storylet_refs = [stable_id64(ref) for ref in data.get("storyletRefs", [])]
+    # Issue E.1: NPC / storylet refs must resolve to real registry entries.
+    # A typo in a stable string id must be a compile error, not a silent hash.
+    npc_refs = []
+    for ref in data.get("npcRefs", []):
+        if ref not in npc_registry:
+            fail(json_path.name, f"unknown npc ref '{ref}'")
+            continue
+        npc_refs.append(stable_id64(ref))
+    storylet_refs = []
+    for ref in data.get("storyletRefs", []):
+        if ref not in storylet_registry:
+            fail(json_path.name, f"unknown storylet ref '{ref}'")
+            continue
+        storylet_refs.append(stable_id64(ref))
     body += struct.pack("<I", len(npc_refs))
     for ref in npc_refs:
         body += struct.pack("<Q", ref)
@@ -308,22 +353,22 @@ def _compile_all(data_dir: Path, out_dir: Path):
     room_files = sorted(data_dir.glob("rooms/*.json"))
     fact_files = sorted(data_dir.glob("facts/*.json"))
     storylet_files = sorted(data_dir.glob("storylets/*.json"))
+    npc_files = sorted(data_dir.glob("npcs/*.json"))
 
-    # Deterministic stable fact id registry (FNV-1a64 over string id).
-    fact_registry = {}
-    for path in fact_files:
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            fail(path.name, f"invalid JSON: {exc}")
-            continue
-        for fact in sorted(data.get("facts", []), key=lambda k: k.get("id", "")):
-            fid = fact.get("id", "")
-            if fid and fid not in fact_registry:
-                fact_registry[fid] = stable_id64(fid)
+    # Deterministic stable id registries per domain (FNV-1a64 over string id),
+    # then collision-checked per domain (Issue E.2).
+    fact_registry = load_id_registry("facts", fact_files)
+    storylet_registry = load_id_registry("storylets", storylet_files)
+    npc_registry = load_id_registry("npcs", npc_files)
+    check_id_collisions("fact", fact_registry)
+    check_id_collisions("storylet", storylet_registry)
+    check_id_collisions("npc", npc_registry)
+    # Room ids derive from the file stem; collision-check across rooms too.
+    room_registry = {p.stem: stable_id64(p.stem) for p in room_files}
+    check_id_collisions("room", room_registry)
 
     for path in room_files:
-        compile_room(path, out_dir)
+        compile_room(path, out_dir, npc_registry, storylet_registry)
     for path in fact_files:
         compile_facts(path, out_dir)
     for path in storylet_files:

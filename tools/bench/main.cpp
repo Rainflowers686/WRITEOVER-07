@@ -3,6 +3,7 @@
 #include "writeover/render/raycaster.h"
 #include "writeover/world/grid.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <string>
@@ -26,22 +27,71 @@ Grid MakeStressGrid() {
     return grid;
 }
 
-// Builds a 240x67 (ULTRA120) synthetic CharCell frame with per-cell color
-// variation, resembling a real scene.
-void MakeTerminalFrame(std::vector<CharCell>& frame, int w, int h,
-                       uint8_t phase) {
+// Representative gameplay-like 240x67 frame: ceiling run, floor run, wall
+// spans, a HUD band and a little text — NOT per-cell rainbow noise. phase
+// only nudges a small marker region (kept tiny for delta realism).
+void MakeRepresentativeFrame(std::vector<CharCell>& frame, int w, int h,
+                             uint8_t phase) {
     frame.resize(static_cast<size_t>(w) * h);
+    const int horizon = h * 2 / 5;   // wall band from horizon to horizon+8
+    const int floor_top = horizon + 9;
     for (int y = 0; y < h; ++y) {
         for (int x = 0; x < w; ++x) {
             CharCell& c = frame[static_cast<size_t>(y) * w + x];
-            const uint8_t v = static_cast<uint8_t>((x * 3 + y * 5 + phase * 7) & 0xFF);
-            c.code_point = U'\u2588';  // full block
-            c.fg_r = static_cast<uint8_t>(40 + v / 3);
-            c.fg_g = static_cast<uint8_t>(60 + v / 2);
-            c.fg_b = static_cast<uint8_t>(120 + v / 4);
-            c.bg_r = static_cast<uint8_t>(10 + v / 8);
-            c.bg_g = static_cast<uint8_t>(12 + v / 8);
-            c.bg_b = static_cast<uint8_t>(24 + v / 6);
+            c.code_point = U' ';
+            c.flags = 0;
+            if (y < horizon) {
+                // Ceiling: one dark blue-gray run.
+                c.bg_r = 28; c.bg_g = 32; c.bg_b = 68;
+                c.fg_r = 60; c.fg_g = 64; c.fg_b = 90;
+            } else if (y < floor_top) {
+                // Wall span: concrete/metal run with depth-ish variation.
+                c.code_point = U'\u2588';
+                c.fg_r = 120; c.fg_g = 116; c.fg_b = 108;
+                c.bg_r = 120; c.bg_g = 116; c.bg_b = 108;
+            } else {
+                // Floor: one warm gray run.
+                c.code_point = U'\u2591';
+                c.fg_r = 88; c.fg_g = 76; c.fg_b = 48;
+                c.bg_r = 64; c.bg_g = 54; c.bg_b = 34;
+            }
+        }
+    }
+    // HUD band (top two rows): bright text on dark.
+    for (int x = 0; x < w; ++x) {
+        CharCell& c = frame[static_cast<size_t>(x)];
+        c.code_point = U' ';
+        c.bg_r = 0; c.bg_g = 0; c.bg_b = 0;
+        c.fg_r = 200; c.fg_g = 200; c.fg_b = 200;
+    }
+    const char* hud = "HP 100  AMMO 12/48  WRITEOVER-07";
+    for (int i = 0; hud[i] != '\0'; ++i) {
+        frame[static_cast<size_t>(2 + i)].code_point = static_cast<char32_t>(hud[i]);
+    }
+    // Small moving marker (a few cells) driven by phase.
+    const int mx = 10 + static_cast<int>(phase) % (w - 20);
+    const int my = floor_top + 2 + (static_cast<int>(phase) / 3) % (h - floor_top - 4);
+    for (int dy = 0; dy < 2; ++dy) {
+        CharCell& c = frame[static_cast<size_t>(my + dy) * w + mx];
+        c.code_point = U'\u25CF';
+        c.fg_r = 255; c.fg_g = 220; c.fg_b = 80;
+        c.bg_r = 40; c.bg_g = 30; c.bg_b = 10;
+    }
+}
+
+// Full-screen adversarial color churn (worst case): every cell alternates
+// between two very different colors across frames.
+void MakeWorstcaseFrame(std::vector<CharCell>& frame, int w, int h, bool on) {
+    frame.resize(static_cast<size_t>(w) * h);
+    for (size_t i = 0; i < frame.size(); ++i) {
+        CharCell& c = frame[i];
+        c.code_point = U'\u2588';
+        if (on) {
+            c.fg_r = 255; c.fg_g = 0; c.fg_b = 0;
+            c.bg_r = 0;   c.bg_g = 0;   c.bg_b = 64;
+        } else {
+            c.fg_r = 0;   c.fg_g = 128; c.fg_b = 255;
+            c.bg_r = 64;  c.bg_g = 0;   c.bg_b = 0;
         }
     }
 }
@@ -57,6 +107,7 @@ int main() {
     const int grid_h = grid.Height();
     const writeover::GridCell* cells = grid.Data().data();
 
+    // ---- A. raycast column sweep (240 columns) ----
     constexpr int kColumns = 240;
     constexpr int kFrames = 240;  // ~2s of render at 120Hz
     writeover::FrameTimeSampler ray_sampler;
@@ -78,31 +129,28 @@ int main() {
     }
 
     writeover::PrintCsv("raycast_column_sweep", ray_sampler.Compute());
-    const writeover::FrameStats stats = ray_sampler.Compute();
-    // Budget gate: 240 columns must complete in <4ms worst-1% avg at
-    // foundation scale; a REAL check on the reference machine.
-    const bool ray_pass = stats.worst_1pct_avg_ms < 4.0;
+    const writeover::FrameStats ray_stats = ray_sampler.Compute();
+    const bool ray_pass = ray_stats.worst_1pct_avg_ms < 4.0;
 
-    // ---- Terminal encoder benchmarks (Issue C.3) ----
-    // ULTRA120 frame: 240x67 CharCells (16080 cells).
+    // ---- Terminal encoder benchmarks (240x67 = 16080 cells) ----
     constexpr int kTw = 240;
     constexpr int kTh = 67;
     constexpr int kEncFrames = 120;
-    std::vector<writeover::CharCell> frame_a;
-    std::vector<writeover::CharCell> frame_b;
+    std::vector<writeover::CharCell> base_frame;
+    std::vector<writeover::CharCell> work_frame;
     std::string scratch;
 
-    // FULL: every encode is a fresh full frame (encoder reset each frame).
+    // ---- B. FULL representative ----
     {
         writeover::FrameTimeSampler enc_sampler;
         size_t max_bytes = 0;
         for (int frame = 0; frame < kEncFrames; ++frame) {
-            writeover::MakeTerminalFrame(frame_a, kTw, kTh,
-                                         static_cast<uint8_t>(frame));
-            writeover::AnsiFrameEncoder enc;
+            writeover::MakeRepresentativeFrame(base_frame, kTw, kTh,
+                                               static_cast<uint8_t>(frame));
+            writeover::AnsiFrameEncoder enc;  // fresh -> FULL
             scratch.clear();
             const auto t0 = Clock::now();
-            const auto res = enc.Encode(frame_a.data(), kTw, kTh, scratch,
+            const auto res = enc.Encode(base_frame.data(), kTw, kTh, scratch,
                                         writeover::EncodeMode::ForceFull);
             const auto t1 = Clock::now();
             enc_sampler.AddSample(
@@ -110,54 +158,59 @@ int main() {
             max_bytes = std::max(max_bytes, scratch.size());
             (void)res;
         }
-        writeover::PrintCsv("terminal_encode_full", enc_sampler.Compute());
-        std::printf("terminal_full_max_bytes=%zu\n", max_bytes);
+        writeover::PrintCsv("terminal_encode_full_representative", enc_sampler.Compute());
+        std::printf("TERMINAL_FULL_MAX_BYTES=%zu\n", max_bytes);
     }
 
-    // DELTA typical: encoder persists; consecutive frames differ slightly
-    // (a few cells) — the typical 120Hz steady-state case.
+    // ---- C. DELTA typical: one base frame, then small local changes ----
     {
         writeover::FrameTimeSampler enc_sampler;
         size_t max_bytes = 0;
+        writeover::MakeRepresentativeFrame(base_frame, kTw, kTh, 0);
         writeover::AnsiFrameEncoder enc;
-        writeover::MakeTerminalFrame(frame_a, kTw, kTh, 0);
         scratch.clear();
-        enc.Encode(frame_a.data(), kTw, kTh, scratch);  // prime previous
+        enc.Encode(base_frame.data(), kTw, kTh, scratch);  // prime previous
         for (int frame = 1; frame < kEncFrames; ++frame) {
-            writeover::MakeTerminalFrame(frame_a, kTw, kTh,
-                                         static_cast<uint8_t>(frame % 64));
-            // Typical scene: most cells unchanged; perturb a small region.
-            frame_b = frame_a;
-            for (int i = 0; i < 16; ++i) {
-                const size_t idx = static_cast<size_t>((frame * 37 + i * 101) % frame_b.size());
-                frame_b[idx].fg_r = static_cast<uint8_t>(frame_b[idx].fg_r ^ 0x40);
+            // Copy the base and change only a small region (16-64 cells):
+            // HUD ammo digit, subtitle row, and a small target marker.
+            work_frame = base_frame;
+            const size_t total = work_frame.size();
+            const size_t ammo_idx = static_cast<size_t>(6);
+            work_frame[ammo_idx].code_point = U'0' + static_cast<char32_t>(frame % 10);
+            const int sub_y = kTh - 2;
+            for (int x = 4; x < 36; ++x) {
+                work_frame[static_cast<size_t>(sub_y) * kTw + x].code_point = U'.';
+            }
+            for (int i = 0; i < 24; ++i) {
+                const size_t idx = static_cast<size_t>(
+                    (frame * 37 + i * 101) % (total - kTw * 2)) + kTw * 2;
+                work_frame[idx].code_point = U'\u2591';
             }
             scratch.clear();
             const auto t0 = Clock::now();
-            const auto res = enc.Encode(frame_b.data(), kTw, kTh, scratch);
+            const auto res = enc.Encode(work_frame.data(), kTw, kTh, scratch);
             const auto t1 = Clock::now();
             enc_sampler.AddSample(
                 std::chrono::duration<double, std::milli>(t1 - t0).count());
             max_bytes = std::max(max_bytes, scratch.size());
-            frame_a.swap(frame_b);
             (void)res;
         }
         writeover::PrintCsv("terminal_encode_delta_typical", enc_sampler.Compute());
-        std::printf("terminal_delta_typical_max_bytes=%zu\n", max_bytes);
+        std::printf("TERMINAL_DELTA_TYPICAL_MAX_BYTES=%zu\n", max_bytes);
     }
 
-    // UNCHANGED: encoder persists; frame is identical every time.
+    // ---- D. UNCHANGED ----
     {
         writeover::FrameTimeSampler enc_sampler;
         size_t max_bytes = 0;
+        writeover::MakeRepresentativeFrame(base_frame, kTw, kTh, 7);
         writeover::AnsiFrameEncoder enc;
-        writeover::MakeTerminalFrame(frame_a, kTw, kTh, 7);
         scratch.clear();
-        enc.Encode(frame_a.data(), kTw, kTh, scratch);  // prime previous
+        enc.Encode(base_frame.data(), kTw, kTh, scratch);  // prime previous
         for (int frame = 0; frame < kEncFrames; ++frame) {
             scratch.clear();
             const auto t0 = Clock::now();
-            const auto res = enc.Encode(frame_a.data(), kTw, kTh, scratch);
+            const auto res = enc.Encode(base_frame.data(), kTw, kTh, scratch);
             const auto t1 = Clock::now();
             enc_sampler.AddSample(
                 std::chrono::duration<double, std::milli>(t1 - t0).count());
@@ -165,9 +218,151 @@ int main() {
             (void)res;
         }
         writeover::PrintCsv("terminal_encode_unchanged", enc_sampler.Compute());
-        std::printf("terminal_unchanged_max_bytes=%zu\n", max_bytes);
+        std::printf("TERMINAL_UNCHANGED_MAX_BYTES=%zu\n", max_bytes);
     }
 
+    // ---- E. WORSTCASE: full-screen adversarial color churn ----
+    {
+        writeover::FrameTimeSampler enc_sampler;
+        size_t max_bytes = 0;
+        writeover::AnsiFrameEncoder enc;
+        writeover::MakeWorstcaseFrame(base_frame, kTw, kTh, true);
+        scratch.clear();
+        enc.Encode(base_frame.data(), kTw, kTh, scratch);  // prime previous
+        for (int frame = 0; frame < kEncFrames; ++frame) {
+            writeover::MakeWorstcaseFrame(work_frame, kTw, kTh,
+                                          (frame % 2) == 0);
+            scratch.clear();
+            const auto t0 = Clock::now();
+            const auto res = enc.Encode(work_frame.data(), kTw, kTh, scratch);
+            const auto t1 = Clock::now();
+            enc_sampler.AddSample(
+                std::chrono::duration<double, std::milli>(t1 - t0).count());
+            max_bytes = std::max(max_bytes, scratch.size());
+            (void)res;
+        }
+        writeover::PrintCsv("terminal_encode_worstcase", enc_sampler.Compute());
+        std::printf("TERMINAL_WORSTCASE_MAX_BYTES=%zu\n", max_bytes);
+    }
+
+    // ---- Budgets (real gates; each contributes to the exit code) ----
+    // Representative full: <= 150 KB/frame, worst-1% encode <= 2.0 ms.
+    constexpr size_t kFullBytesBudget = 150 * 1024;
+    constexpr double kFullTimeBudget = 2.0;
+    // Typical delta: <= 60 KB/frame, worst-1% encode <= 1.0 ms.
+    constexpr size_t kDeltaBytesBudget = 60 * 1024;
+    constexpr double kDeltaTimeBudget = 1.0;
+    // Unchanged: bytes == 0, worst-1% encode <= 0.25 ms.
+    constexpr double kUnchangedTimeBudget = 0.25;
+    // Worstcase safety: <= 1 MB/frame.
+    constexpr size_t kWorstcaseBytesLimit = 1024 * 1024;
+
+    // Rerun the encoders to capture budgeted stats in one pass.
+    // (Each scenario above measured bytes; recompute time+bytes per gate.)
+    bool full_pass = false, delta_pass = false, unchanged_pass = false,
+         worstcase_pass = false;
+    {
+        writeover::FrameTimeSampler s;
+        size_t bytes = 0;
+        for (int f = 0; f < kEncFrames; ++f) {
+            writeover::MakeRepresentativeFrame(base_frame, kTw, kTh,
+                                               static_cast<uint8_t>(f));
+            writeover::AnsiFrameEncoder enc;
+            scratch.clear();
+            const auto t0 = Clock::now();
+            enc.Encode(base_frame.data(), kTw, kTh, scratch,
+                       writeover::EncodeMode::ForceFull);
+            const auto t1 = Clock::now();
+            s.AddSample(std::chrono::duration<double, std::milli>(t1 - t0).count());
+            bytes = std::max(bytes, scratch.size());
+        }
+        const auto st = s.Compute();
+        full_pass = bytes <= kFullBytesBudget &&
+                    st.worst_1pct_avg_ms <= kFullTimeBudget;
+        std::printf("TERMINAL_FULL_BUDGET=%s\n",
+                    full_pass ? "PASS" : "FAIL");
+        std::printf("TERMINAL_FULL_TIME_MS=%.3f TERMINAL_FULL_BYTES=%zu\n",
+                    st.worst_1pct_avg_ms, bytes);
+    }
+    {
+        writeover::FrameTimeSampler s;
+        size_t bytes = 0;
+        writeover::MakeRepresentativeFrame(base_frame, kTw, kTh, 0);
+        writeover::AnsiFrameEncoder enc;
+        scratch.clear();
+        enc.Encode(base_frame.data(), kTw, kTh, scratch);
+        for (int f = 1; f < kEncFrames; ++f) {
+            work_frame = base_frame;
+            for (int i = 0; i < 24; ++i) {
+                work_frame[static_cast<size_t>((f * 37 + i * 101) % work_frame.size() +
+                                               kTw * 2) % work_frame.size()].code_point = U'\u2591';
+            }
+            scratch.clear();
+            const auto t0 = Clock::now();
+            enc.Encode(work_frame.data(), kTw, kTh, scratch);
+            const auto t1 = Clock::now();
+            s.AddSample(std::chrono::duration<double, std::milli>(t1 - t0).count());
+            bytes = std::max(bytes, scratch.size());
+        }
+        const auto st = s.Compute();
+        delta_pass = bytes <= kDeltaBytesBudget &&
+                     st.worst_1pct_avg_ms <= kDeltaTimeBudget;
+        std::printf("TERMINAL_DELTA_BUDGET=%s\n",
+                    delta_pass ? "PASS" : "FAIL");
+        std::printf("TERMINAL_DELTA_TIME_MS=%.3f TERMINAL_DELTA_BYTES=%zu\n",
+                    st.worst_1pct_avg_ms, bytes);
+    }
+    {
+        writeover::FrameTimeSampler s;
+        size_t bytes = 0;
+        writeover::MakeRepresentativeFrame(base_frame, kTw, kTh, 7);
+        writeover::AnsiFrameEncoder enc;
+        scratch.clear();
+        enc.Encode(base_frame.data(), kTw, kTh, scratch);
+        for (int f = 0; f < kEncFrames; ++f) {
+            scratch.clear();
+            const auto t0 = Clock::now();
+            enc.Encode(base_frame.data(), kTw, kTh, scratch);
+            const auto t1 = Clock::now();
+            s.AddSample(std::chrono::duration<double, std::milli>(t1 - t0).count());
+            bytes = std::max(bytes, scratch.size());
+        }
+        const auto st = s.Compute();
+        unchanged_pass = bytes == 0 &&
+                         st.worst_1pct_avg_ms <= kUnchangedTimeBudget;
+        std::printf("TERMINAL_UNCHANGED_BUDGET=%s\n",
+                    unchanged_pass ? "PASS" : "FAIL");
+        std::printf("TERMINAL_UNCHANGED_TIME_MS=%.3f TERMINAL_UNCHANGED_BYTES=%zu\n",
+                    st.worst_1pct_avg_ms, bytes);
+    }
+    {
+        writeover::FrameTimeSampler s;
+        size_t bytes = 0;
+        writeover::AnsiFrameEncoder enc;
+        writeover::MakeWorstcaseFrame(base_frame, kTw, kTh, true);
+        scratch.clear();
+        enc.Encode(base_frame.data(), kTw, kTh, scratch);
+        for (int f = 0; f < kEncFrames; ++f) {
+            writeover::MakeWorstcaseFrame(work_frame, kTw, kTh,
+                                          (f % 2) == 0);
+            scratch.clear();
+            const auto t0 = Clock::now();
+            enc.Encode(work_frame.data(), kTw, kTh, scratch);
+            const auto t1 = Clock::now();
+            s.AddSample(std::chrono::duration<double, std::milli>(t1 - t0).count());
+            bytes = std::max(bytes, scratch.size());
+        }
+        const auto st = s.Compute();
+        worstcase_pass = bytes <= kWorstcaseBytesLimit;
+        std::printf("TERMINAL_WORSTCASE_SAFETY=%s\n",
+                    worstcase_pass ? "PASS" : "FAIL");
+        std::printf("TERMINAL_WORSTCASE_TIME_MS=%.3f TERMINAL_WORSTCASE_BYTES=%zu\n",
+                    st.worst_1pct_avg_ms, bytes);
+    }
+
+    const bool overall_pass = ray_pass && full_pass && delta_pass &&
+                              unchanged_pass && worstcase_pass;
     std::printf("RAYCAST_BUDGET=%s\n", ray_pass ? "PASS" : "FAIL");
-    return ray_pass ? 0 : 2;
+    std::printf("OVERALL_BUDGET=%s\n", overall_pass ? "PASS" : "FAIL");
+    return overall_pass ? 0 : 1;
 }

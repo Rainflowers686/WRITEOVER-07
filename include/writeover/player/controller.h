@@ -111,4 +111,16 @@ void TrySetPosture(LocomotionState& ls, Posture target, const IWorldQuery& world
 
 void SetLean(LocomotionState& ls, int8_t lean);  // -1, 0, +1
 
+// HK: mouse look. Applies pointer delta to yaw (continuous wrap-safe) and
+// pitch (clamped to +-30 degrees). sensitivity is the Settings mouse
+// sensitivity (0..100). Raw-ish direct response; no smoothing.
+void ApplyMouseLook(LocomotionState& ls, const Vec2& mouse_delta,
+                    uint8_t sensitivity_0_100);
+
+// HK: converts a camera-LOCAL wish direction (local.x = strafe right+,
+// local.y = forward+) into world axes using the current yaw:
+//   forward = (cos(yaw), sin(yaw)); right = (-sin(yaw), cos(yaw)).
+// FPS movement must use this so Forward/Back/Left/Right follow the camera.
+Vec2 CameraRelativeWish(const Vec2& local, float yaw);
+
 } // namespace writeover

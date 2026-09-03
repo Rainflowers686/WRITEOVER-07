@@ -3,6 +3,8 @@
 // Win32 virtual key codes. PhysicalKey is the raw event vocabulary; the
 // InputMapper (player module) maps PhysicalKey -> GameAction with a
 // serializable binding table (M-013 closure: no `uint8_t keyBindings` pointer).
+// InputContext lives here so core/settings.h can reference it without
+// depending on player/input.h.
 
 #include "writeover/common/types.h"
 
@@ -43,6 +45,19 @@ enum class GameAction : uint8_t {
 };
 
 inline constexpr size_t kGameActionCount = static_cast<size_t>(GameAction::Count);
+
+// Input context: which surface consumes a physical key. Gameplay and
+// Dialogue legally share keys (number row); Menu and Developer are separate.
+// Lives here so Settings can reference it without depending on player/input.h.
+enum class InputContext : uint8_t {
+    Gameplay = 0,
+    Dialogue = 1,
+    Menu = 2,
+    Developer = 3,
+    Count = 4,
+};
+
+inline constexpr size_t kInputContextCount = static_cast<size_t>(InputContext::Count);
 
 // Raw per-frame input event produced by a backend.
 struct InputEvent {

@@ -117,6 +117,52 @@ bool MapValidatorCatchesSolid() {
     return validator.HasErrors(issues) == false;
 }
 
+// Room codec must fail closed on an excessive NPC ref count (never skip-and-
+// continue from the wrong offset).
+bool RoomExcessiveNpcRefsRejected() {
+    // Build a buffer whose npc_count field claims 5000 refs.
+    std::vector<uint8_t> bytes;
+    Serializer s(bytes);
+    s.WriteU32(kWocMagic);
+    s.WriteU32(kWocVersion);
+    WriteId(s, RoomId::New(1));
+    s.WriteString("room");
+    s.WriteI32(2);
+    s.WriteI32(2);
+    s.WriteF32(0.0f); s.WriteF32(0.0f); s.WriteF32(0.0f); s.WriteF32(0.0f);
+    s.WriteU32(4);
+    for (int i = 0; i < 4; ++i) {
+        s.WriteF32(0.0f); s.WriteF32(4.0f); s.WriteU8(0); s.WriteU8(255); s.WriteU8(0);
+    }
+    s.WriteU32(5000);  // excessive
+    s.WriteU32(0);     // storylet refs
+    Deserializer d(bytes.data(), bytes.size());
+    const auto out = DeserializeRoom(d);
+    return out.IsError();
+}
+
+// Room codec must fail closed on an excessive storylet ref count.
+bool RoomExcessiveStoryletRefsRejected() {
+    std::vector<uint8_t> bytes;
+    Serializer s(bytes);
+    s.WriteU32(kWocMagic);
+    s.WriteU32(kWocVersion);
+    WriteId(s, RoomId::New(1));
+    s.WriteString("room");
+    s.WriteI32(2);
+    s.WriteI32(2);
+    s.WriteF32(0.0f); s.WriteF32(0.0f); s.WriteF32(0.0f); s.WriteF32(0.0f);
+    s.WriteU32(4);
+    for (int i = 0; i < 4; ++i) {
+        s.WriteF32(0.0f); s.WriteF32(4.0f); s.WriteU8(0); s.WriteU8(255); s.WriteU8(0);
+    }
+    s.WriteU32(0);      // npc refs
+    s.WriteU32(5000);   // excessive storylet refs
+    Deserializer d(bytes.data(), bytes.size());
+    const auto out = DeserializeRoom(d);
+    return out.IsError();
+}
+
 } // namespace
 
 void RegisterWorldTests(TestHarness& test) {
@@ -127,6 +173,8 @@ void RegisterWorldTests(TestHarness& test) {
     test.Add("infrastructure.apply_door", &InfrastructureApply);
     test.Add("room.codec_round_trip", &RoomCodecRoundTrip);
     test.Add("map_validator.spawn_fits", &MapValidatorCatchesSolid);
+    test.Add("room.excessive_npc_refs_rejected", &RoomExcessiveNpcRefsRejected);
+    test.Add("room.excessive_storylet_refs_rejected", &RoomExcessiveStoryletRefsRejected);
 }
 
 } // namespace writeover

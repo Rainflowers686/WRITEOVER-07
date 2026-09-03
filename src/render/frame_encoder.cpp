@@ -40,6 +40,8 @@ std::string BuildSgr(const CharCell& prev, const CharCell& cell) {
 void AnsiFrameEncoder::Reset() {
     has_prev_ = false;
     prev_.clear();
+    prev_width_ = 0;
+    prev_height_ = 0;
 }
 
 EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int height,
@@ -50,10 +52,19 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
     }
     const size_t cell_count = static_cast<size_t>(width) * height;
 
+    // Resize safety: if the previous frame has different dimensions, treat
+    // this as a fresh full frame (never index prev_ with the new layout).
+    if (has_prev_ && (prev_width_ != width || prev_height_ != height)) {
+        prev_.clear();
+        has_prev_ = false;
+    }
+
     // If no previous frame, emit FULL.
     if (!has_prev_) {
         prev_.assign(frame, frame + cell_count);
         has_prev_ = true;
+        prev_width_ = width;
+        prev_height_ = height;
         result.full = true;
         result.changed_cells = cell_count;
 
@@ -93,6 +104,8 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
 
     // Update snapshot.
     std::memcpy(prev_.data(), frame, cell_count * sizeof(CharCell));
+    prev_width_ = width;
+    prev_height_ = height;
 
     result.changed_cells = changed;
 

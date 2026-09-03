@@ -29,6 +29,10 @@ jobs:
       - name: Run unit tests
         run: ctest --preset ci --output-on-failure
 
+      - name: Run internal test executable (direct, N tests visible)
+        run: .\out\build\ci\Debug\writeover_tests.exe
+        shell: pwsh
+
       - name: Validate content with mapc
         run: |
           $room = Get-ChildItem -Path data\rooms -Filter *.woc | Select-Object -First 1

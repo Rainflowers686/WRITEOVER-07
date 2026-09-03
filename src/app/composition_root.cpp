@@ -133,29 +133,54 @@ class PlayerModule final : public IEngineModule {
 public:
     void Init(const EngineContext& ctx) override {
         ctx_ = ctx;
+        // Initialize mapper from Settings context-aware bindings.
         mapper_ = InputMapper();
+        if (ctx.settings != nullptr) {
+            ApplySettingsBindings(*ctx.settings);
+        }
     }
     void Shutdown() override {}
 
     InputState& Input() { return input_; }
     LocomotionState& Locomotion() { return locomotion_; }
     CombatState& Combat() { return combat_; }
+    InputMapper& Mapper() { return mapper_; }
+
+    void ApplySettingsBindings(const Settings& st) {
+        for (size_t c = 0; c < kInputContextCount; ++c) {
+            for (size_t a = 0; a < kGameActionCount; ++a) {
+                mapper_.SetBinding(static_cast<InputContext>(c),
+                                   static_cast<GameAction>(a),
+                                   st.key_bindings[c][a]);
+            }
+        }
+    }
 
     void SimTick(const SimClock& clock) override {
         const uint64_t frame = clock.FrameCount();
-        Vec2 move{0.0f, 0.0f};
+
+        // Mouse look: apply accumulated mouse delta before movement
+        // (camera-relative movement depends on the current yaw).
+        ApplyMouseLook(locomotion_, input_.mouse_delta,
+                       ctx_.settings != nullptr
+                           ? ctx_.settings->mouse_sensitivity
+                           : 50);
+
+        // Camera-relative movement: WASD in local space -> world axes.
+        Vec2 local{0.0f, 0.0f};
         if (input_.action_down[static_cast<size_t>(GameAction::MoveForward)]) {
-            move.y += 1.0f;
+            local.y += 1.0f;
         }
         if (input_.action_down[static_cast<size_t>(GameAction::MoveBackward)]) {
-            move.y -= 1.0f;
+            local.y -= 1.0f;
         }
         if (input_.action_down[static_cast<size_t>(GameAction::MoveLeft)]) {
-            move.x -= 1.0f;
+            local.x -= 1.0f;
         }
         if (input_.action_down[static_cast<size_t>(GameAction::MoveRight)]) {
-            move.x += 1.0f;
+            local.x += 1.0f;
         }
+        const Vec2 move = CameraRelativeWish(local, locomotion_.yaw);
         const bool sprint =
             input_.action_down[static_cast<size_t>(GameAction::Sprint)];
         IntegrateLocomotion(locomotion_, move, sprint, *world_query_,
@@ -351,6 +376,77 @@ struct GameServices {
     std::unique_ptr<NarrativeModule> narrative;
 };
 
+// InputModule: private integration class that polls keyboard and mouse
+// backends each sim tick, maps PhysicalKey to GameAction via the active
+// InputContext, and writes the resolved state into PlayerModule's InputState.
+// Registered as the FIRST engine module so input is sampled before other
+// modules run their SimTick.
+class InputModule final : public IEngineModule {
+public:
+    InputModule() {
+        keyboard_ = CreateKeyboardOnlyBackend();
+        mouse_ = CreateCursorDeltaBackend();
+    }
+    ~InputModule() override { Shutdown(); }
+
+    void Init(const EngineContext&) override {
+        if (keyboard_) keyboard_->Init();
+        if (mouse_) mouse_->Init();
+    }
+    void Shutdown() override {
+        if (keyboard_) keyboard_->Shutdown();
+        if (mouse_) mouse_->Shutdown();
+    }
+
+    void SetTarget(InputState* input, const InputMapper* mapper) {
+        input_ = input;
+        mapper_ = mapper;
+    }
+
+    void SimTick(const SimClock&) override {
+        if (!input_ || !mapper_) return;
+        // Clear transient state from the previous tick.
+        input_->action_pressed.fill(false);
+        input_->action_released.fill(false);
+        input_->mouse_delta = Vec2{};
+        // Focus check: when unfocused, clear all state.
+        const bool focus = keyboard_ && keyboard_->HasFocus();
+        input_->has_focus = focus;
+        if (!focus) {
+            ClearInputState(*input_);
+            return;
+        }
+        // Poll keyboard: drain all pending events and map to GameActions.
+        InputEvent evt;
+        while (keyboard_ && keyboard_->Poll(evt)) {
+            const GameAction a = mapper_->MapKey(InputContext::Gameplay, evt.key);
+            if (a == GameAction::Count) continue;
+            const size_t idx = static_cast<size_t>(a);
+            if (evt.pressed) {
+                if (!input_->action_down[idx]) {
+                    input_->action_pressed[idx] = true;
+                }
+                input_->action_down[idx] = true;
+            } else {
+                input_->action_down[idx] = false;
+                input_->action_released[idx] = true;
+            }
+        }
+        // Consume mouse delta.
+        Vec2 delta;
+        if (mouse_ && mouse_->ConsumeMouseDelta(delta)) {
+            input_->mouse_delta = delta;
+        }
+    }
+    const char* Name() const override { return "input"; }
+
+private:
+    std::unique_ptr<IInputBackend> keyboard_;
+    std::unique_ptr<IInputBackend> mouse_;
+    InputState* input_ = nullptr;
+    const InputMapper* mapper_ = nullptr;
+};
+
 // Builds the four semantic modules against one shared EngineContext.
 // The render module and terminal backend are wired by the app entry after
 // probing the terminal (they need wall resolution decisions).
@@ -391,8 +487,16 @@ int RunComposition(const GameConfig& config) {
 
     GameServices services = BuildGame(ctx, config);
 
+    // Runtime input bridge (ISSUE B): polls keyboard + mouse backends every
+    // tick and maps them into PlayerModule's InputState.
+    auto input_module = std::make_unique<InputModule>();
+    input_module->SetTarget(&services.player->Input(),
+                            &services.player->Mapper());
+    input_module->Init(ctx);
+
     Engine engine;
     engine.SetContext(ctx);
+    engine.RegisterModule(input_module.get());
     engine.RegisterModule(services.world.get());
     engine.RegisterModule(services.player.get());
     engine.RegisterModule(services.ai.get());
