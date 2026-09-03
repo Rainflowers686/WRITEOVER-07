@@ -4,8 +4,8 @@
 
 - MISSION_START_TIME: 2026-09-03 23:51:42
 - START_HEAD: 5dadd5f822e4668161bdf92fae8c5f057690995f
-- CURRENT_HEAD: b07325c
-- CURRENT_PHASE: BLOCKS 1/2/3/5/6/7/8/10 partial — production renderer, sprites, fire feedback, subtitle/intrusion, room transition, NPC proximity, F3 overlay, stolen badge checkpoint route, maintenance side path
+- CURRENT_HEAD: 707cea4
+- CURRENT_PHASE: BLOCKS 1/2/3/5/6/7/8/9/10 partial — production renderer, sprites, fire feedback, subtitle/intrusion, room transition, NPC memory/relationship, F3, stolen badge checkpoint route, maintenance side path, knowledge asset
 - MISSION_STATUS: ACTIVE
 
 ## Grand Objective
