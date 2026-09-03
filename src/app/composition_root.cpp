@@ -690,6 +690,15 @@ int RunComposition(const GameConfig& config) {
                 render->SetSubtitleOnce("Access granted: Security checkpoint.", 180);
             } else if (p.y > 13.0f && p.x < 22.0f) {
                 render->SetSubtitleOnce("Maintenance route: side path accessible.", 180);
+            } else if (p.x < 8.0f && p.y < 5.0f) {
+                KnowledgeAssetRecord asset;
+                asset.id = KnowledgeAssetId::New(services.systemic->KnowledgeCount() + 1);
+                asset.type = KnowledgeAssetType::ShiftSchedule;
+                asset.source = ResourceId::New(0);
+                asset.confidence = 0.7f;
+                asset.known_by.push_back(EntityId::New(1));
+                services.systemic->AddKnowledgeAsset(asset);
+                render->SetSubtitleOnce("Shift schedule found.", 180);
             } else {
                 render->SetSubtitleOnce("Access denied: no valid credential.", 180);
             }
