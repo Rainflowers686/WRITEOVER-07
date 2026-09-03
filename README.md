@@ -7,21 +7,21 @@
 python tools/contentc/contentc.py --data-dir data --out-dir data
 cmake --preset debug
 cmake --build --preset debug
-ctest --preset debug --output-on-failure     # 50 tests, 0 failed
+ctest --preset debug --output-on-failure     # 132 tests, 0 failed
 .\out\build\debug\Debug\writeover_app.exe --smoke --data-dir data
 ```
 
 ## 目标（CMake）
 
-writeover_common / world / player / ai / narrative / render / core / platform /
+writeover_common / systemic / world / player / ai / narrative / render / core / platform /
 writeover_app（组合根 exe）/ writeover_tests / writeover_bench / mapc。
 
 ## 目录
 
 ```
-include/writeover/  冻结公共头（common/core/world/player/ai/narrative/render）
+include/writeover/  冻结公共头（common/systemic/core/world/player/ai/narrative/render）
 src/                实现（app=组合根；platform/windows=Win32 边界）
-tests/              自研 harness + 50 测试
+tests/              自研 harness + 132 测试
 tools/              bench · mapc · contentc · contract_check
 scripts/            bootstrap · build · test · bench · smoke · package · contract_check
 data/               作者 JSON + 编译产物（.woc/.bin）

@@ -207,7 +207,7 @@ bool SaveAllSevenSectionsLegal() {
     const std::vector<uint8_t> wire = ComposeSaveBuffer(sections);
     const auto parsed = ParseSaveBuffer(wire.data(), wire.size());
     WO_CHECK(parsed.IsOk());
-    WO_CHECK_EQ(static_cast<int64_t>(parsed.Value().size()), 7);
+    WO_CHECK_EQ(static_cast<int64_t>(parsed.Value().size()), 8);
     return true;
 }
 

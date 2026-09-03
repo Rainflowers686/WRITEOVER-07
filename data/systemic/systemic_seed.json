@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "actors": [
+    {
+      "id": "guard_7",
+      "faction": "Security",
+      "class": "Guard",
+      "occupation": "Security_Guard",
+      "fullHumanIllusion": false,
+      "knownIdentities": ["officer_davis"],
+      "personalityTags": ["professional", "loyal"]
+    },
+    {
+      "id": "cleaner_b1",
+      "faction": "Maintenance",
+      "class": "SemiHuman",
+      "occupation": "Cleaner",
+      "fullHumanIllusion": false,
+      "personalityTags": ["routine", "observant"]
+    }
+  ],
+  "items": [
+    {
+      "id": "badge_guard_7",
+      "type": "Badge",
+      "owner": "officer_davis",
+      "issuer": "facility_security",
+      "legalHolder": "officer_davis",
+      "reportedStolen": false,
+      "credentialLevel": 2,
+      "provenanceTags": ["security", "badge"]
+    }
+  ],
+  "containers": [
+    {
+      "id": "cart_b1_clean",
+      "kind": "CleaningCart",
+      "room": "B1_Maintenance",
+      "capacity": 0.6,
+      "concealment": 95,
+      "accessibility": 80,
+      "routineTags": ["Cleaner"]
+    }
+  ],
+  "evidenceSeeds": [
+    {
+      "id": "ev_broken_glass_b1",
+      "type": "BrokenGlass",
+      "subject": "window_b1_04",
+      "room": "B1_Corridor",
+      "visibility": 0.8,
+      "persists": true
+    }
+  ],
+  "promiseSeeds": [
+    {
+      "id": "promise_find_intern",
+      "giver": "npc_doctor",
+      "receiver": "player",
+      "subject": "find_intern",
+      "status": "Offered"
+    }
+  ],
+  "alertDefaults": {
+    "level": "Normal"
+  },
+  "narratorDefaults": {
+    "authorityStage": 0,
+    "interventionCost": 0.0
+  }
+}

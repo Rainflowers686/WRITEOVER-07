@@ -1,6 +1,7 @@
 #include "writeover/render/benchmark.h"
 #include "writeover/render/frame_encoder.h"
 #include "writeover/render/raycaster.h"
+#include "writeover/systemic/systemic.h"
 #include "writeover/world/grid.h"
 
 #include <algorithm>
@@ -94,6 +95,148 @@ void MakeWorstcaseFrame(std::vector<CharCell>& frame, int w, int h, bool on) {
             c.bg_r = 64;  c.bg_g = 0;   c.bg_b = 0;
         }
     }
+}
+// Synthetic systemic simulation benchmark. It uses the real SystemicWorld
+// kernel, not a stub: 25 identity-bearing NPCs, 500 evidence records, 500
+// memories, 100 world events, 30 hideable containers, 100 items, run at
+// 120Hz simulation cadence.
+double SystemicBenchmark() {
+    using Clock = std::chrono::steady_clock;
+    SystemicWorld w;
+
+    // 25 identity NPCs; 5 Full-style high-frequency, 20 semi/offscreen.
+    for (int i = 0; i < 25; ++i) {
+        ActorRecord a;
+        a.id = NpcId::New(i + 1);
+        a.data_key = ResourceId::New(1000 + i);
+        a.faction = Faction::GeneralStaff;
+        a.actor_class = i < 5 ? ActorClass::Full : ActorClass::SemiHuman;
+        if (i < 5) {
+            a.personality_tags.push_back("full");
+        }
+        w.AddActor(a);
+    }
+    for (int i = 0; i < 5; ++i) {
+        RelationshipRecord rel;
+        rel.a = EntityId::New(i + 1);
+        rel.b = EntityId::New(999);
+        rel.trust = 0.5f;
+        rel.fear = 0.2f;
+        rel.suspicion = 0.1f;
+        w.SetRelationship(rel);
+    }
+
+    // 100 items with ownership/provenance metadata.
+    for (int i = 0; i < 100; ++i) {
+        ItemRecord item;
+        item.id = ItemId::New(i + 1);
+        item.type = ItemType::Badge;
+        item.owner = EntityId::New((i % 25) + 1);
+        item.current_holder = EntityId::New((i % 25) + 1);
+        item.credential_level = static_cast<uint8_t>((i % 3) + 1);
+        item.provenance_tags.push_back("synthetic");
+        w.AddItem(item);
+    }
+
+    // 30 hideable containers.
+    for (int i = 0; i < 30; ++i) {
+        HideableContainer c;
+        c.id = ContainerId::New(i + 1);
+        c.kind = ContainerKind::CleaningCart;
+        c.room = RoomId::New(1);
+        c.capacity_volume = 0.6f;
+        c.concealment = 80;
+        c.routine_tags.push_back(RoutineTag::Cleaner);
+        w.AddContainer(c);
+    }
+
+    // 500 evidence records.
+    for (int i = 0; i < 500; ++i) {
+        EvidenceRecord e;
+        e.id = EvidenceId::New(i + 1);
+        e.type = EvidenceType::VisibleBody;
+        e.subject = EntityId::New((i % 25) + 1);
+        e.room = RoomId::New(1);
+        e.visibility = 0.5f;
+        e.persists = true;
+        e.frame = static_cast<uint64_t>(i);
+        w.AddEvidence(e);
+    }
+
+    // 500 structured memories.
+    for (int i = 0; i < 500; ++i) {
+        MemoryRecord m;
+        m.id = MemoryId::New(i + 1);
+        m.npc = EntityId::New((i % 25) + 1);
+        m.kind = MemoryKind::Observation;
+        m.subject = EntityId::New(1);
+        m.frame = static_cast<uint64_t>(i);
+        m.salience = 0.5f;
+        m.confidence = 0.7f;
+        m.source = KnowledgeSource::DirectWitness;
+        w.AddMemory(m);
+    }
+
+    // 100 system events.
+    for (int i = 0; i < 100; ++i) {
+        SystemicEvent ev;
+        ev.id = EventId::New(i + 1);
+        ev.type = SystemicEventType::BodyDiscovered;
+        ev.actor = EntityId::New(1);
+        ev.target = EntityId::New(2);
+        ev.location = RoomId::New(1);
+        ev.frame = static_cast<uint64_t>(i);
+        ev.severity = 50;
+        ev.tags.push_back("synthetic");
+        w.AddSystemicEvent(ev);
+    }
+
+    FrameTimeSampler sampler;
+    constexpr int kTicks = 1200;  // 10s at 120Hz
+    for (int tick = 0; tick < kTicks; ++tick) {
+        const auto t0 = Clock::now();
+
+        // Full-style NPC decision/memory proximity.
+        for (int i = 0; i < 5; ++i) {
+            (void)w.GetRelationship(EntityId::New(i + 1), EntityId::New(999));
+            (void)w.MemoriesOf(EntityId::New(i + 1)).size();
+        }
+        // Semi/offscreen identity touches.
+        for (int i = 5; i < 25; ++i) {
+            (void)w.GetActor(NpcId::New(i + 1));
+        }
+        // Container routine access checks.
+        for (int i = 0; i < 30; ++i) {
+            const HideableContainer* c = w.GetContainer(ContainerId::New(i + 1));
+            if (c) {
+                (void)c->current_occupants.size();
+            }
+        }
+        // Item/inventory/credential checks.
+        for (int i = 0; i < 100; ++i) {
+            if (((tick + i) % 7) == 0) {
+                (void)w.ReaderAcceptsItem(ItemId::New(i + 1), 2);
+            } else {
+                (void)w.GetItem(ItemId::New(i + 1));
+            }
+        }
+        // Evidence and memory lookups.
+        for (int i = 0; i < 20; ++i) {
+            (void)w.GetEvidence(EvidenceId::New(((tick + i) % 500) + 1));
+            (void)w.GetMemory(MemoryId::New(((tick + i) % 500) + 1));
+        }
+        const auto& events = w.Events();
+        if (!events.empty()) {
+            (void)events.back().severity;
+        }
+
+        const auto t1 = Clock::now();
+        sampler.AddSample(
+            std::chrono::duration<double, std::milli>(t1 - t0).count());
+    }
+
+    PrintCsv("systemic_simulation_120hz", sampler.Compute());
+    return sampler.Compute().worst_1pct_avg_ms;
 }
 } // namespace
 
@@ -360,8 +503,14 @@ int main() {
                     st.worst_1pct_avg_ms, bytes);
     }
 
+    // ---- F. Systemic foundation simulation benchmark at 120Hz ----
+    const double systemic_ms = writeover::SystemicBenchmark();
+    const bool systemic_pass = systemic_ms <= 2.0;
+    std::printf("SYSTEMIC_BUDGET=%s\n", systemic_pass ? "PASS" : "FAIL");
+    std::printf("SYSTEMIC_TIME_MS=%.3f\n", systemic_ms);
+
     const bool overall_pass = ray_pass && full_pass && delta_pass &&
-                              unchanged_pass && worstcase_pass;
+                              unchanged_pass && worstcase_pass && systemic_pass;
     std::printf("RAYCAST_BUDGET=%s\n", ray_pass ? "PASS" : "FAIL");
     std::printf("OVERALL_BUDGET=%s\n", overall_pass ? "PASS" : "FAIL");
     return overall_pass ? 0 : 1;

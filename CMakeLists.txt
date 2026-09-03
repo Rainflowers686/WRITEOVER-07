@@ -41,6 +41,16 @@ add_library(writeover_common STATIC
 target_include_directories(writeover_common PUBLIC ${WO_INCLUDE_DIR})
 writeover_configure_target(writeover_common)
 
+# Systemic Gameplay Foundation: cross-module POD contracts and the minimal
+# world kernel. It depends only on common so it can be embedded in any module
+# without forcing AI/narrative cycles.
+add_library(writeover_systemic STATIC
+    src/systemic/systemic.cpp
+)
+target_include_directories(writeover_systemic PUBLIC ${WO_INCLUDE_DIR})
+target_link_libraries(writeover_systemic PUBLIC writeover_common)
+writeover_configure_target(writeover_systemic)
+
 add_library(writeover_world STATIC
     src/world/grid.cpp
     src/world/room.cpp
@@ -143,6 +153,7 @@ target_link_libraries(writeover_app PRIVATE
     writeover_narrative
     writeover_render
     writeover_platform
+    writeover_systemic
 )
 writeover_configure_target(writeover_app)
 target_include_directories(writeover_app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/app)
@@ -152,7 +163,7 @@ target_include_directories(writeover_app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
 # ---------------------------------------------------------------------------
 if(WO_BUILD_TOOLS)
     add_executable(writeover_bench tools/bench/main.cpp)
-    target_link_libraries(writeover_bench PRIVATE writeover_common writeover_world writeover_player writeover_render)
+    target_link_libraries(writeover_bench PRIVATE writeover_common writeover_systemic writeover_world writeover_player writeover_render)
     writeover_configure_target(writeover_bench)
 
     add_executable(mapc tools/mapc/main.cpp)
@@ -183,6 +194,7 @@ if(WO_BUILD_TESTS)
         tests/test_ai.cpp
         tests/test_narrative.cpp
         tests/test_save_replay.cpp
+        tests/test_systemic.cpp
     )
     target_include_directories(writeover_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -190,6 +202,7 @@ if(WO_BUILD_TESTS)
     )
     target_link_libraries(writeover_tests PRIVATE
         writeover_common
+    writeover_systemic
         writeover_core
         writeover_world
         writeover_player
@@ -212,7 +225,7 @@ if(WO_BUILD_TESTS)
         target_include_directories(header_${WO_NAME} PRIVATE ${WO_INCLUDE_DIR})
         writeover_configure_target(header_${WO_NAME})
         target_link_libraries(header_${WO_NAME} PRIVATE
-            writeover_common writeover_core writeover_world writeover_player
+            writeover_common writeover_systemic writeover_core writeover_world writeover_player
             writeover_ai writeover_narrative writeover_render)
     endforeach()
 endif()

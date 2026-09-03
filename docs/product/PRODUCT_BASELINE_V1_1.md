@@ -1,5 +1,8 @@
 # PRODUCT BASELINE v1.1 — WRITEOVER-07
 
+> **Superseded by PRODUCT_BASELINE_V1_2.** This document is preserved as
+> history and is not the active product baseline.
+
 > 状态：冻结（2026-09-03）。本文件是产品规格，不是策划长书。
 > 取代此前任何"课程作业可交"表述。六模块施工以本文件为唯一产品输入。
 

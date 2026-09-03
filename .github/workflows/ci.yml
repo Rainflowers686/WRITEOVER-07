@@ -24,6 +24,10 @@ jobs:
         run: python tools/contentc/test_contentc.py
         shell: pwsh
 
+      - name: Systemic content schema validation
+        run: python tools/systemic/systemic_schema_check.py --data-dir data
+        shell: pwsh
+
       - name: Configure (ci preset)
         run: cmake --preset ci
 

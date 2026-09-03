@@ -26,7 +26,8 @@ enum class SaveSectionId : uint32_t {
     Ai = 4,
     Narrative = 5,
     SettingsGameplay = 6,
-    Count = 7,
+    Systemic = 7,
+    Count = 8,
 };
 
 // Wire header: fixed 24 bytes (magic4 + version4 + sectionCount4 + rsvd4 + rsvd8).
