@@ -42,7 +42,7 @@ Target first normal playthrough: 5-10 minutes. Quality over quantity.
 ## Current Work
 
 - BLOCK 1/2 progress: production renderer, grid lighting, B1 room, weapon viewmodel, and first sprite/prop pipeline (NPC/terminal sprites with occlusion) are in the runtime path.
-- Added room override CLI --room.\n- Added 1F security checkpoint room and golden G05 evidence.\n- Next: visual/effect red team, then systemic interactions and slice integration.
+- Added room override CLI --room.\n- Added 1F security checkpoint room and golden G05 evidence.\n- BLOCK 5 partial: opening SYS/07 subtitle line added to production runtime.\n- Next: continue systemic interactions and Full NPC.
 
 ## Visual Decisions
 

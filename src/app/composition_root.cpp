@@ -366,8 +366,11 @@ public:
             ComposeHalfBlockFrame(logical_pixels_.data(), width_, logical_h,
                                   body_.data(), width_, height_);
         }
-        subtitle_ = "WRITEOVER-07 foundation smoke frame " +
-                    std::to_string(frame_index);
+        if (frame_index < 300) {
+            subtitle_ = "SYS/07: Wake cycle verified. B1 anomaly detected. Proceed to calibration.";
+        } else {
+            subtitle_ = "";
+        }
         HudFrame hud;
         hud.health = 100;
         hud.ammo_mag = 12;
