@@ -724,6 +724,7 @@ public:
     bool AddObservationSource(const ObservationSource& source);
     const ObservationSource* GetObservationSource(ObservationSourceId id) const;
     size_t ObservationSourceCount() const { return sources_.size(); }
+    bool SetObservationSourceOnline(ObservationSourceId id, bool online);
     bool NarratorObserves(ObservationSourceId id) const;
     bool NarratorCanObserveRoom(RoomId room, ObservationSourceType type) const;
 

@@ -1477,6 +1477,13 @@ const ObservationSource* SystemicWorld::GetObservationSource(ObservationSourceId
     return nullptr;
 }
 
+bool SystemicWorld::SetObservationSourceOnline(ObservationSourceId id, bool online) {
+    for (auto& s : sources_) {
+        if (s.id == id) { s.online = online; return true; }
+    }
+    return false;
+}
+
 bool SystemicWorld::NarratorObserves(ObservationSourceId id) const {
     const ObservationSource* s = GetObservationSource(id);
     return s && s->online;

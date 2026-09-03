@@ -724,9 +724,23 @@ int RunComposition(const GameConfig& config) {
                     }
                 }
             } else {
-                const float dx = p.x - 18.5f; const float dy = p.y - 4.5f;
-                if (dx * dx + dy * dy < 6.25f) {
-                    render->SetSubtitleOnce("TERMINAL: No active session. Credential required.", 180);
+                const float cdx = p.x - 14.0f; const float cdy = p.y - 3.0f;
+                if (cdx * cdx + cdy * cdy < 4.0f) {
+                    if (!services.systemic->GetObservationSource(ObservationSourceId::New(1))) {
+                        ObservationSource cam;
+                        cam.id = ObservationSourceId::New(1);
+                        cam.type = ObservationSourceType::Camera;
+                        cam.room = RoomId::New(1);
+                        cam.online = true;
+                        services.systemic->AddObservationSource(cam);
+                    }
+                    services.systemic->SetObservationSourceOnline(ObservationSourceId::New(1), false);
+                    render->SetSubtitleOnce("Camera disabled.", 180);
+                } else {
+                    const float dx = p.x - 18.5f; const float dy = p.y - 4.5f;
+                    if (dx * dx + dy * dy < 6.25f) {
+                        render->SetSubtitleOnce("TERMINAL: No active session. Credential required.", 180);
+                    }
                 }
             }
         } else if (services.player->CurrentRoom() == "room_1f_security") {
