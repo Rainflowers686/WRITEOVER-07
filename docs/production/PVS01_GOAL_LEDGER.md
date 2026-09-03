@@ -65,7 +65,8 @@ Target first normal playthrough: 5-10 minutes. Quality over quantity.
 ## Current Benchmarks
 
 - Systemic lookup: worst1 ~0.02ms Release
-- Systemic update: worst1 ~0.15ms Release
+- Systemic update: worst1 ~0.17ms Release
+- PVS render workload 240x67: worst1 ~0.41ms Release
 
 ## Code Red Team Results
 
