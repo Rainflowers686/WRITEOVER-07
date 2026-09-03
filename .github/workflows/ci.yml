@@ -20,6 +20,10 @@ jobs:
         run: python tools/contentc/contentc.py --data-dir data --out-dir data --check
         shell: pwsh
 
+      - name: Content compiler validation tests (content.*)
+        run: python tools/contentc/test_contentc.py
+        shell: pwsh
+
       - name: Configure (ci preset)
         run: cmake --preset ci
 
@@ -46,3 +50,10 @@ jobs:
 
       - name: Dependency boundary scan
         run: powershell -ExecutionPolicy Bypass -File tools\contract_check\check_deps.ps1
+
+      - name: Public header contract check (deterministic)
+        run: powershell -ExecutionPolicy Bypass -File tools\contract_check\check_public_headers.ps1
+
+      - name: Static audit (deterministic, must be COUNT=0)
+        run: python tools/audit/static_audit.py .
+        shell: pwsh

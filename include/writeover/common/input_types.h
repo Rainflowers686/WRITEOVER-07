@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 
 namespace writeover {
 
@@ -85,5 +86,82 @@ public:
         return false;
     }
 };
+
+// ---------------------------------------------------------------------------
+// Platform-neutral console-input translation seam (unit-testable without
+// Win32). The Windows keyboard backend converts INPUT_RECORDs into these
+// records and applies them through ApplyInputBatchRecord; tests exercise the
+// same seam to prove that one ReadConsoleInput batch never drops events.
+// ---------------------------------------------------------------------------
+
+// Mouse button masks (bit positions used by DiffMouseButtons).
+inline constexpr uint8_t kMouseMaskLeft = 0x01;
+inline constexpr uint8_t kMouseMaskRight = 0x02;
+inline constexpr uint8_t kMouseMaskMiddle = 0x04;
+
+// One transition produced by DiffMouseButtons (down or up for a button).
+struct MouseButtonTransition {
+    PhysicalKey key = PhysicalKey::Unknown;
+    bool pressed = false;
+};
+
+// Diffs `current` mouse-button mask against `previous` (updated in place) and
+// writes one transition per changed button (order: left, right, middle).
+// Returns the number of transitions written. Pure / platform-agnostic.
+inline size_t DiffMouseButtons(uint8_t current, uint8_t& previous,
+                               MouseButtonTransition* out, size_t capacity) {
+    size_t n = 0;
+    const uint8_t changed = static_cast<uint8_t>(current ^ previous);
+    for (uint8_t i = 0; i < 3 && n < capacity; ++i) {
+        const uint8_t bit = static_cast<uint8_t>(1u << i);
+        if ((changed & bit) == 0) {
+            continue;
+        }
+        PhysicalKey key = PhysicalKey::Unknown;
+        switch (bit) {
+        case kMouseMaskLeft: key = PhysicalKey::MouseLeft; break;
+        case kMouseMaskRight: key = PhysicalKey::MouseRight; break;
+        default: key = PhysicalKey::MouseMiddle; break;
+        }
+        out[n++] = {key, (current & bit) != 0};
+    }
+    previous = current;
+    return n;
+}
+
+// One translated console record in a batch (platform-neutral).
+struct InputBatchRecord {
+    enum class Kind : uint8_t { Key = 0, MouseButton = 1, Focus = 2 };
+    Kind kind = Kind::Key;
+    PhysicalKey key = PhysicalKey::Unknown;  // Key records
+    bool pressed = false;                    // Key records
+    uint8_t button_mask = 0;                 // MouseButton records
+    bool focused = true;                     // Focus records
+};
+
+// Applies one batch record to the queue:
+//   Key         -> queued as-is when key != Unknown (never dropped)
+//   MouseButton -> diffed against `prev_mouse_mask` (down/up transitions)
+//   Focus       -> updates `has_focus`
+inline void ApplyInputBatchRecord(const InputBatchRecord& rec,
+                                  std::deque<InputEvent>& queue,
+                                  bool& has_focus, uint8_t& prev_mouse_mask) {
+    if (rec.kind == InputBatchRecord::Kind::Focus) {
+        has_focus = rec.focused;
+        return;
+    }
+    if (rec.kind == InputBatchRecord::Kind::MouseButton) {
+        MouseButtonTransition trans[3];
+        const size_t n = DiffMouseButtons(rec.button_mask, prev_mouse_mask,
+                                          trans, 3);
+        for (size_t i = 0; i < n; ++i) {
+            queue.push_back({trans[i].key, trans[i].pressed, 0.0f});
+        }
+        return;
+    }
+    if (rec.key != PhysicalKey::Unknown) {
+        queue.push_back({rec.key, rec.pressed, 0.0f});
+    }
+}
 
 } // namespace writeover

@@ -3,8 +3,22 @@
 # - With baseline: fails when a public header changed without updating it.
 # Changes require ADR + owner approval (27_ADR_POLICY.md).
 # Usage: powershell -ExecutionPolicy Bypass -File tools/contract_check/check_public_headers.ps1
+#
+# Normalized SHA256: strips CR (0x0D) bytes before hashing so the hash is
+# independent of git autocrlf LF<->CRLF conversion. This ensures the same
+# header content produces the same hash on Windows CI and local dev machines.
 
 $ErrorActionPreference = "Stop"
+
+# Normalized hash: reads raw bytes, strips CR, hashes the normalized content.
+function Get-NormalizedHash($path) {
+    $bytes = [System.IO.File]::ReadAllBytes($path)
+    $normalized = $bytes | Where-Object { $_ -ne 0x0D }
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    $hash = $sha.ComputeHash($normalized)
+    $hashString = -join ($hash | ForEach-Object { $_.ToString("X2") })
+    return $hashString
+}
 
 $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $includeRoot = Join-Path $root "include/writeover"
@@ -13,7 +27,7 @@ $baselinePath = Join-Path $root "tools/contract_check/.contract_baseline.json"
 $snapshot = @{}
 Get-ChildItem -Path $includeRoot -Recurse -File -Filter *.h | Sort-Object FullName | ForEach-Object {
     $rel = $_.FullName.Substring($includeRoot.Length + 1) -replace "\\", "/"
-    $snapshot[$rel] = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash
+    $snapshot[$rel] = Get-NormalizedHash $_.FullName
 }
 
 if (-not (Test-Path $baselinePath)) {

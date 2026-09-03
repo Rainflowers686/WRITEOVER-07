@@ -2,6 +2,11 @@
 // Raw Input backend is the P0 primary; the two fallback backends here keep
 // gameplay working when Raw Input is unavailable. They implement the
 // IInputBackend interface only — gameplay never depends on Win32.
+//
+// KeyboardOnlyBackend also delivers mouse buttons (LMB/RMB/MMB down/up) by
+// reading MOUSE_EVENT records (ENABLE_MOUSE_INPUT). Record translation goes
+// through the platform-neutral ApplyInputBatchRecord seam so one
+// ReadConsoleInput batch never drops events and is unit-testable.
 
 #include "writeover/player/input.h"
 
@@ -80,12 +85,28 @@ PhysicalKey MapVk(UINT vk) {
     default: return PhysicalKey::Unknown;
     }
 }
+
+// Converts a Win32 dwButtonState into the platform-neutral button mask.
+uint8_t ButtonMaskFromState(DWORD state) {
+    uint8_t mask = 0;
+    if (state & FROM_LEFT_1ST_BUTTON_PRESSED) {
+        mask |= kMouseMaskLeft;
+    }
+    if (state & RIGHTMOST_BUTTON_PRESSED) {
+        mask |= kMouseMaskRight;
+    }
+    if (state & FROM_LEFT_2ND_BUTTON_PRESSED) {
+        mask |= kMouseMaskMiddle;
+    }
+    return mask;
+}
 } // namespace
 
-// Keyboard-only backend: reads key/mouse events from the console input.
+// Keyboard-only backend: reads key/mouse-button events from the console input.
 // Non-blocking: GetNumberOfConsoleInputEvents probes before reading.
 // Uses an internal deque to preserve ALL events from a batch (no drops).
 // Focus is tracked via FOCUS_EVENT records and ENABLE_WINDOW_INPUT.
+// Mouse buttons come from MOUSE_EVENT records (ENABLE_MOUSE_INPUT).
 class KeyboardOnlyBackend final : public IInputBackend {
 public:
     bool Init() override {
@@ -100,9 +121,12 @@ public:
             mode &= ~ENABLE_INSERT_MODE;
             // Enable window input so FOCUS_EVENT records are generated.
             mode |= ENABLE_WINDOW_INPUT;
+            // Enable mouse input so MOUSE_EVENT records deliver button state.
+            mode |= ENABLE_MOUSE_INPUT;
             SetConsoleMode(input_handle_, mode);
         }
         has_focus_ = true;
+        prev_mouse_mask_ = 0;
         return true;
     }
 
@@ -113,7 +137,7 @@ public:
     }
 
     bool Poll(InputEvent& out_event) override {
-        // First drain the internal queue (B.2 closure: no event drops).
+        // First drain the internal queue (no event drops).
         if (!queue_.empty()) {
             out_event = queue_.front();
             queue_.pop_front();
@@ -127,7 +151,8 @@ public:
         if (available == 0) {
             return false;
         }
-        // Read a batch of all available events (up to 32) and queue them.
+        // Read a batch of all available events (up to 32), translate every
+        // record through the platform-neutral seam, and queue them.
         constexpr DWORD kMaxEvents = 32;
         INPUT_RECORD records[kMaxEvents];
         DWORD count = 0;
@@ -135,20 +160,22 @@ public:
             return false;
         }
         for (DWORD i = 0; i < count; ++i) {
+            InputBatchRecord rec;
             if (records[i].EventType == FOCUS_EVENT) {
-                has_focus_ = records[i].Event.FocusEvent.bSetFocus != FALSE;
-                continue;
+                rec.kind = InputBatchRecord::Kind::Focus;
+                rec.focused = records[i].Event.FocusEvent.bSetFocus != FALSE;
+            } else if (records[i].EventType == KEY_EVENT) {
+                rec.kind = InputBatchRecord::Kind::Key;
+                rec.key = MapVk(records[i].Event.KeyEvent.wVirtualKeyCode);
+                rec.pressed = records[i].Event.KeyEvent.bKeyDown != FALSE;
+            } else if (records[i].EventType == MOUSE_EVENT) {
+                rec.kind = InputBatchRecord::Kind::MouseButton;
+                rec.button_mask = ButtonMaskFromState(
+                    records[i].Event.MouseEvent.dwButtonState);
+            } else {
+                continue;  // unrelated event (window buffer, menu, etc.)
             }
-            if (records[i].EventType == KEY_EVENT) {
-                const PhysicalKey key = MapVk(records[i].Event.KeyEvent.wVirtualKeyCode);
-                if (key != PhysicalKey::Unknown) {
-                    InputEvent evt;
-                    evt.key = key;
-                    evt.pressed = records[i].Event.KeyEvent.bKeyDown != FALSE;
-                    evt.analog = 0.0f;
-                    queue_.push_back(evt);
-                }
-            }
+            ApplyInputBatchRecord(rec, queue_, has_focus_, prev_mouse_mask_);
         }
         // Pop one from the queue if available.
         if (!queue_.empty()) {
@@ -167,12 +194,16 @@ private:
     HANDLE input_handle_ = nullptr;
     DWORD old_mode_ = 0;
     bool has_focus_ = true;
+    uint8_t prev_mouse_mask_ = 0;
     std::deque<InputEvent> queue_;
 };
 
 // Cursor-delta backend with center recapture (fallback #1).
 // When the console window is foreground, reads cursor delta, then recenters
-// the cursor to avoid cursor reaching the screen edge (F-03 closure).
+// the cursor to avoid cursor reaching the screen edge. Poll() drives the
+// sampling; the delta is retrieved via ConsumeMouseDelta. Poll never emits a
+// key event (key stays Unknown), so the runtime seam must not map it to an
+// action.
 class CursorDeltaBackend final : public IInputBackend {
 public:
     bool Init() override {

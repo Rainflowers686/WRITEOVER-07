@@ -124,6 +124,29 @@ bool SettingsLegacyBindingMigratesToGameplay() {
     return t.key_bindings[gp][static_cast<size_t>(GameAction::Interact)] == PhysicalKey::F;
 }
 
+// A binding explicitly set to Unknown (0xFFFF) must survive Save -> Load
+// through the text settings.cfg format (BLOCKER D).
+bool SettingsUnboundKeyRoundTrip() {
+    Settings s = Settings::Defaults();
+    // Pick an action that has a default binding (Jump -> Space) and set it to
+    // Unknown explicitly.
+    s.key_bindings[static_cast<size_t>(InputContext::Gameplay)]
+                  [static_cast<size_t>(GameAction::Jump)] = PhysicalKey::Unknown;
+    SettingsRegistry registry;
+    if (registry.Save("settings_test.cfg", s).IsError()) {
+        return false;
+    }
+    const auto loaded = registry.Load("settings_test.cfg");
+    WO_CHECK(loaded.IsOk());
+    if (!loaded.IsOk()) {
+        return false;
+    }
+    const Settings& t = loaded.Value();
+    return t.key_bindings[static_cast<size_t>(InputContext::Gameplay)]
+                         [static_cast<size_t>(GameAction::Jump)] ==
+           PhysicalKey::Unknown;
+}
+
 bool ProfileRoundTrip() {
     ProfileMeta meta;
     meta.death_count = 3;
@@ -146,6 +169,7 @@ void RegisterCoreTests(TestHarness& test) {
     test.Add("save.truncated_rejected", &TruncatedRejected);
     test.Add("settings.encode_decode", &SettingsEncodeDecode);
     test.Add("settings.key_value_disk", &SettingsKeyValueRoundTrip);
+    test.Add("settings.unbound_key_round_trip", &SettingsUnboundKeyRoundTrip);
     test.Add("settings.context_bindings_round_trip", &SettingsContextBindingsRoundTrip);
     test.Add("settings.legacy_binding_migrates_to_gameplay", &SettingsLegacyBindingMigratesToGameplay);
     test.Add("profile.round_trip", &ProfileRoundTrip);

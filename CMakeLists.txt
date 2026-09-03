@@ -58,6 +58,7 @@ add_library(writeover_player STATIC
     src/player/weapon.cpp
     src/player/combat.cpp
     src/player/input_mapper.cpp
+    src/player/input_runtime.cpp
 )
 target_include_directories(writeover_player PUBLIC ${WO_INCLUDE_DIR})
 target_link_libraries(writeover_player PUBLIC writeover_common writeover_world)
@@ -170,6 +171,7 @@ if(WO_BUILD_TESTS)
         tests/test_core.cpp
         tests/test_render.cpp
         tests/test_player.cpp
+        tests/test_input.cpp
         tests/test_world.cpp
         tests/test_ai.cpp
         tests/test_narrative.cpp

@@ -154,6 +154,27 @@ bool ParseU8(const std::string& value, uint8_t& out) {
 // --- key=value text persistence (settings.cfg) ---
 namespace {
 
+bool ParseU16(const std::string& value, uint16_t& out) {
+    unsigned long parsed = 0;
+    const char* begin = value.c_str();
+    char* end = nullptr;
+    parsed = std::strtoul(begin, &end, 10);
+    if (end == begin || *end != '\0' || parsed > 0xFFFF) {
+        return false;
+    }
+    out = static_cast<uint16_t>(parsed);
+    return true;
+}
+
+// PhysicalKey text parser: accepts values 0..kPhysicalKeyCount-1 or
+// 0xFFFF (PhysicalKey::Unknown). Other 16-bit values are rejected.
+bool ParsePhysicalKey(const std::string& value, uint16_t& out) {
+    if (!ParseU16(value, out)) return false;
+    if (out == 0xFFFF) return true;  // PhysicalKey::Unknown
+    if (out >= kPhysicalKeyCount) return false;
+    return true;
+}
+
 struct KeyValue {
     std::string key;
     std::string value;
@@ -223,13 +244,13 @@ void ApplyKeyValue(Settings& s, const KeyValue& kv) {
         const size_t dot = spec.find('.');
         uint8_t ctx_index = 0;
         uint8_t action_index = 0;
-        uint8_t key_value = 0;
+        uint16_t key_value = 0;
         if (dot == std::string::npos) {
             // Legacy format: bind.<actionIndex>=<PhysicalKeyValue>
             // Interpreted as Gameplay context (backward compatible).
             if (ParseU8(spec, action_index) &&
                 static_cast<size_t>(action_index) < kGameActionCount &&
-                ParseU8(kv.value, key_value)) {
+                ParsePhysicalKey(kv.value, key_value)) {
                 s.key_bindings[static_cast<size_t>(InputContext::Gameplay)]
                               [action_index] = static_cast<PhysicalKey>(key_value);
             }
@@ -237,7 +258,7 @@ void ApplyKeyValue(Settings& s, const KeyValue& kv) {
                    static_cast<size_t>(ctx_index) < kInputContextCount &&
                    ParseU8(spec.substr(dot + 1), action_index) &&
                    static_cast<size_t>(action_index) < kGameActionCount &&
-                   ParseU8(kv.value, key_value)) {
+                   ParsePhysicalKey(kv.value, key_value)) {
             s.key_bindings[ctx_index][action_index] =
                 static_cast<PhysicalKey>(key_value);
         }

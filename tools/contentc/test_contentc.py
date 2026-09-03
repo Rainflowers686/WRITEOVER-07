@@ -48,10 +48,11 @@ def compile_to(tmp, room_json, facts_json=None, storylets_json=None, npcs_json=N
 
 def test_light_zero_preserved():
     # A room with an explicit light=0 cell must compile to a .woc whose cell
-    # light byte is 0 (not coerced back to 255).
+    # light byte is 0 (not coerced back to 255). The cell uses non-zero flags
+    # (solid) so a wrong byte offset cannot pass the check.
     room = {
         "schemaVersion": 1, "gridWidth": 2, "gridHeight": 2,
-        "cells": [{"col": 0, "row": 0, "light": 0}],
+        "cells": [{"col": 0, "row": 0, "light": 0, "flags": ["solid"]}],
     }
     with tempfile.TemporaryDirectory() as tmp:
         ok, _ = compile_to(Path(tmp), room)
@@ -74,29 +75,77 @@ def test_light_zero_preserved():
             check("light_zero_preserved", False)
             return
         cell0 = data[off:off + 11]
-        light = cell0[10]  # f(4)+f(4)+mat(1)+light(1)+flags(1) -> light at offset 9
-        check("light_zero_preserved", light == 0)
+        light = cell0[9]  # f(4)+f(4)+mat(1)+light(1)+flags(1) -> light at offset 9
+        flags = cell0[10]
+        check("light_zero_preserved", light == 0 and flags != 0)
+
+
+def _first_fact_ref(storylets_bin: bytes):
+    """Returns the numeric fact reference of the first fact condition in the
+    first storylet of storylets.bin (header 8 bytes + storylet payload)."""
+    off = 8  # magic + version header
+    count = struct.unpack_from("<I", storylets_bin, off)[0]
+    off += 4
+    if count == 0:
+        return None
+    off += 8  # StoryletId
+    text_len = struct.unpack_from("<I", storylets_bin, off)[0]
+    off += 4 + text_len
+    off += 3  # priority H(2) + once B(1)
+    n_conds = struct.unpack_from("<I", storylets_bin, off)[0]
+    off += 4
+    for _ in range(n_conds):
+        ctype = storylets_bin[off]
+        off += 1
+        if ctype == 0:  # fact condition: Q fact + B equals
+            fact_ref = struct.unpack_from("<Q", storylets_bin, off)[0]
+            off += 8 + 1
+            return fact_ref
+        elif ctype == 1:  # room: Q
+            off += 8
+        elif ctype == 2:  # npcstate: Q + B
+            off += 9
+        elif ctype == 3:  # frame: Q + Q
+            off += 16
+        elif ctype == 4:  # difficulty: B
+            off += 1
+        elif ctype == 5:  # flag: len4 + utf8
+            flag_len = struct.unpack_from("<I", storylets_bin, off)[0]
+            off += 4 + flag_len
+    return None
 
 
 def test_stable_ids_survive_insertion():
-    # Adding a fact with an alphabetically-earlier id must not shift the
-    # numeric id of existing facts (FNV-1a64 stable).
-    base = {"schemaVersion": 1, "facts": [{"id": "zeta"}]}
-    with tempfile.TemporaryDirectory() as tmp:
-        ok, _ = compile_to(Path(tmp), {"schemaVersion": 1, "gridWidth": 1, "gridHeight": 1},
-                           facts_json=base)
-        if not ok:
-            check("stable_ids_survive_insertion", False)
-            return
-        facts_bin = (Path(tmp) / "facts" / "facts.bin").read_bytes()
-        # facts.bin: header 8 + count4 + per fact: len4+name + predicate byte
-        off = 8 + 4
-        name_len = struct.unpack_from("<I", facts_bin, off)[0]
-        name = facts_bin[off + 4:off + 4 + name_len].decode()
-        # We only assert the compiler is deterministic for the same input;
-        # cross-insertion stability is inherent to FNV-1a64 and covered by the
-        # --check byte-compare. Just verify it compiles and names match.
-        check("stable_ids_survive_insertion", name == "zeta")
+    # Real A/B compile: a storylet references fact "zeta". Compile with only
+    # "zeta", record its numeric fact reference; then add alphabetically
+    # earlier fact "alpha" and recompile. The "zeta" reference must be
+    # identical (FNV-1a64 stable; the old sorted 1..N model would shift it).
+    base_room = {"schemaVersion": 1, "gridWidth": 1, "gridHeight": 1}
+    base_storylets = {
+        "schemaVersion": 1,
+        "storylets": [{
+            "id": "s1", "textId": "t1", "priority": 1, "once": True,
+            "conditions": [{"type": "fact", "fact": "zeta", "equals": True}],
+            "actions": [{"type": "narrator", "textId": "n1", "persona": 0}],
+        }],
+    }
+
+    def compile_ref(facts_json):
+        with tempfile.TemporaryDirectory() as tmp:
+            ok, _ = compile_to(Path(tmp), base_room, facts_json=facts_json,
+                               storylets_json=base_storylets)
+            if not ok:
+                return None
+            bin_path = Path(tmp) / "storylets" / "storylets.bin"
+            if not bin_path.exists():
+                return None
+            return _first_fact_ref(bin_path.read_bytes())
+
+    ref_a = compile_ref({"schemaVersion": 1, "facts": [{"id": "zeta"}]})
+    ref_b = compile_ref({"schemaVersion": 1,
+                         "facts": [{"id": "alpha"}, {"id": "zeta"}]})
+    check("stable_ids_survive_insertion",
+          ref_a is not None and ref_a == ref_b)
 
 
 def test_unknown_npc_ref_rejected():

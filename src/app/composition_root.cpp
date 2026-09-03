@@ -16,6 +16,7 @@
 #include "writeover/player/combat.h"
 #include "writeover/player/controller.h"
 #include "writeover/player/input.h"
+#include "writeover/player/input_runtime.h"
 #include "writeover/player/weapon.h"
 #include "writeover/render/hud.h"
 #include "writeover/render/raycaster.h"
@@ -376,27 +377,16 @@ struct GameServices {
     std::unique_ptr<NarrativeModule> narrative;
 };
 
-// InputModule: private integration class that polls keyboard and mouse
-// backends each sim tick, maps PhysicalKey to GameAction via the active
-// InputContext, and writes the resolved state into PlayerModule's InputState.
-// Registered as the FIRST engine module so input is sampled before other
-// modules run their SimTick.
+// InputModule: private integration class that samples the keyboard and mouse
+// backends through InputRuntime each sim tick. InputRuntime is the testable
+// seam (fake backends in unit tests prove the full delta/button path).
 class InputModule final : public IEngineModule {
 public:
-    InputModule() {
-        keyboard_ = CreateKeyboardOnlyBackend();
-        mouse_ = CreateCursorDeltaBackend();
-    }
-    ~InputModule() override { Shutdown(); }
+    InputModule() : runtime_(CreateKeyboardOnlyBackend(), CreateCursorDeltaBackend()) {}
+    ~InputModule() override = default;
 
-    void Init(const EngineContext&) override {
-        if (keyboard_) keyboard_->Init();
-        if (mouse_) mouse_->Init();
-    }
-    void Shutdown() override {
-        if (keyboard_) keyboard_->Shutdown();
-        if (mouse_) mouse_->Shutdown();
-    }
+    void Init(const EngineContext&) override { runtime_.Init(); }
+    void Shutdown() override { runtime_.Shutdown(); }
 
     void SetTarget(InputState* input, const InputMapper* mapper) {
         input_ = input;
@@ -405,44 +395,12 @@ public:
 
     void SimTick(const SimClock&) override {
         if (!input_ || !mapper_) return;
-        // Clear transient state from the previous tick.
-        input_->action_pressed.fill(false);
-        input_->action_released.fill(false);
-        input_->mouse_delta = Vec2{};
-        // Focus check: when unfocused, clear all state.
-        const bool focus = keyboard_ && keyboard_->HasFocus();
-        input_->has_focus = focus;
-        if (!focus) {
-            ClearInputState(*input_);
-            return;
-        }
-        // Poll keyboard: drain all pending events and map to GameActions.
-        InputEvent evt;
-        while (keyboard_ && keyboard_->Poll(evt)) {
-            const GameAction a = mapper_->MapKey(InputContext::Gameplay, evt.key);
-            if (a == GameAction::Count) continue;
-            const size_t idx = static_cast<size_t>(a);
-            if (evt.pressed) {
-                if (!input_->action_down[idx]) {
-                    input_->action_pressed[idx] = true;
-                }
-                input_->action_down[idx] = true;
-            } else {
-                input_->action_down[idx] = false;
-                input_->action_released[idx] = true;
-            }
-        }
-        // Consume mouse delta.
-        Vec2 delta;
-        if (mouse_ && mouse_->ConsumeMouseDelta(delta)) {
-            input_->mouse_delta = delta;
-        }
+        runtime_.SampleTick(*input_, *mapper_);
     }
     const char* Name() const override { return "input"; }
 
 private:
-    std::unique_ptr<IInputBackend> keyboard_;
-    std::unique_ptr<IInputBackend> mouse_;
+    InputRuntime runtime_;
     InputState* input_ = nullptr;
     const InputMapper* mapper_ = nullptr;
 };

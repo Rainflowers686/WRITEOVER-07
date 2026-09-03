@@ -6,6 +6,7 @@ void RegisterCommonTests(TestHarness&);
 void RegisterCoreTests(TestHarness&);
 void RegisterRenderTests(TestHarness&);
 void RegisterPlayerTests(TestHarness&);
+void RegisterInputTests(TestHarness&);
 void RegisterWorldTests(TestHarness&);
 void RegisterAiTests(TestHarness&);
 void RegisterNarrativeTests(TestHarness&);
@@ -22,6 +23,7 @@ int RunAllTestsAndExit() {
         &writeover::RegisterCoreTests,
         &writeover::RegisterRenderTests,
         &writeover::RegisterPlayerTests,
+        &writeover::RegisterInputTests,
         &writeover::RegisterWorldTests,
         &writeover::RegisterAiTests,
         &writeover::RegisterNarrativeTests,
