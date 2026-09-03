@@ -42,7 +42,7 @@ Target first normal playthrough: 5-10 minutes. Quality over quantity.
 ## Current Work
 
 - BLOCK 1/2 progress: production renderer, grid lighting, B1 room, weapon viewmodel, and first sprite/prop pipeline (NPC/terminal sprites with occlusion) are in the runtime path.
-- Added room override CLI --room.\n- Added 1F security checkpoint room and golden G05 evidence.\n- BLOCK 5 partial: opening SYS/07 subtitle line added to production runtime.\n- BLOCK 3 partial: weapon viewmodel now reacts to actual fire with recoil/muzzle state.\n- BLOCK 10 partial: F3 debug overlay toggles runtime player position/yaw display.\n- BLOCK 8 partial: B1 to 1F room transition wired via interact at B1 exit zone.\n- Next: continue systemic interactions and Full NPC.
+- Added room override CLI --room.\n- Added 1F security checkpoint room and golden G05 evidence.\n- BLOCK 5 partial: opening SYS/07 subtitle line added to production runtime.\n- BLOCK 3 partial: weapon viewmodel now reacts to actual fire with recoil/muzzle state.\n- BLOCK 10 partial: F3 debug overlay toggles runtime player position/yaw display.\n- BLOCK 8 partial: B1 to 1F room transition wired via interact at B1 exit zone.\n- BLOCK 6 partial: proximity NPC subtitle line in B1.\n- Next: deepen NPC/systemic behavior.
 
 ## Visual Decisions
 

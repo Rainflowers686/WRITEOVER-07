@@ -407,6 +407,11 @@ public:
         } else {
             subtitle_ = "";
         }
+        const float npc_dx = player_pos_.x - 10.5f;
+        const float npc_dy = player_pos_.y - 5.5f;
+        if ((npc_dx * npc_dx + npc_dy * npc_dy) < 9.0f) {
+            subtitle_ = "Maintenance: 07... you are not scheduled to be here.";
+        }
         if (debug_overlay_) {
             subtitle_ = "F3 DEBUG | pos " + std::to_string(player_pos_.x) + "," +
                         std::to_string(player_pos_.y) + " yaw " + std::to_string(player_yaw_);
