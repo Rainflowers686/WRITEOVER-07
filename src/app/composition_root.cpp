@@ -239,10 +239,8 @@ public:
             debug_toggle_callback_) {
             debug_toggle_callback_();
         }
-        if (input_.action_pressed[static_cast<size_t>(GameAction::Interact)] &&
-            room_switch_callback_ && current_room_ == "room_b1_revival" &&
-            locomotion_.position.x > 21.0f) {
-            room_switch_callback_("room_1f_security", Vec3{2.5f, 13.5f, 0.0f});
+        if (input_.action_pressed[static_cast<size_t>(GameAction::Interact)] && interact_callback_) {
+            interact_callback_();
         }
         AdvanceReload(combat_, 1);
         if (combat_.spread_factor > 0.0f) {
@@ -256,7 +254,9 @@ public:
     void SetWorldQuery(const IWorldQuery* query) { world_query_ = query; }
     void SetDebugToggleCallback(std::function<void()> cb) { debug_toggle_callback_ = std::move(cb); }
     void SetCurrentRoom(const std::string& id) { current_room_ = id; }
+    const std::string& CurrentRoom() const { return current_room_; }
     void SetRoomSwitchCallback(std::function<void(const std::string&, const Vec3&)> cb) { room_switch_callback_ = std::move(cb); }
+    void SetInteractCallback(std::function<void()> cb) { interact_callback_ = std::move(cb); }
 
     const char* Name() const override { return "player"; }
 
@@ -270,6 +270,7 @@ private:
     std::function<void()> debug_toggle_callback_;
     std::string current_room_;
     std::function<void(const std::string&, const Vec3&)> room_switch_callback_;
+    std::function<void()> interact_callback_;
 };
 
 class NarrativeModule final : public IEngineModule {
@@ -346,6 +347,7 @@ public:
     // locomotion state instead of a one-time snapshot (F-23 closure).
     void SetCombatSource(const CombatState* combat) { combat_ = combat; }
     void SetDebugOverlay(bool enabled) { debug_overlay_ = enabled; }
+    void SetSubtitleOnce(const std::string& text, uint64_t frames) { subtitle_override_ = text; subtitle_override_remaining_ = frames; }
     bool DebugOverlay() const { return debug_overlay_; }
 
     void SetLocomotionSource(const LocomotionState* locomotion) {
@@ -412,6 +414,10 @@ public:
         if ((npc_dx * npc_dx + npc_dy * npc_dy) < 9.0f) {
             subtitle_ = "Maintenance: 07... you are not scheduled to be here.";
         }
+        if (subtitle_override_remaining_ > 0) {
+            subtitle_ = subtitle_override_;
+            --subtitle_override_remaining_;
+        }
         if (debug_overlay_) {
             subtitle_ = "F3 DEBUG | pos " + std::to_string(player_pos_.x) + "," +
                         std::to_string(player_pos_.y) + " yaw " + std::to_string(player_yaw_);
@@ -442,6 +448,8 @@ private:
     const LocomotionState* locomotion_ = nullptr;
     const CombatState* combat_ = nullptr;
     bool debug_overlay_ = false;
+    std::string subtitle_override_;
+    uint64_t subtitle_override_remaining_ = 0;
     const GridCell* grid_cells_ = nullptr;
     int grid_w_ = 0;
     int grid_h_ = 0;
@@ -595,6 +603,24 @@ int RunComposition(const GameConfig& config) {
             const Room& r = services.world->LoadedRoom();
             render->SetGridData(r.grid.Data().data(), r.grid.Width(), r.grid.Height());
             render->SetPlayerView(spawn, 0.0f);
+        }
+    });
+    services.player->SetInteractCallback([&] {
+        const Vec3& p = services.player->Locomotion().position;
+        if (services.player->CurrentRoom() == "room_b1_revival" && p.x > 21.0f) {
+            if (services.world->LoadRoomById("room_1f_security")) {
+                services.player->SetWorldQuery(&services.world->Query());
+                services.player->Locomotion().position = Vec3{2.5f, 13.5f, 0.0f};
+                services.player->SetCurrentRoom("room_1f_security");
+                const Room& r = services.world->LoadedRoom();
+                render->SetGridData(r.grid.Data().data(), r.grid.Width(), r.grid.Height());
+                render->SetPlayerView(Vec3{2.5f, 13.5f, 0.0f}, 0.0f);
+            }
+        } else if (services.player->CurrentRoom() == "room_b1_revival") {
+            const float dx = p.x - 18.5f; const float dy = p.y - 4.5f;
+            if (dx * dx + dy * dy < 6.25f) {
+                render->SetSubtitleOnce("TERMINAL: No active session. Credential required.", 180);
+            }
         }
     });
     if (services.world->HasLoadedRoom()) {
