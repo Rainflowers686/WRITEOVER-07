@@ -56,6 +56,15 @@ public:
 class WorldModule final : public IEngineModule {
 public:
     void SetRoomOverride(const std::string& id) { room_override_ = id; }
+    bool LoadRoomById(const std::string& id) {
+        if (ctx_.data_dir.empty()) return false;
+        auto room = LoadRoomFile(ctx_.data_dir + "/rooms/" + id + ".woc");
+        if (room.IsError()) return false;
+        loaded_room_ = room.Value();
+        query_ = std::make_unique<GridWorldQuery>(&loaded_room_.grid);
+        room_override_ = id;
+        return true;
+    }
     void Init(const EngineContext& ctx) override {
         ctx_ = ctx;
         if (!ctx_.data_dir.empty()) {
@@ -230,6 +239,11 @@ public:
             debug_toggle_callback_) {
             debug_toggle_callback_();
         }
+        if (input_.action_pressed[static_cast<size_t>(GameAction::Interact)] &&
+            room_switch_callback_ && current_room_ == "room_b1_revival" &&
+            locomotion_.position.x > 21.0f) {
+            room_switch_callback_("room_1f_security", Vec3{2.5f, 13.5f, 0.0f});
+        }
         AdvanceReload(combat_, 1);
         if (combat_.spread_factor > 0.0f) {
             combat_.spread_factor -= 0.01f;
@@ -241,6 +255,8 @@ public:
 
     void SetWorldQuery(const IWorldQuery* query) { world_query_ = query; }
     void SetDebugToggleCallback(std::function<void()> cb) { debug_toggle_callback_ = std::move(cb); }
+    void SetCurrentRoom(const std::string& id) { current_room_ = id; }
+    void SetRoomSwitchCallback(std::function<void(const std::string&, const Vec3&)> cb) { room_switch_callback_ = std::move(cb); }
 
     const char* Name() const override { return "player"; }
 
@@ -252,6 +268,8 @@ private:
     CombatState combat_;
     const IWorldQuery* world_query_ = nullptr;
     std::function<void()> debug_toggle_callback_;
+    std::string current_room_;
+    std::function<void(const std::string&, const Vec3&)> room_switch_callback_;
 };
 
 class NarrativeModule final : public IEngineModule {
@@ -562,6 +580,17 @@ int RunComposition(const GameConfig& config) {
     services.player->SetDebugToggleCallback([&] {
         debug_overlay = !debug_overlay;
         render->SetDebugOverlay(debug_overlay);
+    });
+    services.player->SetCurrentRoom(config.room_id.empty() ? std::string("room_b1_revival") : config.room_id);
+    services.player->SetRoomSwitchCallback([&](const std::string& id, const Vec3& spawn) {
+        if (services.world->LoadRoomById(id)) {
+            services.player->SetWorldQuery(&services.world->Query());
+            services.player->Locomotion().position = spawn;
+            services.player->SetCurrentRoom(id);
+            const Room& r = services.world->LoadedRoom();
+            render->SetGridData(r.grid.Data().data(), r.grid.Width(), r.grid.Height());
+            render->SetPlayerView(spawn, 0.0f);
+        }
     });
     if (services.world->HasLoadedRoom()) {
         const Room& room = services.world->LoadedRoom();
