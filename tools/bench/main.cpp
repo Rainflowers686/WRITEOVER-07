@@ -1,5 +1,6 @@
 #include "writeover/render/benchmark.h"
 #include "writeover/render/frame_encoder.h"
+#include "writeover/render/production_renderer.h"
 #include "writeover/render/raycaster.h"
 #include "writeover/systemic/systemic.h"
 #include "writeover/world/grid.h"
@@ -411,6 +412,50 @@ double SystemicUpdateBenchmark() {
     PrintCsv("systemic_update_workload", sampler.Compute());
     return sampler.Compute().worst_1pct_avg_ms;
 }
+double ProductionRendererBenchmark() {
+    using Clock = std::chrono::steady_clock;
+    Grid grid(24, 18);
+    for (int r = 0; r < 18; ++r) {
+        for (int c = 0; c < 24; ++c) {
+            GridCell cell;
+            if (c == 0 || c == 23 || r == 0 || r == 17 || (c == 8 && r >= 2 && r <= 6)) {
+                cell.flags = CellFlag_Solid;
+            }
+            grid.SetCell(c, r, cell);
+        }
+    }
+    const int cell_w = 240;
+    const int cell_h = 67;
+    const int logical_w = cell_w;
+    const int logical_h = cell_h * 2;
+    std::vector<Color> pixels(static_cast<size_t>(logical_w) * logical_h);
+    std::vector<CharCell> cells(static_cast<size_t>(cell_w) * cell_h);
+    FrameTimeSampler sampler;
+    constexpr int kFrames = 240;
+    for (int frame = 0; frame < kFrames; ++frame) {
+        const auto t0 = Clock::now();
+        ProductionView view;
+        view.origin = Vec3{1.5f, 15.5f, 1.6f};
+        view.yaw = 0.15f + static_cast<float>(frame) * 0.002f;
+        view.pitch = 0.0f;
+        const float focal = 0.5f * static_cast<float>(logical_h) /
+                            std::tan(60.0f * 3.14159265f / 360.0f);
+        RenderProductionFrame(grid.Data().data(), grid.Width(), grid.Height(),
+                              view, pixels.data(), logical_w, logical_h, focal);
+        DrawProductionSprite(view.origin, view.yaw, view.pitch,
+                             Vec3{10.5f, 5.5f, 0.0f}, 1.7f,
+                             ProductionSpriteKind::Npc, Color{120,130,140},
+                             grid.Data().data(), grid.Width(), grid.Height(),
+                             pixels.data(), logical_w, logical_h, focal);
+        DrawWeaponViewmodel(pixels.data(), logical_w, logical_h, 0, 0.0f);
+        ComposeHalfBlockFrame(pixels.data(), logical_w, logical_h,
+                              cells.data(), cell_w, cell_h);
+        const auto t1 = Clock::now();
+        sampler.AddSample(std::chrono::duration<double, std::milli>(t1 - t0).count());
+    }
+    PrintCsv("pvs_render_workload_240x67", sampler.Compute());
+    return sampler.Compute().worst_1pct_avg_ms;
+}
 } // namespace
 
 } // namespace writeover
@@ -687,8 +732,13 @@ int main() {
     std::printf("SYSTEMIC_UPDATE_BUDGET=%s\n", update_pass ? "PASS" : "FAIL");
     std::printf("SYSTEMIC_UPDATE_TIME_MS=%.3f (worst1_avg)\n", update_ms);
 
+    const double render_ms = writeover::ProductionRendererBenchmark();
+    const bool render_pass = render_ms <= 3.0;
+    std::printf("PVS_RENDER_BUDGET=%s\n", render_pass ? "PASS" : "FAIL");
+    std::printf("PVS_RENDER_TIME_MS=%.3f (worst1_avg)\n", render_ms);
+
     const bool overall_pass = ray_pass && full_pass && delta_pass &&
-                              unchanged_pass && worstcase_pass && lookup_pass && update_pass;
+                              unchanged_pass && worstcase_pass && lookup_pass && update_pass && render_pass;
     std::printf("RAYCAST_BUDGET=%s\n", ray_pass ? "PASS" : "FAIL");
     std::printf("OVERALL_BUDGET=%s\n", overall_pass ? "PASS" : "FAIL");
     return overall_pass ? 0 : 1;
