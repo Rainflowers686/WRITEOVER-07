@@ -1,5 +1,6 @@
 #include "writeover/narrative/storylet.h"
 
+#include "writeover/common/command.h"
 #include "writeover/common/io.h"
 
 #include <algorithm>
@@ -143,9 +144,7 @@ void StoryletEngine::Save(Serializer& s) const {
                 } else if constexpr (std::is_same_v<T, DialogAction>) {
                     s.WriteString(act.text_id);
                 } else if constexpr (std::is_same_v<T, WorldCommandAction>) {
-                    // Command serialization is not part of the content format;
-                    // world commands are runtime constructs. Persist a marker.
-                    s.WriteU8(0);
+                    SerializeWorldCommand(s, act.command);
                 } else if constexpr (std::is_same_v<T, EndGameCommand>) {
                     s.WriteU8(act.ending_index);
                 }
@@ -242,7 +241,9 @@ void StoryletEngine::Load(Deserializer& d) {
                 break;
             }
             case 2: {
-                (void)d.ReadU8();  // command marker (runtime-constructed)
+                WorldCommandAction a;
+                a.command = DeserializeWorldCommand(d);
+                storylet.actions.push_back(a);
                 break;
             }
             case 3: {
@@ -265,9 +266,15 @@ void StoryletEngine::Load(Deserializer& d) {
                   }
                   return a.id < b.id;
               });
-    const uint32_t fired_count = d.ReadU32();
-    for (uint32_t i = 0; i < fired_count; ++i) {
-        fired_.insert(ReadId<StoryletId>(d));
+    // Only read fired state if it exists in the stream (content files
+    // may only contain definitions). This fixes F-08.
+    if (d.Remaining() >= 4) {
+        const uint32_t fired_count = d.ReadU32();
+        if (d.Remaining() >= fired_count * 8) {  // StoryletId is 8 bytes
+            for (uint32_t i = 0; i < fired_count; ++i) {
+                fired_.insert(ReadId<StoryletId>(d));
+            }
+        }
     }
 }
 

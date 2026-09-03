@@ -27,14 +27,17 @@ FrameStats FrameTimeSampler::Compute() const {
     for (size_t i = 0; i < worst_count; ++i) {
         worst_sum += sorted[sorted.size() - 1 - i];
     }
-    stats.p99_ms = worst_sum / static_cast<double>(worst_count);
+    stats.worst_1pct_avg_ms = worst_sum / static_cast<double>(worst_count);
+    stats.one_pct_low_fps = stats.worst_1pct_avg_ms > 0.0
+                                ? 1000.0 / stats.worst_1pct_avg_ms
+                                : 0.0;
     return stats;
 }
 
 void PrintCsv(const char* scenario, const FrameStats& stats) {
-    std::printf("scenario,count,avg_ms,p99_ms,min_ms,max_ms\n");
+    std::printf("scenario,count,avg_ms,worst_1pct_avg_ms,min_ms,max_ms\n");
     std::printf("%s,%zu,%.3f,%.3f,%.3f,%.3f\n", scenario, stats.count,
-                stats.avg_ms, stats.p99_ms, stats.min_ms, stats.max_ms);
+                stats.avg_ms, stats.worst_1pct_avg_ms, stats.min_ms, stats.max_ms);
 }
 
 } // namespace writeover

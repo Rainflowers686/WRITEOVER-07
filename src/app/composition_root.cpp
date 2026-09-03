@@ -19,6 +19,7 @@
 #include "writeover/player/weapon.h"
 #include "writeover/render/hud.h"
 #include "writeover/render/raycaster.h"
+#include "writeover/render/reference_renderer.h"
 #include "writeover/render/terminal_backend.h"
 #include "writeover/world/fact_belief.h"
 #include "writeover/world/grid.h"
@@ -242,12 +243,15 @@ public:
             line.speaker_id = NarratorSpeakerId();
             line.persona = 1;
             queue_.Push(line);
+            // Real causality: the ledger entry references the storylet event.
+            ledger_.Push(CausalityEntry{
+                EventId::New(s->id.GetValue()),
+                EventId::Invalid(),  // root of a causality chain
+                frame, EventKind::Notification});
         }
         queue_.Advance(static_cast<uint32_t>(frame));
-        ledger_.Push(CausalityEntry{
-            EventId::New(frame),
-            frame > 0 ? EventId::New(frame - 1) : EventId::Invalid(),
-            frame, EventKind::Notification});
+        // No fake frame->frame-1 causality chains (F-07 closure).
+        // The ledger is populated only by real storylet/event occurrences.
     }
 
     const char* Name() const override { return "narrative"; }
@@ -274,6 +278,11 @@ public:
         player_pos_ = pos;
         player_yaw_ = yaw;
     }
+    // Per-frame source of truth: the renderer reads the player's live
+    // locomotion state instead of a one-time snapshot (F-23 closure).
+    void SetLocomotionSource(const LocomotionState* locomotion) {
+        locomotion_ = locomotion;
+    }
     void SetGridData(const GridCell* cells, int w, int h) {
         grid_cells_ = cells;
         grid_w_ = w;
@@ -282,29 +291,27 @@ public:
 
     void RenderFrame(uint64_t frame_index, float alpha) override {
         (void)alpha;
+        if (locomotion_ != nullptr) {
+            player_pos_ = locomotion_->position;
+            player_yaw_ = locomotion_->yaw;
+        }
         if (grid_cells_ != nullptr && grid_w_ > 0 && grid_h_ > 0) {
-            // Real raycaster smoke band: sample 40 columns of the loaded grid.
-            const int columns = std::min(width_, 40);
-            for (int x = 0; x < columns; ++x) {
-                RayConfig cfg;
-                cfg.origin_xy = Vec2{player_pos_.x, player_pos_.y};
-                cfg.yaw = player_yaw_ +
-                          (static_cast<float>(x) - columns * 0.5f) * 0.02f;
-                const RayResult res = CastColumnRay(cfg, grid_cells_,
-                                                    grid_w_, grid_h_);
-                const float shade = res.hit_full_occlusion ? 0.30f : 0.55f;
-                for (int y = 0; y < height_; ++y) {
-                    CharCell& cell =
-                        body_[static_cast<size_t>(y) * width_ + x];
-                    cell.fg_r = static_cast<uint8_t>(255 * shade);
-                    cell.fg_g = static_cast<uint8_t>(200);
-                    cell.fg_b = static_cast<uint8_t>(140);
-                    cell.bg_r = 12;
-                    cell.bg_g = 12;
-                    cell.bg_b = 32;
-                    cell.code_point = U' ';
-                }
-            }
+            // Reference character-3D renderer (HK-2): real wall spans,
+            // floor/ceiling fills, depth, and a marker with occlusion.
+            RenderView view;
+            view.origin = Vec3{player_pos_.x, player_pos_.y,
+                               locomotion_ != nullptr
+                                   ? locomotion_->EyePosition().z
+                                   : kEyeStand};
+            view.yaw = player_yaw_;
+            view.pitch = locomotion_ != nullptr ? locomotion_->pitch : 0.0f;
+            ReferenceMarker marker;
+            marker.position = Vec3{player_pos_.x + 6.0f, player_pos_.y, 1.0f};
+            const float focal =
+                0.5f * static_cast<float>(height_) /
+                std::tan(60.0f * 3.14159265f / 360.0f);
+            RenderReferenceFrame(grid_cells_, grid_w_, grid_h_, view, &marker,
+                                 body_.data(), width_, height_, focal);
         }
         subtitle_ = "WRITEOVER-07 foundation smoke frame " +
                     std::to_string(frame_index);
@@ -330,6 +337,7 @@ private:
     std::vector<CharCell> body_;
     Vec3 player_pos_;
     float player_yaw_ = 0.0f;
+    const LocomotionState* locomotion_ = nullptr;
     const GridCell* grid_cells_ = nullptr;
     int grid_w_ = 0;
     int grid_h_ = 0;
@@ -406,6 +414,7 @@ int RunComposition(const GameConfig& config) {
                            ? services.world->LoadedRoom().spawn_point
                            : Vec3{1.5f, 6.0f, 0.0f};
     render->SetPlayerView(spawn, 0.0f);
+    render->SetLocomotionSource(&services.player->Locomotion());
     if (services.world->HasLoadedRoom()) {
         const Room& room = services.world->LoadedRoom();
         render->SetGridData(room.grid.Data().data(),
@@ -417,8 +426,11 @@ int RunComposition(const GameConfig& config) {
 
     if (config.smoke && config.save_after_smoke) {
         // Smoke save: real determinism sections through the atomic writer.
+        // Includes player locomotion, world facts/infra, narrative storylet
+        // runtime, RNG, and event journal (F-15 closure).
         std::vector<SaveSection> sections;
-        std::vector<uint8_t> rng_bytes, events_bytes;
+        std::vector<uint8_t> rng_bytes, events_bytes, player_bytes,
+            world_bytes, narrative_bytes;
         {
             Serializer s(rng_bytes);
             sim_rng.Save(s);
@@ -427,8 +439,39 @@ int RunComposition(const GameConfig& config) {
             Serializer s(events_bytes);
             events.Save(s);
         }
+        {
+            Serializer s(player_bytes);
+            const LocomotionState& loco = services.player->Locomotion();
+            s.WriteF32(loco.position.x);
+            s.WriteF32(loco.position.y);
+            s.WriteF32(loco.position.z);
+            s.WriteF32(loco.yaw);
+            s.WriteU8(static_cast<uint8_t>(loco.posture));
+            s.WriteU8(static_cast<uint8_t>(loco.traversal));
+            s.WriteU8(loco.contact.grounded ? 1 : 0);
+        }
+        {
+            Serializer s(world_bytes);
+            services.world->Infra().Save(s);
+            const std::vector<WorldFact> facts = services.world->Facts().Snapshot();
+            s.WriteU32(static_cast<uint32_t>(facts.size()));
+            for (const auto& f : facts) {
+                WriteId(s, f.id);
+                s.WriteU8(std::holds_alternative<bool>(f.value) &&
+                                  std::get<bool>(f.value)
+                              ? 1
+                              : 0);
+            }
+        }
+        {
+            Serializer s(narrative_bytes);
+            services.narrative->Storylets().Save(s);
+        }
+        sections.push_back({SaveSectionId::Player, std::move(player_bytes)});
+        sections.push_back({SaveSectionId::World, std::move(world_bytes)});
         sections.push_back({SaveSectionId::Rng, std::move(rng_bytes)});
         sections.push_back({SaveSectionId::Events, std::move(events_bytes)});
+        sections.push_back({SaveSectionId::Narrative, std::move(narrative_bytes)});
         // Ensure the runtime saves directory exists (best-effort).
         std::error_code ec;
         std::filesystem::create_directories("saves", ec);

@@ -30,6 +30,8 @@ enum SegmentFlag : uint8_t {
     SegFloorRise = 1,   // lower wall caused by a raised floor
     SegCeilingDrop = 2, // upper wall caused by a lowered ceiling
     SegFullWall = 3,    // boundary with no opening at all
+    SegFloorDrop = 4,   // trench wall: far floor lower than near floor
+    SegCeilingRise = 5, // far ceiling higher than near ceiling
 };
 
 struct OccludingSegment {

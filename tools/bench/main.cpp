@@ -56,9 +56,9 @@ int main() {
 
     writeover::PrintCsv("raycast_column_sweep", ray_sampler.Compute());
     const writeover::FrameStats stats = ray_sampler.Compute();
-    // Budget gate: 240 columns must complete in <4ms p99 at foundation scale;
-    // this is a REAL check on the reference machine, not a fabricated number.
-    const bool pass = stats.p99_ms < 4.0;
+    // Budget gate: 240 columns must complete in <4ms worst-1% avg at
+    // foundation scale; a REAL check on the reference machine.
+    const bool pass = stats.worst_1pct_avg_ms < 4.0;
     std::printf("BUDGET=%s\n", pass ? "PASS" : "FAIL");
     return pass ? 0 : 2;
 }

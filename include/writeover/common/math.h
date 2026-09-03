@@ -41,6 +41,14 @@ inline Vec3 Normalize(const Vec3& v) {
     return v * (1.0f / len);
 }
 
+inline Vec2 Normalize(const Vec2& v) {
+    const float len = Length(v);
+    if (len <= kEpsVelocity) {
+        return Vec2{0.0f, 0.0f};
+    }
+    return v * (1.0f / len);
+}
+
 inline float Clamp(float v, float lo, float hi) {
     return std::max(lo, std::min(v, hi));
 }

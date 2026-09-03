@@ -30,6 +30,23 @@ bool CheckNear(float a, float b, float eps, const char* file, int line);
 
 } // namespace writeover
 
-#define WO_CHECK(expr)                    ::writeover::Check((expr), __FILE__, __LINE__, #expr)
-#define WO_CHECK_EQ(a, b)                 ::writeover::CheckEqI((a), (b), __FILE__, __LINE__)
-#define WO_CHECK_NEAR(a, b, eps)          ::writeover::CheckNear((a), (b), (eps), __FILE__, __LINE__)
+// Fail-fast macros: assertion failure causes immediate test function return.
+// This ensures the test process exit != 0 when assertions fail.
+#define WO_CHECK(expr) \
+    do { \
+        if (!::writeover::Check((expr), __FILE__, __LINE__, #expr)) { \
+            return false; \
+        } \
+    } while (0)
+#define WO_CHECK_EQ(a, b) \
+    do { \
+        if (!::writeover::CheckEqI((a), (b), __FILE__, __LINE__)) { \
+            return false; \
+        } \
+    } while (0)
+#define WO_CHECK_NEAR(a, b, eps) \
+    do { \
+        if (!::writeover::CheckNear((a), (b), (eps), __FILE__, __LINE__)) { \
+            return false; \
+        } \
+    } while (0)

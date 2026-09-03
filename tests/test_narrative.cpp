@@ -133,6 +133,52 @@ bool JudgeCheckpointBasics() {
            judge.Seed() == 0xABCD;
 }
 
+// HK-6: a typed WorldCommandAction (not a marker) must survive Save->Load.
+// This proves content-compiled world commands keep their payload (F-09
+// closure): SetDoor/SetPower tags and params round-trip byte-exactly.
+bool WorldCommandActionRoundTrip() {
+    Storylet s;
+    s.id = StoryletId::New(5);
+    s.text_id = "cmd_roundtrip";
+    s.priority = 10;
+    WorldCommandAction door;
+    door.command = CommandSetDoor{DoorId::New(42), true};
+    WorldCommandAction power;
+    power.command = CommandSetPower{SystemId::New(7), false};
+    s.actions.push_back(door);
+    s.actions.push_back(power);
+
+    StoryletEngine engine;
+    engine.Register(s);
+
+    std::vector<uint8_t> bytes;
+    Serializer ser(bytes);
+    engine.Save(ser);
+    WO_CHECK(!bytes.empty());
+
+    Deserializer der(bytes.data(), bytes.size());
+    StoryletEngine restored;
+    restored.Load(der);
+    WO_CHECK(!der.HasError());
+    WO_CHECK_EQ(static_cast<int64_t>(restored.Count()), 1);
+
+    const auto& actions = restored.SelectEligible(
+        FactStore{}, {}, {}, {}, 1, 0)->actions;
+    WO_CHECK_EQ(static_cast<int64_t>(actions.size()), 2);
+    const auto& a0 = std::get<WorldCommandAction>(actions[0]).command;
+    const auto& a1 = std::get<WorldCommandAction>(actions[1]).command;
+    if (!std::holds_alternative<CommandSetDoor>(a0) ||
+        !std::holds_alternative<CommandSetPower>(a1)) {
+        return false;
+    }
+    const auto& d0 = std::get<CommandSetDoor>(a0);
+    const auto& p1 = std::get<CommandSetPower>(a1);
+    WO_CHECK(d0.door == DoorId::New(42));
+    WO_CHECK(d0.open);
+    WO_CHECK(p1.system == SystemId::New(7));
+    return !p1.powered;
+}
+
 } // namespace
 
 void RegisterNarrativeTests(TestHarness& test) {
@@ -144,6 +190,7 @@ void RegisterNarrativeTests(TestHarness& test) {
     test.Add("causality.ledger_ring", &CausalityLedgerRing);
     test.Add("dialog.queue_expiry", &DialogQueueExpiry);
     test.Add("judge.checkpoint_basics", &JudgeCheckpointBasics);
+    test.Add("storylet.world_command_round_trip", &WorldCommandActionRoundTrip);
 }
 
 } // namespace writeover

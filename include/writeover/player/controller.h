@@ -44,6 +44,10 @@ inline constexpr float kGravity = 9.8f;
 inline constexpr float kMaxFallVelocity = 18.0f;
 inline constexpr float kJumpVelocity = 4.6f;
 inline constexpr uint16_t kJumpCooldownFrames = 30;  // 0.25s at 120Hz
+// Auto step-up height (P0 ~0.35m). Steps above this are NOT auto-climbed.
+inline constexpr float kMaxStepHeight = 0.35f;
+// Vertical epsilon for ground contact probes.
+inline constexpr float kGroundProbeEpsilon = 0.05f;
 
 AABB GetPostureBox(Posture posture, const Vec3& pos);
 
@@ -53,6 +57,41 @@ bool CanFit(Posture posture, const Vec3& pos, const IWorldQuery& world);
 // Axis-separated sweep test (same policy as IntegrateLocomotion).
 bool CanMove(const Vec3& from, const Vec3& to, Posture posture,
              const IWorldQuery& world);
+
+// HK-3 GroundProbe: true iff the feet are supported by a floor within
+// kGroundProbeEpsilon below (standing on the floor stays grounded; F-16).
+bool GroundProbe(const LocomotionState& ls, const IWorldQuery& world);
+
+// HK-3 StepUp: tries to auto-step up to kMaxStepHeight when horizontal
+// movement is blocked by a floor rise. Returns true if the step was taken
+// (position advanced). Deterministic; no animation state.
+bool TryStepUp(LocomotionState& ls, const Vec2& move_dir, float speed,
+               float dt, const IWorldQuery& world);
+
+// HK-3 StepDown: true iff a floor exists within step-down range below
+// (falling onto a lower floor continues walking instead of falling).
+bool StepDownAvailable(const LocomotionState& ls, const IWorldQuery& world);
+
+// HK-3 HeadCollision: true iff a ceiling hit cancels upward velocity.
+bool HeadCollision(const LocomotionState& ls, const IWorldQuery& world);
+
+// HK-3 LeanClamp: returns the max lean offset magnitude (0..kLeanOffset)
+// that fits without wall penetration in the given direction. 0 = no lean.
+float LeanClamp(const LocomotionState& ls, Lean direction,
+                const IWorldQuery& world);
+
+// HK-3 NearWallWeaponQuery: distance to the nearest wall in the facing
+// direction (for weapon lower/ADS restriction). Returns kMaxStepHeight*2
+// style small distance when very close, else the actual distance.
+float NearWallDistance(const LocomotionState& ls, const IWorldQuery& world);
+
+// HK-3 eligibility queries (pure geometry; no animation state).
+bool VaultEligibility(float obstacle_top, float obstacle_height,
+                      float available_clearance);
+bool MantleEligibility(float obstacle_top, float obstacle_height,
+                       float available_clearance);
+bool LadderEligibility(bool face_ladder, float ladder_height,
+                       float headroom);
 
 float GetMoveSpeed(Posture posture, bool sprint);
 

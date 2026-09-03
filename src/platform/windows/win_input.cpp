@@ -108,23 +108,25 @@ public:
         constexpr DWORD kMaxEvents = 32;
         INPUT_RECORD records[kMaxEvents];
         DWORD count = 0;
-        if (!PeekConsoleInputA(input_handle_, records, kMaxEvents, &count)) {
+        // ReadConsoleInput consumes events; remaining events stay in the
+        // buffer for the next Poll (no FlushConsoleInputBuffer: that would
+        // DROP pending events, which is exactly the F-03 bug).
+        if (!ReadConsoleInputA(input_handle_, records, kMaxEvents, &count)) {
             return false;
         }
+        // Process key down AND key up events (F-03 closure). Key-up must be
+        // propagated so gameplay can detect releases (no sticky keys).
         for (DWORD i = 0; i < count; ++i) {
-            if (records[i].EventType == KEY_EVENT &&
-                records[i].Event.KeyEvent.bKeyDown) {
+            if (records[i].EventType == KEY_EVENT) {
                 const PhysicalKey key = MapVk(records[i].Event.KeyEvent.wVirtualKeyCode);
                 if (key != PhysicalKey::Unknown) {
                     out_event.key = key;
                     out_event.pressed = records[i].Event.KeyEvent.bKeyDown != FALSE;
                     out_event.analog = 0.0f;
-                    FlushConsoleInputBuffer(input_handle_);
                     return true;
                 }
             }
         }
-        FlushConsoleInputBuffer(input_handle_);
         return false;
     }
 

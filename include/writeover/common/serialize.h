@@ -19,6 +19,7 @@ public:
     void WriteU32(uint32_t v);
     void WriteU64(uint64_t v);
     void WriteI32(int32_t v) { WriteU32(static_cast<uint32_t>(v)); }
+    void WriteI8(int8_t v) { WriteU8(static_cast<uint8_t>(v)); }
     void WriteF32(float v);
     void WriteF64(double v);
     void WriteBytes(const void* data, size_t n);
@@ -43,10 +44,12 @@ public:
     uint32_t ReadU32();
     uint64_t ReadU64();
     int32_t ReadI32() { return static_cast<int32_t>(ReadU32()); }
+    int8_t ReadI8() { return static_cast<int8_t>(ReadU8()); }
     float ReadF32();
     double ReadF64();
     void ReadBytes(void* out, size_t n);
     std::string ReadString();
+    void Skip(size_t n) { pos_ += n; if (pos_ > size_) { pos_ = size_; error_ = true; } }
 
     size_t Position() const { return pos_; }
     size_t Remaining() const { return size_ - pos_; }

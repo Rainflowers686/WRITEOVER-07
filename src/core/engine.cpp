@@ -38,6 +38,13 @@ int Engine::Run(uint64_t max_frames) {
                 for (const auto module : modules_) {
                     module->SimTick(*context_.clock);
                 }
+                // Event fan-out: dispatch all events posted during this tick.
+                // Events posted during dispatch go to next_pending_ and will be
+                // dispatched in the next tick (F-06: same-tick mutation is not
+                // visible until next tick; this is the chosen semantics).
+                if (context_.events != nullptr) {
+                    context_.events->Dispatch();
+                }
                 context_.clock->Tick();
             }
             ++sim_ticks;

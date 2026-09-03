@@ -45,7 +45,7 @@ def stable_id(name: str, registry):
     return registry[name]
 
 
-def compile_room(json_path: Path, out_dir: Path):
+def compile_room(json_path: Path, out_dir: Path, room_id: int):
     try:
         data = json.loads(json_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -73,7 +73,9 @@ def compile_room(json_path: Path, out_dir: Path):
     flags_map = {"solid": 1, "door": 2, "breakable": 4, "special": 8}
 
     body = bytearray()
-    body += struct.pack("<Q", 1)  # RoomId (content-assigned by compiler)
+    # Stable RoomId assigned by the compiler: 1..N in sorted file order
+    # (F-11 closure: no more hardcoded 1 for every room).
+    body += struct.pack("<Q", room_id)
     body += utf8(name)
     body += struct.pack("<ii", w, h)
     spawn = data.get("spawnPoint", {"x": 1.5, "y": 1.5, "z": 0.0, "yaw": 0.0})
@@ -193,7 +195,21 @@ def compile_storylets(json_path: Path, out_dir: Path, fact_registry):
             elif atype == "dialog":
                 body += utf8(a.get("textId", ""))
             elif atype == "worldcommand":
-                body += struct.pack("<B", 0)  # marker (runtime-built commands)
+                cmd = a.get("command", a.get("cmd", "interact"))
+                if cmd == "interact":
+                    body += struct.pack("<B", 7)  # CommandInteract
+                elif cmd == "usecheckpoint":
+                    body += struct.pack("<B", 10)  # CommandUseCheckpoint
+                elif cmd == "setdoor":
+                    body += struct.pack("<B", 9)  # CommandSetDoor
+                    body += struct.pack("<Q", int(a.get("doorId", 0)))
+                    body += struct.pack("<B", 1 if a.get("open", True) else 0)
+                elif cmd == "setpower":
+                    body += struct.pack("<B", 8)  # CommandSetPower
+                    body += struct.pack("<Q", int(a.get("systemId", 0)))
+                    body += struct.pack("<B", 1 if a.get("powered", True) else 0)
+                else:
+                    fail(json_path.name, f"unknown world command '{cmd}'")
             elif atype == "endgame":
                 body += struct.pack("<B", int(a.get("ending", 0)))
     out = out_dir / "storylets" / "storylets.bin"
@@ -215,6 +231,55 @@ def main():
     data_dir = Path(args.data_dir)
     out_dir = Path(args.out_dir)
 
+    # --check: compile to a fresh temp dir and byte-compare against the
+    # existing compiled outputs (F-10 closure: detects schema drift and
+    # non-deterministic compilation).
+    check_errors = 0
+    if args.check:
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_dir = Path(tmp)
+            _compile_all(data_dir, tmp_dir)
+            if ERRORS:
+                for err in ERRORS:
+                    print(f"CONTENT ERROR: {err}", file=sys.stderr)
+                sys.exit(1)
+            for produced in sorted(tmp_dir.rglob("*")):
+                if not produced.is_file():
+                    continue
+                existing = out_dir / produced.relative_to(tmp_dir)
+                if not existing.exists():
+                    print(f"CHECK ERROR: {existing} missing (schema drift?)",
+                          file=sys.stderr)
+                    check_errors += 1
+                    continue
+                if produced.read_bytes() != existing.read_bytes():
+                    print(f"CHECK ERROR: {existing} differs from recompile "
+                          f"(non-deterministic or schema drift)",
+                          file=sys.stderr)
+                    check_errors += 1
+        if check_errors:
+            sys.exit(1)
+        print(f"contentc --check: OK (deterministic recompile matches)")
+        sys.exit(0)
+
+    _compile_all(data_dir, out_dir)
+    if ERRORS:
+        for err in ERRORS:
+            print(f"CONTENT ERROR: {err}", file=sys.stderr)
+        sys.exit(1)
+    room_files = sorted(data_dir.glob("rooms/*.json"))
+    fact_files = sorted(data_dir.glob("facts/*.json"))
+    storylet_files = sorted(data_dir.glob("storylets/*.json"))
+    print(f"contentc: OK ({len(room_files)} rooms, {len(fact_files)} fact files, "
+          f"{len(storylet_files)} storylet files)")
+    sys.exit(0)
+
+
+def _compile_all(data_dir: Path, out_dir: Path):
+    """Compiles every authoring JSON under data_dir into out_dir."""
+    global ERRORS
+    ERRORS = []
     room_files = sorted(data_dir.glob("rooms/*.json"))
     fact_files = sorted(data_dir.glob("facts/*.json"))
     storylet_files = sorted(data_dir.glob("storylets/*.json"))
@@ -234,20 +299,12 @@ def main():
                 fact_registry[fid] = next_fact_id
                 next_fact_id += 1
 
-    for path in room_files:
-        compile_room(path, out_dir)
+    for index, path in enumerate(room_files, start=1):
+        compile_room(path, out_dir, index)
     for path in fact_files:
         compile_facts(path, out_dir)
     for path in storylet_files:
         compile_storylets(path, out_dir, fact_registry)
-
-    if ERRORS:
-        for err in ERRORS:
-            print(f"CONTENT ERROR: {err}", file=sys.stderr)
-        sys.exit(1)
-    print(f"contentc: OK ({len(room_files)} rooms, {len(fact_files)} fact files, "
-          f"{len(storylet_files)} storylet files)")
-    sys.exit(0)
 
 
 if __name__ == "__main__":

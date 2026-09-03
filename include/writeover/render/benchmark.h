@@ -12,7 +12,8 @@ namespace writeover {
 struct FrameStats {
     size_t count = 0;
     double avg_ms = 0.0;
-    double p99_ms = 0.0;   // 1% low: average frame time of the slowest 1%
+    double worst_1pct_avg_ms = 0.0;  // average frame time of the slowest 1%
+    double one_pct_low_fps = 0.0;     // 1000 / worst_1pct_avg_ms
     double min_ms = 0.0;
     double max_ms = 0.0;
 };
@@ -27,7 +28,7 @@ private:
     std::vector<double> samples_;
 };
 
-// Prints one CSV line: scenario,count,avg_ms,p99_ms,min_ms,max_ms
+// Prints one CSV line: scenario,count,avg_ms,worst_1pct_avg_ms,min_ms,max_ms
 void PrintCsv(const char* scenario, const FrameStats& stats);
 
 } // namespace writeover

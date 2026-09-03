@@ -1,0 +1,160 @@
+# FABLE HARDENING VALIDATION
+
+## ENVIRONMENT
+- OS: Windows 10.0.26200
+- Shell: PowerShell
+- CMake: 3.29.2
+- Compiler: MSVC 19.44.35228.0
+- Repo root: `d:\Edge Download\MUD游戏\WRITEOVER-07`
+
+## BASELINE_REPRODUCTION
+
+### `cmake --preset debug`
+- exit code: 0
+- result: PASS
+
+### `cmake --build --preset debug --config Debug`
+- exit code: 0
+- result: PASS
+
+### `ctest --preset debug --output-on-failure`
+- exit code: 0
+- result: PASS
+
+### `cmake --preset release`
+- exit code: 0
+- result: PASS
+
+### `cmake --build --preset release --config Release`
+- exit code: 0
+- result: PASS
+
+### `scripts/smoke.ps1`
+- exit code: 0
+- result: PASS
+
+### `scripts/bench.ps1`
+- exit code: 0
+- result: PASS
+- output: `raycast_column_sweep,240,0.033,0.042,0.030,0.045`
+
+### `scripts/contract_check.ps1`
+- exit code: 0
+- result: PASS
+
+### `python tools/audit/static_audit.py .`
+- exit code: 0
+- result: PASS (COUNT=0)
+
+### `python tools/contentc/contentc.py --data-dir data --out-dir data --check`
+- exit code: 0
+- result: PASS (deterministic recompile matches)
+
+## G0_TEST_ORACLE
+
+### `./out/build/debug/Debug/writeover_tests.exe`
+- exit code: 0
+- result: PASS (88 tests, 0 failed)
+- meta-tests:
+  - `test_harness.check_detects_failure` PASS
+  - `test_harness.failfast_macro_proves_failure` PASS
+  - `test_harness.check_pass_keeps_going` PASS
+- intentionally-failing assertion output exists by design and is correctly reported as FAIL inside test output, not PASS.
+
+## HK1
+
+### `writeover_tests.exe`
+- exit code: 0
+- result: PASS
+- coverage:
+  - `replay.save_load_resume`
+  - `save.all_7_sections_legal`
+  - `save.duplicate_section_rejected`
+  - `save.unknown_section_rejected`
+  - `event.fanout_all_consumers_see_all`
+  - `event.same_tick_next_tick_semantics`
+
+## HK2
+
+### `writeover_tests.exe`
+- exit code: 0
+- result: PASS
+- coverage:
+  - `reference_renderer_visible`
+  - `reference_renderer_deterministic`
+  - 18 golden scenes (G01-G18)
+
+## HK3
+
+### `writeover_tests.exe`
+- exit code: 0
+- result: PASS
+- coverage:
+  - `controller.grounded_idle_stable`
+  - `controller.step_up_20cm`
+  - `controller.step_up_50cm_rejected`
+  - `controller.lean_clamp_against_wall`
+  - `controller.head_collision_stops_jump`
+  - `controller.falling_not_grounded_in_air`
+  - `controller.no_nan_inf`
+  - `controller.save_load_round_trip`
+
+## HK4
+
+### `writeover_tests.exe`
+- exit code: 0
+- result: PASS
+- notes: key-up handling in keyboard backend fixed; `FlushConsoleInputBuffer` removed.
+
+## HK5
+
+### `writeover_tests.exe`
+- exit code: 0
+- result: PASS
+- notes: benchmark naming fixed to `worst_1pct_avg_ms`.
+
+## HK6
+
+### `python tools/contentc/contentc.py --data-dir data --out-dir data --check`
+- exit code: 0
+- result: PASS
+
+## FINAL_BUILD
+
+### `cmake --build --preset debug --config Debug`
+- exit code: 0
+- result: PASS
+
+### `cmake --build --preset release --config Release`
+- exit code: 0
+- result: PASS
+
+## FINAL_TEST
+
+### `ctest --preset debug --output-on-failure`
+- exit code: 0
+- result: PASS
+
+## FINAL_BENCH
+
+### `scripts/bench.ps1`
+- exit code: 0
+- result: PASS
+- output: `BUDGET=PASS`
+
+## MANUAL_UNVERIFIED
+- Raw Input hardware-specific end-to-end test: UNVERIFIED (no such device/host available in this session)
+- Physical controller/keyboard/IME manual QA: UNVERIFIED
+- Windows Terminal submit timing on a live foreground terminal: UNVERIFIED
+
+## KNOWN_LIMITATIONS
+- `WorldCommandAction` remains marker-only in content; runtime commands are still code-constructed.
+- Two-room synthetic refs are not yet populated in content data files.
+- Raw Input remains a conditional fallback path for a later pass.
+
+## Verdict
+- `INDEPENDENT_REPRODUCED = YES`
+- `TEST_ORACLE_TRUSTED = YES`
+- `SIX_LUNA_PARALLEL_READY = YES`
+- `OPEN_FATAL = 0`
+- `OPEN_MAJOR = 0`

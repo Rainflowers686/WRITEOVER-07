@@ -91,7 +91,18 @@ RayResult CastColumnRay(const RayConfig& config,
         int next_col = col;
         int next_row = row;
         float t_boundary = 0.0f;
-        if (t_max_x <= t_max_y) {
+        // Corner tie policy (F-21): when both t values are equal within
+        // epsilon, the ray passes exactly through a grid corner. Advance
+        // BOTH axes in the same step (supercover-style two-axis advance) so
+        // no spurious corner-only intermediate cell is visited.
+        constexpr float kCornerTieEpsilon = 1e-6f;
+        if (std::fabs(t_max_x - t_max_y) <= kCornerTieEpsilon) {
+            t_boundary = t_max_x;
+            t_max_x += t_delta_x;
+            t_max_y += t_delta_y;
+            next_col = col + (step_x > 0.0f ? 1 : -1);
+            next_row = row + (step_y > 0.0f ? 1 : -1);
+        } else if (t_max_x < t_max_y) {
             t_boundary = t_max_x;
             t_max_x += t_delta_x;
             next_col = col + (step_x > 0.0f ? 1 : -1);
@@ -124,13 +135,24 @@ RayResult CastColumnRay(const RayConfig& config,
             break;
         }
 
+        // Bidirectional height boundary faces (F-20 closure).
         if (far_cell.floor_z > near_cell.floor_z) {
             PushSegment(result, near_cell.floor_z, far_cell.floor_z, distance,
                         far_cell.material, far_cell.light, SegFloorRise);
+        } else if (far_cell.floor_z < near_cell.floor_z) {
+            // Floor drop / trench: the far cell's floor is lower; the trench
+            // wall spans [far_floor, near_floor] at this boundary.
+            PushSegment(result, far_cell.floor_z, near_cell.floor_z, distance,
+                        near_cell.material, near_cell.light, SegFloorDrop);
         }
         if (far_cell.ceiling_z < near_cell.ceiling_z) {
             PushSegment(result, far_cell.ceiling_z, near_cell.ceiling_z, distance,
                         far_cell.material, far_cell.light, SegCeilingDrop);
+        } else if (far_cell.ceiling_z > near_cell.ceiling_z) {
+            // Ceiling rise: far cell has a higher ceiling; the face at this
+            // boundary spans [near_ceiling, far_ceiling].
+            PushSegment(result, near_cell.ceiling_z, far_cell.ceiling_z, distance,
+                        far_cell.material, far_cell.light, SegCeilingRise);
         }
 
         col = next_col;

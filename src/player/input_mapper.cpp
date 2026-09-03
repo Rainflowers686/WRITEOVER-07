@@ -34,6 +34,14 @@ void InputMapper::ResetToDefaults() {
 }
 
 void InputMapper::SetBinding(GameAction action, PhysicalKey key) {
+    // Clear any existing binding that maps to the same PhysicalKey
+    // (replace conflict policy). This ensures MapKey returns the most
+    // recently set action for a given key.
+    for (size_t i = 0; i < kGameActionCount; ++i) {
+        if (bindings_[i] == key) {
+            bindings_[i] = PhysicalKey::Unknown;
+        }
+    }
     bindings_[static_cast<size_t>(action)] = key;
 }
 

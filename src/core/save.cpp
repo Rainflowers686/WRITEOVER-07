@@ -72,7 +72,7 @@ Result<std::vector<SaveSection>> ParseSaveBuffer(const uint8_t* data, size_t siz
         return Result<std::vector<SaveSection>>::Err(
             kSaveMagic + 2, "save file too large");
     }
-    if (section_count >= static_cast<uint32_t>(SaveSectionId::Count)) {
+    if (section_count > static_cast<uint32_t>(SaveSectionId::Count)) {
         return Result<std::vector<SaveSection>>::Err(
             kSaveMagic + 3, "save section count out of range");
     }
@@ -85,6 +85,7 @@ Result<std::vector<SaveSection>> ParseSaveBuffer(const uint8_t* data, size_t siz
 
     std::vector<SaveSection> sections;
     sections.reserve(section_count);
+    uint32_t seen_section_ids[8] = {0, 0, 0, 0, 0, 0, 0, 0};  // Count = 7 + 1 sentinel
     for (uint32_t i = 0; i < section_count; ++i) {
         SaveSectionHeader header;
         header.section_id = d.ReadU32();
@@ -94,6 +95,11 @@ Result<std::vector<SaveSection>> ParseSaveBuffer(const uint8_t* data, size_t siz
             return Result<std::vector<SaveSection>>::Err(
                 kSaveMagic + 5, "unknown save section id");
         }
+        if (seen_section_ids[header.section_id] != 0) {
+            return Result<std::vector<SaveSection>>::Err(
+                kSaveMagic + 10, "duplicate save section id");
+        }
+        seen_section_ids[header.section_id] = 1;
         if (header.data_size > d.Remaining() - 4) {
             return Result<std::vector<SaveSection>>::Err(
                 kSaveMagic + 6, "save section truncated");

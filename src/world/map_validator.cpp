@@ -42,9 +42,9 @@ std::vector<ValidationIssue> MapValidator::Validate(const Room& room) const {
                 issues.push_back({ValidationIssue::Severity::Error,
                                   "ceiling not above floor", loc.str()});
             }
-            if (cell.light > 255) {
-                issues.push_back({ValidationIssue::Severity::Error,
-                                  "light out of range", loc.str()});
+            if (cell.light < 1) {
+                issues.push_back({ValidationIssue::Severity::Warning,
+                                  "cell has zero light level", loc.str()});
             }
             if (cell.IsSolid()) {
                 ++solid_count;

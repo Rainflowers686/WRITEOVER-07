@@ -1,6 +1,16 @@
 # AGENTS.md — Constitutional rules for every Codex agent in WRITEOVER-07.
 # Read BEFORE touching any file. Violations are rejected at review.
 
+## 0. Fable-5 hardening is DONE (2026-09-03)
+- Test oracle is fail-fast; test evidence is trustworthy (see
+  `docs/reference/HK1_SIM_EVENT_SAVE.md`, G0 in
+  `docs/audit/04_HARD_KERNEL_GATES.md`).
+- HK-1..HK-6 reference implementations + docs:
+  `docs/reference/HK1_SIM_EVENT_SAVE.md` … `HK6_CONTENT_STORYLET.md`.
+- Static audit is now a regression gate for the fixes:
+  `python tools/audit/static_audit.py .` (must be COUNT=0).
+- Public contract changes recorded in `docs/adr/ADR-0002-fable-hardening-contract-changes.md`.
+
 ## 1. Mandatory reading order
 1. `AGENTS.md` (this file)
 2. `include/writeover/**` public contracts (frozen)

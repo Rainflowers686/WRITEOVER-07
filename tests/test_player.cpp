@@ -6,6 +6,9 @@
 #include "writeover/player/weapon.h"
 #include "writeover/world/grid.h"
 
+#include <cmath>
+#include <vector>
+
 namespace writeover {
 
 namespace {
@@ -128,6 +131,256 @@ bool HitscanWalls() {
     return !res.hit;
 }
 
+// ---------------------------------------------------------------------------
+// HK-3 property tests (F-16/F-17/F-18 closure)
+// ---------------------------------------------------------------------------
+
+// Idle on open floor stays grounded across ticks (F-16 regression).
+bool GroundedIdleStable() {
+    const Grid grid = MakeOpenGrid();
+    GridWorldQuery query(&grid);
+    LocomotionState ls;
+    ls.position = Vec3{1.5f, 1.5f, 0.0f};
+    ls.contact.grounded = true;
+    for (int i = 0; i < 120; ++i) {  // 120 ticks @ 120Hz = 1 second
+        IntegrateLocomotion(ls, Vec2{0.0f, 0.0f}, false, query,
+                            SimClock::kFixedDeltaTime);
+        WO_CHECK(ls.contact.grounded);  // never lose ground on flat floor
+        WO_CHECK_NEAR(ls.position.z, 0.0f, 0.01f);  // no drift
+    }
+    return true;
+}
+
+// 0.2m step-up works (F-17 closure).
+bool StepUp20cm() {
+    Grid grid = MakeOpenGrid(8, 4);
+    // Raise the whole right side (cols 3-7) so the player stays on the
+    // raised floor after crossing the step at x=3.0.
+    for (int32_t r = 0; r < 4; ++r) {
+        for (int32_t c = 3; c < 8; ++c) {
+            GridCell cell = grid.GetCell(c, r);
+            cell.floor_height = 0.2f;
+            grid.SetCell(c, r, cell);
+        }
+    }
+    GridWorldQuery query(&grid);
+    LocomotionState ls;
+    ls.position = Vec3{1.5f, 1.5f, 0.0f};
+    ls.contact.grounded = true;
+    // ~70 ticks to cross x=3.0 (velocity ramp-up); 120 ticks keeps the
+    // player on the raised right side.
+    for (int i = 0; i < 120; ++i) {
+        IntegrateLocomotion(ls, Vec2{1.0f, 0.0f}, false, query,
+                            SimClock::kFixedDeltaTime);
+    }
+    WO_CHECK(ls.position.x > 3.0f);
+    // After crossing the step boundary at x=3.0, feet snap to the raised
+    // floor (0.2m) via the Z-axis floor snap.
+    WO_CHECK_NEAR(ls.position.z, 0.2f, 0.1f);
+    return true;
+}
+
+// 0.5m step-up does NOT auto-step (maxStep = 0.35m).
+bool StepUp50cmRejected() {
+    Grid grid = MakeOpenGrid(8, 4);
+    // Raise the whole right side (cols 3-7) by 0.5m.
+    for (int32_t r = 0; r < 4; ++r) {
+        for (int32_t c = 3; c < 8; ++c) {
+            GridCell cell = grid.GetCell(c, r);
+            cell.floor_height = 0.5f;
+            grid.SetCell(c, r, cell);
+        }
+    }
+    GridWorldQuery query(&grid);
+    LocomotionState ls;
+    ls.position = Vec3{1.5f, 1.5f, 0.0f};
+    ls.contact.grounded = true;
+    // Try to move in +x through the step boundary at x=3.0.
+    for (int i = 0; i < 120; ++i) {
+        IntegrateLocomotion(ls, Vec2{1.0f, 0.0f}, false, query,
+                            SimClock::kFixedDeltaTime);
+    }
+    // Must NOT cross -- blocked by the 0.5m step (feet stay below 0.5).
+    WO_CHECK(ls.position.x < 3.0f);
+    WO_CHECK(ls.position.z < 0.5f - 0.01f);
+    return true;
+}
+
+// LeanClamp: leaning into a wall returns < kLeanOffset (F-18 closure).
+bool LeanClampAgainstWall() {
+    Grid grid = MakeOpenGrid(8, 4);
+    // Solid wall at col 2 (occupies x=2.0..3.0).
+    for (int32_t r = 0; r < 4; ++r) {
+        GridCell w;
+        w.flags = CellFlag_Solid;
+        grid.SetCell(2, r, w);
+    }
+    GridWorldQuery query(&grid);
+    LocomotionState ls;
+    ls.position = Vec3{1.5f, 1.5f, 0.0f};  // 0.5m from the wall
+    ls.contact.grounded = true;
+    // Leaning right into the wall should be clamped.
+    const float clamped = LeanClamp(ls, Lean::Right, query);
+    WO_CHECK(clamped < kLeanOffset - 0.01f);  // not the full lean
+    // Leaning left away from the wall should be full offset.
+    const float free = LeanClamp(ls, Lean::Left, query);
+    WO_CHECK_NEAR(free, kLeanOffset, 0.01f);
+    return true;
+}
+
+// HeadCollision: standing under a low ceiling cancels positive Z.
+bool HeadCollisionStopsJump() {
+    Grid grid = MakeOpenGrid(6, 4);
+    // Low ceiling at col 1.
+    for (int32_t r = 0; r < 4; ++r) {
+        GridCell c = grid.GetCell(1, r);
+        c.ceiling_height = 2.0f;  // headroom 2.0m (stand collider 1.8m)
+        grid.SetCell(1, r, c);
+    }
+    GridWorldQuery query(&grid);
+    LocomotionState ls;
+    ls.position = Vec3{1.5f, 1.5f, 0.0f};
+    ls.contact.grounded = true;
+    WO_CHECK(!HeadCollision(ls, query));  // clearance > 2m
+    // Jump: should not go above the ceiling.
+    TryJump(ls);
+    for (int i = 0; i < 30; ++i) {
+        IntegrateLocomotion(ls, Vec2{0.0f, 0.0f}, false, query,
+                            SimClock::kFixedDeltaTime);
+        // Head must stay below the ceiling.
+        const float head_z = ls.position.z + kColliderStand;
+        WO_CHECK(head_z <= 2.0f + 0.05f);
+    }
+    return true;
+}
+
+// Falling does not become Grounded in mid-air (F-16 inverse).
+bool FallingNotGroundedInAir() {
+    const Grid grid = MakeOpenGrid(6, 6);
+    GridWorldQuery query(&grid);
+    LocomotionState ls;
+    ls.position = Vec3{1.5f, 1.5f, 0.0f};
+    ls.contact.grounded = true;
+    // Jump off the floor.
+    TryJump(ls);
+    bool ever_airborne = false;
+    for (int i = 0; i < 250; ++i) {  // jump apex ~112 ticks; allow landing
+        IntegrateLocomotion(ls, Vec2{0.0f, 0.0f}, false, query,
+                            SimClock::kFixedDeltaTime);
+        if (!ls.contact.grounded) {
+            ever_airborne = true;
+        }
+        if (ls.contact.grounded && ever_airborne) {
+            // Re-grounded only after actually landing (feet within epsilon
+            // of floor). This is fine.
+            WO_CHECK_NEAR(ls.position.z, 0.0f, kGroundProbeEpsilon + 0.01f);
+            return true;
+        }
+    }
+    // Must have been airborne at some point.
+    return ever_airborne;
+}
+
+// No NaN/Inf in locomotion state after any sequence of inputs.
+bool LocomotionNoNanInf() {
+    const Grid grid = MakeOpenGrid(8, 6);
+    GridWorldQuery query(&grid);
+    LocomotionState ls;
+    ls.position = Vec3{1.5f, 1.5f, 0.0f};
+    ls.contact.grounded = true;
+    const Vec2 inputs[] = {
+        {0.0f, 1.0f}, {0.0f, -1.0f}, {-1.0f, 0.0f}, {1.0f, 0.0f},
+        {0.5f, 0.5f}, {-0.3f, 0.7f}, {0.0f, 0.0f}
+    };
+    for (int frame = 0; frame < 500; ++frame) {
+        const Vec2& dir = inputs[frame % 7];
+        const bool sprint = (frame % 10) < 3;
+        IntegrateLocomotion(ls, dir, sprint, query,
+                            SimClock::kFixedDeltaTime);
+        if (frame % 20 == 0) {
+            TryJump(ls);
+        }
+        if (frame % 50 == 0) {
+            TrySetPosture(ls, (frame % 100 < 50) ? Posture::Crouch : Posture::Stand, query);
+        }
+        WO_CHECK(!std::isnan(ls.position.x));
+        WO_CHECK(!std::isnan(ls.position.y));
+        WO_CHECK(!std::isnan(ls.position.z));
+        WO_CHECK(!std::isinf(ls.position.x));
+        WO_CHECK(!std::isinf(ls.position.y));
+        WO_CHECK(!std::isinf(ls.position.z));
+        WO_CHECK(!std::isnan(ls.velocity.x));
+        WO_CHECK(!std::isnan(ls.velocity.y));
+        WO_CHECK(!std::isnan(ls.velocity.z));
+        WO_CHECK(!std::isinf(ls.velocity.x));
+        WO_CHECK(!std::isinf(ls.velocity.y));
+        WO_CHECK(!std::isinf(ls.velocity.z));
+    }
+    return true;
+}
+
+// Locomotion state save/load preserves semantic state.
+bool LocomotionSaveLoadRoundTrip() {
+    const Grid grid = MakeOpenGrid(6, 6);
+    GridWorldQuery query(&grid);
+    LocomotionState ls;
+    ls.position = Vec3{1.5f, 1.5f, 1.0f};
+    ls.velocity = Vec3{1.0f, 0.5f, -0.3f};
+    ls.posture = Posture::Crouch;
+    ls.traversal = Traversal::Jump;
+    ls.lean = Lean::Left;
+    ls.yaw = 1.0f;
+    ls.pitch = -0.2f;
+    ls.contact.grounded = false;
+    ls.jump_cooldown_frames = 15;
+    // Serialize to bytes.
+    std::vector<uint8_t> bytes;
+    Serializer s(bytes);
+    s.WriteF32(ls.position.x);
+    s.WriteF32(ls.position.y);
+    s.WriteF32(ls.position.z);
+    s.WriteF32(ls.velocity.x);
+    s.WriteF32(ls.velocity.y);
+    s.WriteF32(ls.velocity.z);
+    s.WriteU8(static_cast<uint8_t>(ls.posture));
+    s.WriteU8(static_cast<uint8_t>(ls.traversal));
+    s.WriteU8(static_cast<uint8_t>(ls.lean));
+    s.WriteF32(ls.yaw);
+    s.WriteF32(ls.pitch);
+    s.WriteU8(ls.contact.grounded ? 1 : 0);
+    s.WriteU16(ls.jump_cooldown_frames);
+    // Deserialize.
+    Deserializer d(bytes.data(), bytes.size());
+    LocomotionState restored;
+    restored.position.x = d.ReadF32();
+    restored.position.y = d.ReadF32();
+    restored.position.z = d.ReadF32();
+    restored.velocity.x = d.ReadF32();
+    restored.velocity.y = d.ReadF32();
+    restored.velocity.z = d.ReadF32();
+    restored.posture = static_cast<Posture>(d.ReadU8());
+    restored.traversal = static_cast<Traversal>(d.ReadU8());
+    restored.lean = static_cast<Lean>(d.ReadU8());
+    restored.yaw = d.ReadF32();
+    restored.pitch = d.ReadF32();
+    restored.contact.grounded = d.ReadU8() != 0;
+    restored.jump_cooldown_frames = d.ReadU16();
+    // Compare.
+    WO_CHECK_NEAR(restored.position.x, ls.position.x, 0.001f);
+    WO_CHECK_NEAR(restored.position.y, ls.position.y, 0.001f);
+    WO_CHECK_NEAR(restored.position.z, ls.position.z, 0.001f);
+    WO_CHECK_NEAR(restored.velocity.x, ls.velocity.x, 0.001f);
+    WO_CHECK_NEAR(restored.velocity.y, ls.velocity.y, 0.001f);
+    WO_CHECK_NEAR(restored.velocity.z, ls.velocity.z, 0.001f);
+    WO_CHECK(restored.posture == ls.posture);
+    WO_CHECK(restored.traversal == ls.traversal);
+    WO_CHECK(restored.lean == ls.lean);
+    WO_CHECK_NEAR(restored.yaw, ls.yaw, 0.001f);
+    WO_CHECK_NEAR(restored.pitch, ls.pitch, 0.001f);
+    WO_CHECK(restored.contact.grounded == ls.contact.grounded);
+    return restored.jump_cooldown_frames == ls.jump_cooldown_frames;
+}
+
 } // namespace
 
 void RegisterPlayerTests(TestHarness& test) {
@@ -139,6 +392,15 @@ void RegisterPlayerTests(TestHarness& test) {
     test.Add("player.combat_fire_ammo", &CombatFireAndAmmo);
     test.Add("player.combat_reload", &CombatReloadTransfer);
     test.Add("player.hitscan_open_grid", &HitscanWalls);
+    // HK-3 controller geometry property tests.
+    test.Add("controller.grounded_idle_stable", &GroundedIdleStable);
+    test.Add("controller.step_up_20cm", &StepUp20cm);
+    test.Add("controller.step_up_50cm_rejected", &StepUp50cmRejected);
+    test.Add("controller.lean_clamp_against_wall", &LeanClampAgainstWall);
+    test.Add("controller.head_collision_stops_jump", &HeadCollisionStopsJump);
+    test.Add("controller.falling_not_grounded_in_air", &FallingNotGroundedInAir);
+    test.Add("controller.no_nan_inf", &LocomotionNoNanInf);
+    test.Add("controller.save_load_round_trip", &LocomotionSaveLoadRoundTrip);
 }
 
 } // namespace writeover

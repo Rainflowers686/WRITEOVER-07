@@ -68,11 +68,40 @@ bool WorldEventPayloadRoundTrip() {
 
 } // namespace
 
+namespace {
+
+// Verifies Check() returns false for a failing assertion (proves detection).
+bool CheckDetectsFailure() {
+    return !::writeover::Check(false, __FILE__, __LINE__, "intentional");
+}
+
+// Verifies the fail-fast macro semantics: a function whose WO_CHECK fails
+// returns false (proving the runner will report FAIL).
+bool FailFastMacroProvesFailure() {
+    const auto fails = []() -> bool {
+        WO_CHECK(false);
+        return true; // unreachable when macro is correct
+    };
+    return !fails();
+}
+
+// Verifies a passing assertion keeps the test alive.
+bool CheckPassKeepsGoing() {
+    WO_CHECK(true);
+    return true;
+}
+
+} // namespace
+
 void RegisterCommonTests(TestHarness& test) {
     test.Add("rng.repeatable", &RngRepeatableDeterministic);
     test.Add("rng.state_round_trip", &RngStateRoundTrip);
     test.Add("serialize.round_trip", &SerializeRoundTrip);
     test.Add("event.payload_round_trip", &WorldEventPayloadRoundTrip);
+    // Meta-tests: prove the test oracle is trustworthy (G0 gate).
+    test.Add("test_harness.check_detects_failure", &CheckDetectsFailure);
+    test.Add("test_harness.failfast_macro_proves_failure", &FailFastMacroProvesFailure);
+    test.Add("test_harness.check_pass_keeps_going", &CheckPassKeepsGoing);
 }
 
 } // namespace writeover
