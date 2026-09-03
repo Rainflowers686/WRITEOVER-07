@@ -30,7 +30,7 @@
     },
     {
       "name": "ci",
-      "displayName": "CI",
+      "displayName": "CI (VS2022, matches windows-2022 runner)",
       "generator": "Visual Studio 17 2022",
       "architecture": "x64",
       "binaryDir": "${sourceDir}/out/build/ci",

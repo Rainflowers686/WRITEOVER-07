@@ -270,18 +270,28 @@ bool HeadCollision(const LocomotionState& ls, const IWorldQuery& world) {
 
 float LeanClamp(const LocomotionState& ls, Lean direction,
                 const IWorldQuery& world) {
-    const float offset = (direction == Lean::Left) ? -kLeanOffset : kLeanOffset;
-    const Vec3 lean_pos = Vec3{ls.position.x + offset, ls.position.y, ls.position.z};
+    // Issue F: lean offset is along the camera LOCAL right vector, not the
+    // world X axis. Local right = (-sin(yaw), cos(yaw)).
+    const float sin_y = std::sin(ls.yaw);
+    const float cos_y = std::cos(ls.yaw);
+    const float right_x = -sin_y;
+    const float right_y = cos_y;
+    const float sign = (direction == Lean::Left) ? -1.0f : 1.0f;
+
+    const auto lean_pos_at = [&](float offset_mag) {
+        return Vec3{ls.position.x + right_x * sign * offset_mag,
+                    ls.position.y + right_y * sign * offset_mag,
+                    ls.position.z};
+    };
+
+    const Vec3 lean_pos = lean_pos_at(kLeanOffset);
     const AABB lean_box = GetPostureBox(ls.posture, lean_pos);
     if (world.AabbBlocked(lean_box)) {
         // Binary search for the maximum lean that fits.
         float lo = 0.0f, hi = kLeanOffset;
         for (int iter = 0; iter < 6; ++iter) {
             const float mid = (lo + hi) * 0.5f;
-            const float test_offset = (direction == Lean::Left) ? -mid : mid;
-            const Vec3 test_pos = Vec3{ls.position.x + test_offset,
-                                        ls.position.y, ls.position.z};
-            const AABB test_box = GetPostureBox(ls.posture, test_pos);
+            const AABB test_box = GetPostureBox(ls.posture, lean_pos_at(mid));
             if (!world.AabbBlocked(test_box)) {
                 lo = mid;
             } else {

@@ -162,7 +162,10 @@ int RenderReferenceFrame(const GridCell* cells, int grid_w, int grid_h,
                     row_center - dz * scale));
                 if (row >= 0 && row < screen_h) {
                     CharCell& cell = out[static_cast<size_t>(row) * screen_w + col];
-                    // Depth test: only draw if the cell is not a closer wall.
+                    // Depth test (Issue G): only a wall segment that is BOTH
+                    // closer than the marker AND vertically overlapping the
+                    // marker's screen row occludes it. A low wall below the
+                    // marker (marker glyph above the wall top) stays visible.
                     bool occluded = false;
                     RayConfig cfg;
                     cfg.origin_xy = Vec2{view.origin.x, view.origin.y};
@@ -172,7 +175,17 @@ int RenderReferenceFrame(const GridCell* cells, int grid_w, int grid_h,
                                   fov_per_column;
                     const RayResult col_res = CastColumnRay(cfg, cells, grid_w, grid_h);
                     for (uint32_t i = 0; i < col_res.segment_count; ++i) {
-                        if (col_res.segments[i].distance < distance - 0.05f) {
+                        const OccludingSegment& seg = col_res.segments[i];
+                        if (seg.distance >= distance - 0.05f) {
+                            continue;  // not closer than the marker
+                        }
+                        const WallProjection p =
+                            ProjectWall(seg, eye_z, view.pitch,
+                                        focal_px_per_unit, screen_h);
+                        // Vertical overlap with the marker glyph row.
+                        const float row_f = static_cast<float>(row);
+                        if (row_f >= p.screen_top_y - 0.5f &&
+                            row_f <= p.screen_bottom_y + 0.5f) {
                             occluded = true;
                             break;
                         }

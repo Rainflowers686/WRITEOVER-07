@@ -93,6 +93,36 @@ bool InputMapperRebind() {
     return mapper.MapKey(PhysicalKey::F10) == GameAction::Count;
 }
 
+// Issue B.1: the same PhysicalKey may map to different actions in different
+// contexts (Gameplay Num1 -> WeaponSlot1 vs Dialogue Num1 -> DialogOption1).
+bool InputContextSameKeyDifferentActions() {
+    InputMapper mapper;  // defaults already assign both contexts
+    WO_CHECK(mapper.MapKey(InputContext::Gameplay, PhysicalKey::Num1) ==
+             GameAction::WeaponSlot1);
+    WO_CHECK(mapper.MapKey(InputContext::Dialogue, PhysicalKey::Num1) ==
+             GameAction::DialogOption1);
+    // Num4 exists only in Dialogue context; Gameplay should leave it unmapped.
+    WO_CHECK(mapper.MapKey(InputContext::Gameplay, PhysicalKey::Num4) ==
+             GameAction::Count);
+    return true;
+}
+
+// Issue B.1: within ONE context, duplicate binding still replaces (the old
+// key no longer maps to the replaced action).
+bool InputContextReplaceWithinContext() {
+    InputMapper mapper;
+    // In Gameplay, Num2 currently maps to WeaponSlot2. Rebind to Fire.
+    mapper.SetBinding(InputContext::Gameplay, GameAction::Fire, PhysicalKey::Num2);
+    WO_CHECK(mapper.MapKey(InputContext::Gameplay, PhysicalKey::Num2) ==
+             GameAction::Fire);
+    WO_CHECK(mapper.MapKey(InputContext::Gameplay, PhysicalKey::Num2) !=
+             GameAction::WeaponSlot2);
+    // Dialogue context is untouched.
+    WO_CHECK(mapper.MapKey(InputContext::Dialogue, PhysicalKey::Num2) ==
+             GameAction::DialogOption2);
+    return true;
+}
+
 bool CombatFireAndAmmo() {
     const WeaponDef& pistol = DefaultWeapons()[static_cast<size_t>(WeaponSlot::Pistol)];
     CombatState state;
@@ -209,22 +239,50 @@ bool StepUp50cmRejected() {
 // LeanClamp: leaning into a wall returns < kLeanOffset (F-18 closure).
 bool LeanClampAgainstWall() {
     Grid grid = MakeOpenGrid(8, 4);
-    // Solid wall at col 2 (occupies x=2.0..3.0).
-    for (int32_t r = 0; r < 4; ++r) {
+    // Solid wall at row 2 (y=2.0..3.0). At yaw=0, local right = +y, so
+    // leaning right probes +y direction, which hits this wall.
+    for (int32_t c = 0; c < 8; ++c) {
         GridCell w;
         w.flags = CellFlag_Solid;
-        grid.SetCell(2, r, w);
+        grid.SetCell(c, 2, w);
     }
     GridWorldQuery query(&grid);
     LocomotionState ls;
-    ls.position = Vec3{1.5f, 1.5f, 0.0f};  // 0.5m from the wall
+    ls.position = Vec3{1.5f, 1.5f, 0.0f};  // 0.5m from the wall (row 2 edge at 2.0)
+    ls.yaw = 0.0f;  // facing +x, local right = +y
     ls.contact.grounded = true;
-    // Leaning right into the wall should be clamped.
+    // Leaning right (+y) into the wall should be clamped.
     const float clamped = LeanClamp(ls, Lean::Right, query);
     WO_CHECK(clamped < kLeanOffset - 0.01f);  // not the full lean
-    // Leaning left away from the wall should be full offset.
+    // Leaning left (-y) away from the wall should be full offset.
     const float free = LeanClamp(ls, Lean::Left, query);
     WO_CHECK_NEAR(free, kLeanOffset, 0.01f);
+    return true;
+}
+
+// Issue F: leaning at yaw=90 must clamp in the correct direction (local
+// right = -x when yaw=90). Uses the same wall as LeanClampAgainstWall.
+bool LeanRespectsYaw90() {
+    Grid grid = MakeOpenGrid(8, 4);
+    // Wall at row 2 (y=2.0..3.0).
+    for (int32_t c = 0; c < 8; ++c) {
+        GridCell w;
+        w.flags = CellFlag_Solid;
+        grid.SetCell(c, 2, w);
+    }
+    GridWorldQuery query(&grid);
+    LocomotionState ls;
+    ls.position = Vec3{1.5f, 1.5f, 0.0f};
+    ls.yaw = 3.14159265f * 0.5f;  // 90 deg: facing +y, local right = -x
+    ls.contact.grounded = true;
+    // Leaning right at yaw=90 means -x direction. No wall in -x (col 1 is
+    // open) → should be free.
+    const float right = LeanClamp(ls, Lean::Right, query);
+    WO_CHECK_NEAR(right, kLeanOffset, 0.01f);
+    // Leaning left at yaw=90 means +x direction. No wall in +x (col 2 is
+    // open at row 1) → should be free.
+    const float left = LeanClamp(ls, Lean::Left, query);
+    WO_CHECK_NEAR(left, kLeanOffset, 0.01f);
     return true;
 }
 
@@ -389,6 +447,8 @@ void RegisterPlayerTests(TestHarness& test) {
     test.Add("player.integrate_move_blocked", &IntegrateMoveBlocked);
     test.Add("player.jump_then_land", &JumpThenLand);
     test.Add("player.input_mapper_rebind", &InputMapperRebind);
+    test.Add("input.context_same_key_different_actions", &InputContextSameKeyDifferentActions);
+    test.Add("input.context_replace_within_context", &InputContextReplaceWithinContext);
     test.Add("player.combat_fire_ammo", &CombatFireAndAmmo);
     test.Add("player.combat_reload", &CombatReloadTransfer);
     test.Add("player.hitscan_open_grid", &HitscanWalls);
@@ -397,6 +457,7 @@ void RegisterPlayerTests(TestHarness& test) {
     test.Add("controller.step_up_20cm", &StepUp20cm);
     test.Add("controller.step_up_50cm_rejected", &StepUp50cmRejected);
     test.Add("controller.lean_clamp_against_wall", &LeanClampAgainstWall);
+    test.Add("controller.lean_respects_yaw_90", &LeanRespectsYaw90);
     test.Add("controller.head_collision_stops_jump", &HeadCollisionStopsJump);
     test.Add("controller.falling_not_grounded_in_air", &FallingNotGroundedInAir);
     test.Add("controller.no_nan_inf", &LocomotionNoNanInf);

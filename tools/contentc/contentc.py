@@ -37,15 +37,26 @@ def utf8(text: str) -> bytes:
     return struct.pack("<I", len(encoded)) + encoded
 
 
+# FNV-1a 64-bit: stable deterministic ID derived from the canonical string id.
+# Independent of insertion order / sorted position, so adding earlier content
+# never shifts existing ids (Issue D.2 closure). Collision-checked per run.
+def stable_id64(name: str) -> int:
+    h = 0xCBF29CE484222325
+    for b in name.encode("utf-8"):
+        h ^= b
+        h = (h * 0x100000001B3) & 0xFFFFFFFFFFFFFFFF
+    return h
+
+
 def stable_id(name: str, registry):
-    """Maps a string id to the stable numeric id assigned by the compiler."""
+    """Maps a string id to its stable deterministic numeric id."""
     if name not in registry:
         fail("id-registry", f"unknown reference '{name}' (registered: {sorted(registry)[:8]}...)")
         return 0
     return registry[name]
 
 
-def compile_room(json_path: Path, out_dir: Path, room_id: int):
+def compile_room(json_path: Path, out_dir: Path):
     try:
         data = json.loads(json_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -73,8 +84,10 @@ def compile_room(json_path: Path, out_dir: Path, room_id: int):
     flags_map = {"solid": 1, "door": 2, "breakable": 4, "special": 8}
 
     body = bytearray()
-    # Stable RoomId assigned by the compiler: 1..N in sorted file order
-    # (F-11 closure: no more hardcoded 1 for every room).
+    # Stable RoomId from FNV-1a64 over the canonical room id string.
+    # Deterministic independent of file order (Issue D.2 closure).
+    room_str_id = json_path.stem
+    room_id = stable_id64(room_str_id)
     body += struct.pack("<Q", room_id)
     body += utf8(name)
     body += struct.pack("<ii", w, h)
@@ -89,14 +102,25 @@ def compile_room(json_path: Path, out_dir: Path, room_id: int):
             ceiling = float(cell.get("ceiling", 4.0))
             material = materials.index(cell.get("material", "wall")) \
                 if cell.get("material") in materials else 0
-            light = int(cell.get("light", 255) or 255)
+            # Issue D.3: light=0 must be preserved (all-black / unpowered),
+            # so we must NOT apply `or 255` to an explicit 0.
+            light_raw = cell.get("light", 255)
+            light = 255 if light_raw is None else int(light_raw)
             flags = 0
             for f in cell.get("flags", []):
                 flags |= flags_map.get(f, 0)
             body += struct.pack("<ffBBB", floor, ceiling, material, light, flags)
-    # NPC / storylet refs (empty string list at foundation).
-    body += struct.pack("<I", 0)
-    body += struct.pack("<I", 0)
+    # Issue D.1: NPC / storylet refs round-trip. Authoring uses stable string
+    # ids; they are compiled to their stable deterministic numeric ids so the
+    # C++ Room codec can load them back.
+    npc_refs = [stable_id64(ref) for ref in data.get("npcRefs", [])]
+    storylet_refs = [stable_id64(ref) for ref in data.get("storyletRefs", [])]
+    body += struct.pack("<I", len(npc_refs))
+    for ref in npc_refs:
+        body += struct.pack("<Q", ref)
+    body += struct.pack("<I", len(storylet_refs))
+    for ref in storylet_refs:
+        body += struct.pack("<Q", ref)
 
     out = out_dir / "rooms" / (json_path.stem + ".woc")
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -152,8 +176,9 @@ def compile_storylets(json_path: Path, out_dir: Path, fact_registry):
     storylets = data.get("storylets", [])
     body = bytearray()
     body += struct.pack("<I", len(storylets))
-    for idx, s in enumerate(sorted(storylets, key=lambda k: k.get("id", "")), start=1):
-        body += struct.pack("<Q", idx)                      # StoryletId
+    for s in sorted(storylets, key=lambda k: k.get("id", "")):
+        sid = s.get("id", "")
+        body += struct.pack("<Q", stable_id64(sid))            # StoryletId (stable FNV-1a64)
         body += utf8(s.get("textId", s.get("id", "")))      # text id
         body += struct.pack("<HB", int(s.get("priority", 0)),
                             1 if s.get("once", True) else 0)
@@ -284,9 +309,8 @@ def _compile_all(data_dir: Path, out_dir: Path):
     fact_files = sorted(data_dir.glob("facts/*.json"))
     storylet_files = sorted(data_dir.glob("storylets/*.json"))
 
-    # Deterministic fact id registry (sorted across all fact files).
+    # Deterministic stable fact id registry (FNV-1a64 over string id).
     fact_registry = {}
-    next_fact_id = 1
     for path in fact_files:
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
@@ -296,11 +320,10 @@ def _compile_all(data_dir: Path, out_dir: Path):
         for fact in sorted(data.get("facts", []), key=lambda k: k.get("id", "")):
             fid = fact.get("id", "")
             if fid and fid not in fact_registry:
-                fact_registry[fid] = next_fact_id
-                next_fact_id += 1
+                fact_registry[fid] = stable_id64(fid)
 
-    for index, path in enumerate(room_files, start=1):
-        compile_room(path, out_dir, index)
+    for path in room_files:
+        compile_room(path, out_dir)
     for path in fact_files:
         compile_facts(path, out_dir)
     for path in storylet_files:

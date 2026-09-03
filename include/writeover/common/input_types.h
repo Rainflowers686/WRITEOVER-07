@@ -4,6 +4,8 @@
 // InputMapper (player module) maps PhysicalKey -> GameAction with a
 // serializable binding table (M-013 closure: no `uint8_t keyBindings` pointer).
 
+#include "writeover/common/types.h"
+
 #include <cstddef>
 #include <cstdint>
 
@@ -60,6 +62,13 @@ public:
     virtual bool Poll(InputEvent& out_event) = 0;
     virtual bool HasFocus() const = 0;
     virtual const char* Name() const = 0;
+    // Consumes accumulated pointer movement since the last call. Returns
+    // false when the backend has no pointer delta source (e.g. keyboard-only).
+    // Default: no pointer delta.
+    virtual bool ConsumeMouseDelta(Vec2& out) {
+        (void)out;
+        return false;
+    }
 };
 
 } // namespace writeover

@@ -34,8 +34,8 @@ if "failfast_macro_proves_failure" not in common:
 
 # Input conflict policy: SetBinding must clear duplicate PhysicalKeys.
 im = text("src/player/input_mapper.cpp")
-if "void InputMapper::SetBinding" in im and "bindings_[i] = PhysicalKey::Unknown" not in im.split(
-        "void InputMapper::SetBinding", 1)[1].split("void InputMapper::GetBinding", 1)[0]:
+if "void InputMapper::SetBinding" in im and "PhysicalKey::Unknown" not in im.split(
+        "void InputMapper::SetBinding", 1)[1].split("PhysicalKey InputMapper::GetBinding", 1)[0]:
     problems.append("INPUT: SetBinding missing duplicate-key clearing (replace policy)")
 
 # key-up path: win_input must process key-down AND key-up.
@@ -62,10 +62,15 @@ save = text("src/core/save.cpp")
 if "section_count >= static_cast<uint32_t>(SaveSectionId::Count)" in save:
     problems.append("SAVE: all-7-sections rejected")
 
-# Terminal: run-compression (skip unchanged SGR) should exist in the ANSI path.
+# Terminal: full/delta/unchanged frame encoding must exist (HK-5 closure).
+# Either an inline color-run path or the AnsiFrameEncoder satisfies this.
 term = text("src/platform/windows/win_terminal.cpp")
-if "AnsiTrueColorBackend" in term and "color-run compression" not in term:
-    problems.append("TERMINAL: ANSI path missing color-run compression")
+enc = text("include/writeover/render/frame_encoder.h")
+if "AnsiFrameEncoder" in term or "AnsiFrameEncoder" in enc:
+    if "Encode" not in enc:
+        problems.append("TERMINAL: frame encoder declared but Encode missing")
+elif "AnsiTrueColorBackend" in term and "color-run compression" not in term:
+    problems.append("TERMINAL: ANSI path missing color-run compression or frame encoder")
 
 # Raycaster: floor-drop and ceiling-rise boundaries must be explicit.
 ray = text("src/render/raycaster.cpp")

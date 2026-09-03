@@ -1,6 +1,7 @@
 #include "tests/test_harness.h"
 
 #include "writeover/render/benchmark.h"
+#include "writeover/render/frame_encoder.h"
 #include "writeover/render/raycaster.h"
 #include "writeover/render/reference_renderer.h"
 #include "writeover/render/terminal_backend.h"
@@ -553,6 +554,130 @@ bool ReferenceRendererDeterministic() {
     return true;
 }
 
+namespace {
+// Counts how many cells in the frame equal the given glyph.
+int CountGlyph(const CharCell* frame, size_t count, char32_t glyph) {
+    int n = 0;
+    for (size_t i = 0; i < count; ++i) {
+        if (frame[i].code_point == glyph) {
+            ++n;
+        }
+    }
+    return n;
+}
+} // namespace
+
+// Issue G: a marker behind a full-height wall must be hidden.
+bool MarkerHiddenBehindFullWall() {
+    Grid grid = MakeOpenGrid(12, 6);
+    // Full solid wall across row 2 at col 5.
+    for (int32_t r = 0; r < 6; ++r) {
+        GridCell w;
+        w.flags = CellFlag_Solid;
+        grid.SetCell(5, r, w);
+    }
+    const int w = 160, h = 45;
+    std::vector<CharCell> frame(static_cast<size_t>(w) * h);
+    RenderView view;
+    view.origin = Vec3{1.0f, 3.0f, kEyeStand};
+    view.yaw = 0.0f;  // facing +x; wall at col 5 is between camera and marker
+    ReferenceMarker marker;
+    marker.position = Vec3{8.0f, 3.0f, 1.0f};  // behind the wall
+    const float focal = 0.5f * static_cast<float>(h) /
+                        std::tan(60.0f * 3.14159265f / 360.0f);
+    RenderReferenceFrame(grid.Data().data(), grid.Width(), grid.Height(),
+                         view, &marker, frame.data(), w, h, focal);
+    // The marker must not be drawn (hidden behind the full wall).
+    WO_CHECK_EQ(CountGlyph(frame.data(), frame.size(), marker.glyph), 0);
+    return true;
+}
+
+// Issue G: a marker whose glyph sits ABOVE a low wall must remain visible.
+bool MarkerVisibleAboveLowWall() {
+    Grid grid = MakeOpenGrid(12, 6);
+    // Low wall (floor rises to 1.2m) across col 5; marker at 2.0m world Z.
+    for (int32_t r = 0; r < 6; ++r) {
+        GridCell w = grid.GetCell(5, r);
+        w.floor_height = 1.2f;
+        grid.SetCell(5, r, w);
+    }
+    const int w = 160, h = 45;
+    std::vector<CharCell> frame(static_cast<size_t>(w) * h);
+    RenderView view;
+    view.origin = Vec3{1.0f, 3.0f, kEyeStand};
+    view.yaw = 0.0f;
+    ReferenceMarker marker;
+    marker.position = Vec3{8.0f, 3.0f, 2.0f};  // above the 1.2m wall
+    const float focal = 0.5f * static_cast<float>(h) /
+                        std::tan(60.0f * 3.14159265f / 360.0f);
+    RenderReferenceFrame(grid.Data().data(), grid.Width(), grid.Height(),
+                         view, &marker, frame.data(), w, h, focal);
+    // The marker glyph above the low wall must be visible.
+    WO_CHECK(CountGlyph(frame.data(), frame.size(), marker.glyph) > 0);
+    return true;
+}
+
+// Issue C: an unchanged frame must emit no payload (fast path).
+bool TerminalUnchangedFrameNoPayload() {
+    const int w = 40, h = 10;
+    std::vector<CharCell> frame(static_cast<size_t>(w) * h);
+    for (auto& c : frame) {
+        c.fg_r = 200;
+        c.fg_g = 200;
+        c.fg_b = 200;
+        c.bg_r = 10;
+        c.bg_g = 10;
+        c.bg_b = 30;
+    }
+    AnsiFrameEncoder enc;
+    std::string out1;
+    const EncodeResult r1 = enc.Encode(frame.data(), w, h, out1);
+    WO_CHECK(r1.full);                      // first frame is full
+    WO_CHECK(out1.size() > 0);
+    std::string out2;
+    const EncodeResult r2 = enc.Encode(frame.data(), w, h, out2);
+    WO_CHECK(r2.unchanged);                 // no payload
+    WO_CHECK_EQ(static_cast<int64_t>(out2.size()), 0);
+    return true;
+}
+
+// Issue C: a small change produces a DELTA smaller than a full frame.
+bool TerminalDeltaSmallerThanFull() {
+    const int w = 40, h = 10;
+    std::vector<CharCell> frame(static_cast<size_t>(w) * h);
+    for (auto& c : frame) {
+        c.fg_r = 200; c.fg_g = 200; c.fg_b = 200;
+        c.bg_r = 10;  c.bg_g = 10;  c.bg_b = 30;
+    }
+    AnsiFrameEncoder enc;
+    std::string full_out;
+    enc.Encode(frame.data(), w, h, full_out);  // prime previous frame
+    // Small change: one cell.
+    frame[5].code_point = U'X';
+    frame[5].fg_r = 255; frame[5].fg_g = 0; frame[5].fg_b = 0;
+    std::string delta_out;
+    const EncodeResult r2 = enc.Encode(frame.data(), w, h, delta_out);
+    WO_CHECK(!r2.unchanged);
+    WO_CHECK(!r2.full);                       // delta, not full
+    WO_CHECK_EQ(static_cast<int64_t>(r2.changed_cells), 1);
+    return delta_out.size() < full_out.size();
+}
+
+// Issue C: the encoder is deterministic for identical input.
+bool TerminalEncoderDeterministic() {
+    const int w = 40, h = 10;
+    std::vector<CharCell> frame(static_cast<size_t>(w) * h);
+    for (auto& c : frame) {
+        c.fg_r = 150; c.fg_g = 180; c.fg_b = 220;
+        c.bg_r = 20;  c.bg_g = 30;  c.bg_b = 50;
+    }
+    AnsiFrameEncoder a, b;
+    std::string out_a, out_b;
+    a.Encode(frame.data(), w, h, out_a);
+    b.Encode(frame.data(), w, h, out_b);
+    return out_a == out_b;
+}
+
 } // namespace
 
 void RegisterRenderTests(TestHarness& test) {
@@ -584,6 +709,11 @@ void RegisterRenderTests(TestHarness& test) {
     test.Add("g18_player_above_target", &G18PlayerAboveTarget);
     test.Add("reference_renderer_visible", &ReferenceRendererVisible);
     test.Add("reference_renderer_deterministic", &ReferenceRendererDeterministic);
+    test.Add("render.marker_hidden_behind_full_wall", &MarkerHiddenBehindFullWall);
+    test.Add("render.marker_visible_above_low_wall", &MarkerVisibleAboveLowWall);
+    test.Add("terminal.unchanged_frame_emits_no_payload", &TerminalUnchangedFrameNoPayload);
+    test.Add("terminal.delta_smaller_than_full_for_small_change", &TerminalDeltaSmallerThanFull);
+    test.Add("terminal.encoder_deterministic", &TerminalEncoderDeterministic);
 }
 
 } // namespace writeover

@@ -82,6 +82,9 @@ struct MiniWorld {
 
     // Advance exactly one tick through the 8 fixed phases. Returns nothing;
     // all observable effects are in fields + events.
+    // Issue E: reactions must only process events dispatched THIS tick, not
+    // the entire journal (which would repeat past events). We track the
+    // journal size before Dispatch and iterate only the new slice.
     void Step(uint64_t frame) {
         // Phase 1-2: INPUT SAMPLE / COMMAND BUILD (no-op in the mini-world;
         // commands come from reaction queue below).
@@ -110,14 +113,18 @@ struct MiniWorld {
                         EventKind::Mutation, EntityId::New(2),
                         EntityId::Invalid(), EventId::Invalid(), frame);
         }
-        // Phase 5: EVENT FAN-OUT / OBSERVATION (all consumers see every event).
+        // Phase 5: EVENT FAN-OUT / OBSERVATION: record journal size before
+        // Dispatch so reaction phase only processes this tick's events.
+        const size_t journal_before = events.JournalCount();
         const uint32_t observer_id = events.Register(
             [this](const WorldEvent&) { this->observer_pings++; });
         events.Dispatch();
         events.Unregister(observer_id);
-        // Phase 6: NEXT-TICK REACTION COMMAND QUEUE: apply commands that were
-        // emitted as events during dispatch (fan-out to world mutation).
-        for (const auto& evt : events.JournalSnapshot()) {
+        // Phase 6: NEXT-TICK REACTION: process only events dispatched THIS
+        // tick (the new journal entries). Not the whole journal (Issue E).
+        const auto& journal = events.JournalSnapshot();
+        for (size_t i = journal_before; i < journal.size(); ++i) {
+            const auto& evt = journal[i];
             if (std::holds_alternative<EventDoorChange>(evt.payload) &&
                 std::get<EventDoorChange>(evt.payload).open) {
                 door_open = true;
@@ -351,6 +358,58 @@ bool SaveRejectsGarbage() {
     return parsed.IsError();
 }
 
+// Issue H: save truncated before the footer must be rejected (no underflow).
+bool SaveTruncatedBeforeFooterRejected() {
+    std::vector<SaveSection> sections;
+    sections.push_back({SaveSectionId::World, std::vector<uint8_t>{1, 2, 3, 4}});
+    std::vector<uint8_t> wire = ComposeSaveBuffer(sections);
+    // Chop off the last 5 bytes (footer + 1 payload byte): section header
+    // says 4 bytes but only 3 remain before the footer position.
+    wire.resize(wire.size() - 5);
+    const auto parsed = ParseSaveBuffer(wire.data(), wire.size());
+    return parsed.IsError();
+}
+
+// Issue H: a malicious section header declaring a huge data_size must fail
+// closed, never attempt a giant allocation.
+bool SaveHugeSectionDataSizeRejected() {
+    std::vector<uint8_t> wire = ComposeSaveBuffer(std::vector<SaveSection>{
+        {SaveSectionId::Rng, std::vector<uint8_t>{}}});
+    // Section header begins at byte 24: id(4) size(4) crc(4).
+    // Patch the data_size field to 0xFFFFFFF0 (huge).
+    const size_t size_off = 24 + 4;
+    for (int i = 0; i < 4; ++i) {
+        wire[size_off + i] = static_cast<uint8_t>(0xF0 + i * 0);
+    }
+    wire[size_off + 0] = 0xF0;
+    wire[size_off + 1] = 0xFF;
+    wire[size_off + 2] = 0xFF;
+    wire[size_off + 3] = 0xFF;
+    const auto parsed = ParseSaveBuffer(wire.data(), wire.size());
+    return parsed.IsError();
+}
+
+// Issue E: a single event must be reacted to exactly once, even across many
+// ticks (the old journal-full-rescan MiniWorld reacted repeatedly).
+bool EventReactionExactlyOnce() {
+    EventBus bus;
+    int door_reactions = 0;
+    bus.Register([&door_reactions](const WorldEvent& evt) {
+        if (std::holds_alternative<EventDoorChange>(evt.payload)) {
+            ++door_reactions;
+        }
+    });
+    // Post exactly one door event, then run 150 ticks. Each dispatch shows
+    // the event at most once; exactly-once means total == 1.
+    bus.Post(EventDoorChange{DoorId::New(1), true}, EventKind::Mutation,
+             EntityId::New(2), EntityId::Invalid(), EventId::Invalid(), 0);
+    for (int tick = 0; tick < 150; ++tick) {
+        bus.Dispatch();
+    }
+    WO_CHECK_EQ(door_reactions, 1);
+    return true;
+}
+
 } // namespace
 
 void RegisterSaveReplayTests(TestHarness& test) {
@@ -362,8 +421,11 @@ void RegisterSaveReplayTests(TestHarness& test) {
     test.Add("save.unknown_section_rejected", &SaveUnknownSectionRejected);
     test.Add("save.rejects_bit_flip", &SaveRejectsBitFlip);
     test.Add("save.rejects_garbage", &SaveRejectsGarbage);
+    test.Add("save.truncated_before_footer_rejected", &SaveTruncatedBeforeFooterRejected);
+    test.Add("save.huge_section_data_size_rejected", &SaveHugeSectionDataSizeRejected);
     test.Add("event.fanout_all_consumers_see_all", &EventFanoutAllConsumersSeeAll);
     test.Add("event.same_tick_next_tick_semantics", &EventSameTickNextTickSemantics);
+    test.Add("event.reaction_exactly_once", &EventReactionExactlyOnce);
 }
 
 } // namespace writeover

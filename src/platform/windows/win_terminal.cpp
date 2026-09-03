@@ -7,6 +7,7 @@
 // machine.
 
 #include "writeover/render/terminal_backend.h"
+#include "writeover/render/frame_encoder.h"
 
 #if defined(_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -23,39 +24,6 @@
 namespace writeover {
 
 namespace {
-
-// Builds an ANSI TrueColor SGR prefix for a cell; returns empty when the
-// cell is identical to the previous one (color-run compression).
-std::string AppendSgr(const CharCell& prev, const CharCell& cell) {
-    // Run compression: identical fg/bg/flags skip the SGR entirely (F-24).
-    if (prev.fg_r == cell.fg_r && prev.fg_g == cell.fg_g &&
-        prev.fg_b == cell.fg_b && prev.bg_r == cell.bg_r &&
-        prev.bg_g == cell.bg_g && prev.bg_b == cell.bg_b &&
-        (prev.flags & 0x01) == (cell.flags & 0x01)) {
-        return std::string();
-    }
-    std::string s;
-    if (cell.flags & 0x01) {
-        s.append("\x1b[1m");
-    } else {
-        s.append("\x1b[0m");
-    }
-    s.append("\x1b[38;2;");
-    s.append(std::to_string(cell.fg_r));
-    s.push_back(';');
-    s.append(std::to_string(cell.fg_g));
-    s.push_back(';');
-    s.append(std::to_string(cell.fg_b));
-    s.append("m");
-    s.append("\x1b[48;2;");
-    s.append(std::to_string(cell.bg_r));
-    s.push_back(';');
-    s.append(std::to_string(cell.bg_g));
-    s.push_back(';');
-    s.append(std::to_string(cell.bg_b));
-    s.append("m");
-    return s;
-}
 
 // 16-color ANSI palette for the Win32 fallback (F-25): full RGB->index
 // nearest-neighbor quantization, not the old "red bit only" heuristic.
@@ -126,20 +94,12 @@ public:
         }
         std::string out;
         out.reserve(static_cast<size_t>(width) * height * 3 + 64);
-        out.append("\x1b[H");  // home
-        CharCell prev{};
-        for (int y = 0; y < height; ++y) {
-            for (int x = 0; x < width; ++x) {
-                const CharCell& cell = buffer[y * width + x];
-                // Color-run compression: only emit SGR when color changes.
-                out.append(AppendSgr(prev, cell));
-                out.append(CharCellToUtf8(cell.code_point));
-                prev = cell;
-            }
-            out.push_back('\n');
-            prev = CharCell{};
+        // Full/delta/unchanged encoding against the previous frame
+        // (Issue C closure): unchanged frames emit no payload at all.
+        const EncodeResult res = encoder_.Encode(buffer, width, height, out);
+        if (res.unchanged) {
+            return true;  // no terminal I/O for an unchanged frame
         }
-        out.append("\x1b[0m");
         std::fwrite(out.data(), 1, out.size(), stdout);
         std::fflush(stdout);
         return true;
@@ -157,6 +117,7 @@ private:
     int width_ = 0;
     int height_ = 0;
     TerminalCaps caps_;
+    AnsiFrameEncoder encoder_;
 };
 
 class Win32WriteConsoleBackend final : public ITerminalBackend {

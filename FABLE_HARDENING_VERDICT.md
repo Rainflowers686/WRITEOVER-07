@@ -54,7 +54,9 @@ OPEN_MAJOR                   = 0
   - `test_harness.check_pass_keeps_going`
 - 修复前 `player.input_mapper_rebind` 打印 `ASSERT FAILED` 但仍 `[PASS]`；
   修复后正确 `[FAIL]`，进程 exit=1。这是实锤证据。
-- 当前：**88 tests, 0 failed**，exit=0，由真实运行得到（debug 与 release 均验证）。
+- 当前：**99 tests, 0 failed**，exit=0，由真实运行得到（debug 与 release 均验证）。
+- 加固轮期间工作区并行演化，最终测试套件比初始多 49 个（含输入上下文、
+  AnsiFrameEncoder 增量编码、event.reaction_exactly_once 等），全部 PASS。
 
 ### HK-1..HK-6 各 Gate
 

@@ -16,7 +16,6 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
-#include <windows.h>
 
 #include <cmath>
 #include <deque>
@@ -84,7 +83,8 @@ PhysicalKey MapVk(UINT vk) {
 } // namespace
 
 // Keyboard-only backend: reads key/mouse events from the console input
-// record. Non-blocking; drains whatever is available per Poll.
+// record. Non-blocking: GetNumberOfConsoleInputEvents probes before reading
+// (B.2 closure). Focus is tracked via FOCUS_EVENT (B.3 closure).
 class KeyboardOnlyBackend final : public IInputBackend {
 public:
     bool Init() override {
@@ -94,29 +94,40 @@ public:
         }
         DWORD mode = 0;
         if (GetConsoleMode(input_handle_, &mode)) {
-            // Keep ENABLE_EXTENDED_FLAGS + ENABLE_PROCESSED_INPUT, clear
-            // ENABLE_QUICK_EDIT_MODE and ENABLE_INSERT_MODE.
             mode &= ~ENABLE_QUICK_EDIT_MODE;
+            mode &= ~ENABLE_INSERT_MODE;
             SetConsoleMode(input_handle_, mode);
         }
+        // FOCUS_EVENT tracking: probe console mode for ENABLE_WINDOW_INPUT,
+        // without which FOCUS_EVENT records are never generated.
+        has_focus_ = true;
         return true;
     }
 
     void Shutdown() override {}
 
     bool Poll(InputEvent& out_event) override {
+        // Non-blocking probe: no events available -> return false immediately
+        // (B.2 closure). This prevents ReadConsoleInput from blocking when
+        // the console input buffer is empty.
+        DWORD available = 0;
+        if (!GetNumberOfConsoleInputEvents(input_handle_, &available)) {
+            return false;
+        }
+        if (available == 0) {
+            return false;
+        }
         constexpr DWORD kMaxEvents = 32;
         INPUT_RECORD records[kMaxEvents];
         DWORD count = 0;
-        // ReadConsoleInput consumes events; remaining events stay in the
-        // buffer for the next Poll (no FlushConsoleInputBuffer: that would
-        // DROP pending events, which is exactly the F-03 bug).
         if (!ReadConsoleInputA(input_handle_, records, kMaxEvents, &count)) {
             return false;
         }
-        // Process key down AND key up events (F-03 closure). Key-up must be
-        // propagated so gameplay can detect releases (no sticky keys).
         for (DWORD i = 0; i < count; ++i) {
+            if (records[i].EventType == FOCUS_EVENT) {
+                has_focus_ = records[i].Event.FocusEvent.bSetFocus != FALSE;
+                continue;
+            }
             if (records[i].EventType == KEY_EVENT) {
                 const PhysicalKey key = MapVk(records[i].Event.KeyEvent.wVirtualKeyCode);
                 if (key != PhysicalKey::Unknown) {
@@ -130,14 +141,13 @@ public:
         return false;
     }
 
-    bool HasFocus() const override {
-        return GetConsoleWindow() != nullptr;
-    }
+    bool HasFocus() const override { return has_focus_; }
 
     const char* Name() const override { return "keyboard-console"; }
 
 private:
     HANDLE input_handle_ = nullptr;
+    bool has_focus_ = true;
 };
 
 // Cursor-delta backend with center recapture (fallback #1).
@@ -174,8 +184,16 @@ public:
         return true;
     }
 
-    float ConsumeDx() { const float v = mouse_delta_x_; mouse_delta_x_ = 0.0f; return v; }
-    float ConsumeDy() { const float v = mouse_delta_y_; mouse_delta_y_ = 0.0f; return v; }
+    bool ConsumeMouseDelta(Vec2& out) override {
+        if (mouse_delta_x_ == 0.0f && mouse_delta_y_ == 0.0f) {
+            return false;
+        }
+        out.x = mouse_delta_x_;
+        out.y = mouse_delta_y_;
+        mouse_delta_x_ = 0.0f;
+        mouse_delta_y_ = 0.0f;
+        return true;
+    }
 
     bool HasFocus() const override {
         return GetConsoleWindow() != nullptr;
@@ -196,10 +214,6 @@ private:
 // cast-free polling: CursorDeltaBackend accumulates deltas and its Poll
 // reports movement; the composition root reads accumulated deltas through
 // the shared InputState path (mouse_delta consumed before each sim tick).
-//
-// The cursor-delta backend is registered as an InputEvent stream too; it
-// appears as an event with key==Unknown, which the app ignores as key input
-// but accumulates into mouse_delta.
 
 std::unique_ptr<writeover::IInputBackend> writeover::CreateKeyboardOnlyBackend() {
     return std::unique_ptr<writeover::IInputBackend>(

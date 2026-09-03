@@ -24,6 +24,15 @@ void SerializeRoom(Serializer& s, const Room& room) {
         s.WriteU8(cell.light);
         s.WriteU8(cell.flags);
     }
+    // Issue D.1: NPC / storylet refs must round-trip.
+    s.WriteU32(static_cast<uint32_t>(room.npc_refs.size()));
+    for (const auto ref : room.npc_refs) {
+        WriteId(s, ref);
+    }
+    s.WriteU32(static_cast<uint32_t>(room.storylet_refs.size()));
+    for (const auto ref : room.storylet_refs) {
+        WriteId(s, ref);
+    }
 }
 
 Result<Room> DeserializeRoom(Deserializer& d) {
@@ -62,6 +71,20 @@ Result<Room> DeserializeRoom(Deserializer& d) {
         cell.material = d.ReadU8();
         cell.light = d.ReadU8();
         cell.flags = d.ReadU8();
+    }
+
+    // Issue D.1: NPC / storylet refs.
+    const uint32_t npc_count = d.ReadU32();
+    if (npc_count <= 4096) {
+        for (uint32_t i = 0; i < npc_count; ++i) {
+            room.npc_refs.push_back(ReadId<StringId>(d));
+        }
+    }
+    const uint32_t storylet_count = d.ReadU32();
+    if (storylet_count <= 4096) {
+        for (uint32_t i = 0; i < storylet_count; ++i) {
+            room.storylet_refs.push_back(ReadId<StringId>(d));
+        }
     }
 
     if (d.HasError()) {

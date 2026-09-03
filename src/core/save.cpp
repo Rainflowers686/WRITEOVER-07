@@ -100,6 +100,13 @@ Result<std::vector<SaveSection>> ParseSaveBuffer(const uint8_t* data, size_t siz
                 kSaveMagic + 10, "duplicate save section id");
         }
         seen_section_ids[header.section_id] = 1;
+        // Issue H closure: check Remaining before subtracting 4 (avoid
+        // size_t underflow on a truncated save). A malicious huge data_size
+        // must fail here, never reach a giant allocation.
+        if (d.Remaining() < 4) {
+            return Result<std::vector<SaveSection>>::Err(
+                kSaveMagic + 6, "save file truncated before section footer");
+        }
         if (header.data_size > d.Remaining() - 4) {
             return Result<std::vector<SaveSection>>::Err(
                 kSaveMagic + 6, "save section truncated");
@@ -124,6 +131,12 @@ Result<std::vector<SaveSection>> ParseSaveBuffer(const uint8_t* data, size_t siz
     if (footer_crc != actual_footer) {
         return Result<std::vector<SaveSection>>::Err(
             kSaveMagic + 8, "save file checksum mismatch");
+    }
+    // Explicit trailing-byte policy: the footer is the last 4 bytes; any
+    // remaining bytes are illegal (reject, do not silently ignore).
+    if (d.Remaining() != 0) {
+        return Result<std::vector<SaveSection>>::Err(
+            kSaveMagic + 11, "save file has trailing bytes");
     }
 
     return Result<std::vector<SaveSection>>::Ok(std::move(sections));

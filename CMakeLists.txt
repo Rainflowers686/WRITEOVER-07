@@ -87,6 +87,7 @@ writeover_configure_target(writeover_narrative)
 add_library(writeover_render STATIC
     src/render/raycaster.cpp
     src/render/reference_renderer.cpp
+    src/render/frame_encoder.cpp
     src/render/utf.cpp
     src/render/terminal_backend.cpp
     src/render/hud.cpp

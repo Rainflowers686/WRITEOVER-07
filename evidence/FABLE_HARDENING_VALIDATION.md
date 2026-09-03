@@ -36,7 +36,7 @@
 ### `scripts/bench.ps1`
 - exit code: 0
 - result: PASS
-- output: `raycast_column_sweep,240,0.033,0.042,0.030,0.045`
+- output: `raycast_column_sweep,240,0.033,0.048,0.030,0.051`
 
 ### `scripts/contract_check.ps1`
 - exit code: 0
@@ -54,12 +54,13 @@
 
 ### `./out/build/debug/Debug/writeover_tests.exe`
 - exit code: 0
-- result: PASS (88 tests, 0 failed)
+- result: PASS (99 tests, 0 failed)
 - meta-tests:
   - `test_harness.check_detects_failure` PASS
   - `test_harness.failfast_macro_proves_failure` PASS
   - `test_harness.check_pass_keeps_going` PASS
 - intentionally-failing assertion output exists by design and is correctly reported as FAIL inside test output, not PASS.
+- 注：工作区在加固轮期间并行演化（新增 AnsiFrameEncoder、输入上下文、event.reaction_exactly_once 等），最终测试计数以本文件记录的真实运行输出为准。
 
 ## HK1
 
