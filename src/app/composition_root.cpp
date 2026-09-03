@@ -654,6 +654,20 @@ int RunComposition(const GameConfig& config) {
                 for (const auto& item : services.systemic->Items()) {
                     if (item.type == ItemType::Badge && item.owner == EntityId::New(10)) {
                         services.systemic->TheftItem(item.id, EntityId::New(1), 0);
+                        MemoryRecord mem;
+                        mem.id = MemoryId::New(services.systemic->MemoryCount() + 1);
+                        mem.npc = EntityId::New(10);
+                        mem.kind = MemoryKind::Fear;
+                        mem.subject = EntityId::New(1);
+                        mem.target = EntityId::New(10);
+                        mem.salience = 0.9f;
+                        mem.confidence = 1.0f;
+                        mem.source = KnowledgeSource::DirectWitness;
+                        services.systemic->AddMemory(mem);
+                        RelationshipRecord rel;
+                        rel.a = EntityId::New(10); rel.b = EntityId::New(1);
+                        rel.trust = 0.15f; rel.fear = 0.6f; rel.suspicion = 0.7f;
+                        services.systemic->SetRelationship(rel);
                         render->SetSubtitleOnce("Badge acquired.", 120);
                         break;
                     }
