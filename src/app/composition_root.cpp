@@ -632,6 +632,19 @@ int RunComposition(const GameConfig& config) {
                     render->SetSubtitleOnce("TERMINAL: No active session. Credential required.", 180);
                 }
             }
+        } else if (services.player->CurrentRoom() == "room_1f_security") {
+            bool has_badge = false;
+            for (const auto& item : services.systemic->Items()) {
+                if (item.type == ItemType::Badge && item.current_holder == EntityId::New(1) && !item.revoked) {
+                    has_badge = true;
+                    break;
+                }
+            }
+            if (has_badge) {
+                render->SetSubtitleOnce("Access granted: Security checkpoint.", 180);
+            } else {
+                render->SetSubtitleOnce("Access denied: no valid credential.", 180);
+            }
         }
     });
     if (services.world->HasLoadedRoom()) {
