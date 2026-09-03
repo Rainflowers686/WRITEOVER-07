@@ -35,6 +35,8 @@ GameConfig ParseArgs(int argc, char** argv) {
             config.terminal_w = std::atoi(argv[++i]);
         } else if (arg == "--height" && i + 1 < argc) {
             config.terminal_h = std::atoi(argv[++i]);
+        } else if (arg == "--dump-frame" && i + 1 < argc) {
+            config.frame_dump_path = argv[++i];
         }
     }
     return config;

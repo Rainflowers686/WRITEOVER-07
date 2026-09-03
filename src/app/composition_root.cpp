@@ -22,6 +22,7 @@
 #include "writeover/render/hud.h"
 #include "writeover/render/raycaster.h"
 #include "writeover/render/reference_renderer.h"
+#include "writeover/render/production_renderer.h"
 #include "writeover/render/terminal_backend.h"
 #include "writeover/world/fact_belief.h"
 #include "writeover/world/grid.h"
@@ -298,6 +299,7 @@ public:
           width_(w),
           height_(h) {
         body_.assign(static_cast<size_t>(w) * h, CharCell{});
+        logical_pixels_.assign(static_cast<size_t>(w) * (h * 2), Color{});
         backend_->Init(w, h);
     }
 
@@ -310,6 +312,8 @@ public:
     void SetLocomotionSource(const LocomotionState* locomotion) {
         locomotion_ = locomotion;
     }
+    const std::vector<Color>& LogicalPixels() const { return logical_pixels_; }
+
     void SetGridData(const GridCell* cells, int w, int h) {
         grid_cells_ = cells;
         grid_w_ = w;
@@ -323,22 +327,23 @@ public:
             player_yaw_ = locomotion_->yaw;
         }
         if (grid_cells_ != nullptr && grid_w_ > 0 && grid_h_ > 0) {
-            // Reference character-3D renderer (HK-2): real wall spans,
-            // floor/ceiling fills, depth, and a marker with occlusion.
-            RenderView view;
+            // Production half-block pixel framebuffer path.
+            ProductionView view;
             view.origin = Vec3{player_pos_.x, player_pos_.y,
                                locomotion_ != nullptr
                                    ? locomotion_->EyePosition().z
                                    : kEyeStand};
             view.yaw = player_yaw_;
             view.pitch = locomotion_ != nullptr ? locomotion_->pitch : 0.0f;
-            ReferenceMarker marker;
-            marker.position = Vec3{player_pos_.x + 6.0f, player_pos_.y, 1.0f};
             const float focal =
                 0.5f * static_cast<float>(height_) /
                 std::tan(60.0f * 3.14159265f / 360.0f);
-            RenderReferenceFrame(grid_cells_, grid_w_, grid_h_, view, &marker,
-                                 body_.data(), width_, height_, focal);
+            const int logical_h = height_ * 2;
+            RenderProductionFrame(grid_cells_, grid_w_, grid_h_, view,
+                                  logical_pixels_.data(), width_, logical_h,
+                                  focal);
+            ComposeHalfBlockFrame(logical_pixels_.data(), width_, logical_h,
+                                  body_.data(), width_, height_);
         }
         subtitle_ = "WRITEOVER-07 foundation smoke frame " +
                     std::to_string(frame_index);
@@ -362,6 +367,7 @@ private:
     const int height_;
     HudRenderer hud_;
     std::vector<CharCell> body_;
+    std::vector<Color> logical_pixels_;
     Vec3 player_pos_;
     float player_yaw_ = 0.0f;
     const LocomotionState* locomotion_ = nullptr;
@@ -510,6 +516,25 @@ int RunComposition(const GameConfig& config) {
     engine.SetRenderModule(render.get());
 
     const int result = engine.Run(config.max_frames);
+
+    if (!config.frame_dump_path.empty() && !render->LogicalPixels().empty()) {
+        const auto& px = render->LogicalPixels();
+        const int pw = config.terminal_w;
+        const int ph = config.terminal_h * 2;
+        std::filesystem::path dump_path(config.frame_dump_path);
+        if (dump_path.has_parent_path()) {
+            std::error_code dump_ec;
+            std::filesystem::create_directories(dump_path.parent_path(), dump_ec);
+        }
+        FILE* f = std::fopen(config.frame_dump_path.c_str(), "wb");
+        if (f) {
+            std::fprintf(f, "P6\n%d %d\n255\n", pw, ph);
+            for (const auto& p : px) {
+                std::fputc(p.r, f); std::fputc(p.g, f); std::fputc(p.b, f);
+            }
+            std::fclose(f);
+        }
+    }
 
     if (config.smoke && config.save_after_smoke) {
         // Smoke save: real determinism sections through the atomic writer.

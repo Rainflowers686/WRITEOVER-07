@@ -1,0 +1,115 @@
+# PVS-01 GOAL LEDGER — WRITEOVER-07
+
+## Mission State
+
+- MISSION_START_TIME: 2026-09-03 23:51:42
+- START_HEAD: 5dadd5f822e4668161bdf92fae8c5f057690995f
+- CURRENT_HEAD: 5dadd5f822e4668161bdf92fae8c5f057690995f
+- CURRENT_PHASE: BLOCK 1 — Production Pixel Renderer
+- MISSION_STATUS: ACTIVE
+
+## Grand Objective
+
+Create a Premium Vertical Slice:
+B1 Wake/Revival -> Calibration/Logistics -> Service/Medical -> 1F Lobby ->
+Security Checkpoint -> Restroom/Staff Lounge/Maintenance -> Elevator Lobby.
+
+Target first normal playthrough: 5-10 minutes. Quality over quantity.
+
+## Victory Ladder
+
+- GOLD: B1 -> 1F Security Checkpoint -> Elevator Lobby, READY_FOR_HUMAN_PLAYTEST
+- SILVER: B1 + Production Renderer + Pistol + Narrator Opening + 1 Full NPC + 4 Semi NPC + one systemic route + real Save/Load + performance
+- BRONZE: production pixel renderer + beautiful B1 micro-space + excellent Pistol + narrator subtitle + one real NPC + all foundation gates green
+
+## Mandatory Gates
+
+- BLOCK 1 Production Pixel Renderer
+- BLOCK 2 Sprites / Props / Weapon Viewmodel
+- BLOCK 3 Game Feel / Combat Feedback
+- BLOCK 4 B1 Playable Micro-space
+- BLOCK 5 Opening / Narrator / Subtitle / Intrusion proof
+- BLOCK 6 First Full-Human NPC + Slice NPC population
+- BLOCK 7 Runtime World Interaction
+- BLOCK 8 1F Security Checkpoint + routes
+- BLOCK 9 Restroom / Staff Lounge / Terminal / Social details
+- BLOCK 10 PVS Integration / Save / HUD / F3 / Performance / QA
+
+## Completed Blocks
+
+- BLOCK 1 initial implementation: production half-block pixel framebuffer renderer is now the active runtime path; ReferenceRenderer remains for tests/reference.
+
+## Current Work
+
+- BLOCK 1 in progress: production renderer implemented, unit test added, PPM golden frame dumped.
+- Next: visual/effect red team on production renderer, then continue BLOCK 1 polish (sprites/lighting/props) or move toward BLOCK 2 as appropriate.
+
+## Visual Decisions
+
+- Follow VISUAL_BIBLE_V1_2: half-block framebuffer, not ReferenceRenderer.
+- Reject bright/light-gray floor.
+- Normal world world-pixel FPS; text/corruption only for narrator/HUD/terminal.
+
+## Game-feel Decisions
+
+- TBD after real play.
+
+## Content Decisions
+
+- Not yet authored beyond foundation seeds.
+
+## Golden Scene Evidence
+
+- Not yet captured.
+
+## Current Benchmarks
+
+- Systemic lookup: worst1 ~0.02ms Release
+- Systemic update: worst1 ~0.15ms Release
+
+## Code Red Team Results
+
+- Pending.
+
+## Effect Red Team Results
+
+- Pending.
+
+## Perfection Red Team Results
+
+- Pending.
+
+## Open Fatal / Major / P0 / P1
+
+- Open Fatal: 0
+- Open Major: 0 (foundation closed as of micro-patch)
+- Open P0: 0 (none observed yet)
+- Open P1: 0 (none observed yet)
+
+## Deferred Issues
+
+- None yet.
+
+## Research Performed
+
+- None yet for production slice.
+
+## Failed Attempts
+
+- None yet.
+
+## Fallbacks
+
+- None yet.
+
+## Commits
+
+- None in this mission yet.
+
+## CI State
+
+- Last observed SUCCESS on 5dadd5f.
+
+## Next Action
+
+- Inspect current renderer internals and implement production half-block framebuffer.

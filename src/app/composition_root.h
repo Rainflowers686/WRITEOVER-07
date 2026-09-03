@@ -16,9 +16,10 @@ struct GameConfig {
     uint64_t max_frames = 0;
     uint64_t seed = 0x12345678;
     std::string data_dir = "data";
-    int terminal_w = 80;
-    int terminal_h = 24;
+    int terminal_w = 240;
+    int terminal_h = 67;
     bool save_after_smoke = true;
+    std::string frame_dump_path;
 };
 
 // Builds the world/player/ai/narrative modules, the terminal backend, the

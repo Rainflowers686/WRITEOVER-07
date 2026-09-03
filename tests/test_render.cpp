@@ -4,6 +4,7 @@
 #include "writeover/render/frame_encoder.h"
 #include "writeover/render/raycaster.h"
 #include "writeover/render/reference_renderer.h"
+#include "writeover/render/production_renderer.h"
 #include "writeover/render/terminal_backend.h"
 #include "writeover/world/grid.h"
 
@@ -735,6 +736,33 @@ bool TerminalDeltaTypicalIsActualDelta() {
 
 } // namespace
 
+bool ProductionHalfBlockFrame() {
+    const Grid grid = MakeRayGrid();
+    const int cell_w = 40;
+    const int cell_h = 20;
+    const int logical_w = cell_w;
+    const int logical_h = cell_h * 2;
+    std::vector<Color> pixels(static_cast<size_t>(logical_w) * logical_h, Color{0,0,0});
+    ProductionView view;
+    view.origin = Vec3{1.5f, 4.5f, kEyeStand};
+    view.yaw = 0.0f;
+    const float focal = 0.5f * static_cast<float>(logical_h) /
+                        std::tan(60.0f * 3.14159265f / 360.0f);
+    RenderProductionFrame(grid.Data().data(), grid.Width(), grid.Height(),
+                          view, pixels.data(), logical_w, logical_h, focal);
+    std::vector<CharCell> cells(static_cast<size_t>(cell_w) * cell_h);
+    ComposeHalfBlockFrame(pixels.data(), logical_w, logical_h,
+                          cells.data(), cell_w, cell_h);
+    int half_block_count = 0;
+    int dark_count = 0;
+    for (const auto& c : cells) {
+        if (c.code_point == U'\u2580') ++half_block_count;
+        if (c.fg_r < 200 && c.bg_r < 200) ++dark_count;
+    }
+    WO_CHECK(half_block_count > 0);
+    WO_CHECK(dark_count > 0);
+    return true;
+}
 void RegisterRenderTests(TestHarness& test) {
     test.Add("ray.flat_hits_wall", &RayFlatHitsWall);
     test.Add("ray.low_wall_floor_rise", &RayLowWallSegment);
@@ -764,6 +792,7 @@ void RegisterRenderTests(TestHarness& test) {
     test.Add("g18_player_above_target", &G18PlayerAboveTarget);
     test.Add("reference_renderer_visible", &ReferenceRendererVisible);
     test.Add("reference_renderer_deterministic", &ReferenceRendererDeterministic);
+    test.Add("production.half_block_frame", &ProductionHalfBlockFrame);
     test.Add("render.marker_hidden_behind_full_wall", &MarkerHiddenBehindFullWall);
     test.Add("render.marker_visible_above_low_wall", &MarkerVisibleAboveLowWall);
     test.Add("terminal.unchanged_frame_emits_no_payload", &TerminalUnchangedFrameNoPayload);
