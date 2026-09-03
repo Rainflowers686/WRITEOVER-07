@@ -33,6 +33,7 @@
 #include "src/platform/windows/platform_api.h"
 
 #include <cstdint>
+#include <functional>
 #include <cstdio>
 #include <filesystem>
 #include <memory>
@@ -225,6 +226,10 @@ public:
             const size_t slot = static_cast<size_t>(combat_.slot);
             StartReload(combat_, combat_.slot, DefaultWeapons()[slot]);
         }
+        if (input_.action_pressed[static_cast<size_t>(GameAction::DevPanel)] &&
+            debug_toggle_callback_) {
+            debug_toggle_callback_();
+        }
         AdvanceReload(combat_, 1);
         if (combat_.spread_factor > 0.0f) {
             combat_.spread_factor -= 0.01f;
@@ -235,6 +240,7 @@ public:
     }
 
     void SetWorldQuery(const IWorldQuery* query) { world_query_ = query; }
+    void SetDebugToggleCallback(std::function<void()> cb) { debug_toggle_callback_ = std::move(cb); }
 
     const char* Name() const override { return "player"; }
 
@@ -245,6 +251,7 @@ private:
     LocomotionState locomotion_;
     CombatState combat_;
     const IWorldQuery* world_query_ = nullptr;
+    std::function<void()> debug_toggle_callback_;
 };
 
 class NarrativeModule final : public IEngineModule {
@@ -320,6 +327,8 @@ public:
     // Per-frame source of truth: the renderer reads the player's live
     // locomotion state instead of a one-time snapshot (F-23 closure).
     void SetCombatSource(const CombatState* combat) { combat_ = combat; }
+    void SetDebugOverlay(bool enabled) { debug_overlay_ = enabled; }
+    bool DebugOverlay() const { return debug_overlay_; }
 
     void SetLocomotionSource(const LocomotionState* locomotion) {
         locomotion_ = locomotion;
@@ -380,6 +389,10 @@ public:
         } else {
             subtitle_ = "";
         }
+        if (debug_overlay_) {
+            subtitle_ = "F3 DEBUG | pos " + std::to_string(player_pos_.x) + "," +
+                        std::to_string(player_pos_.y) + " yaw " + std::to_string(player_yaw_);
+        }
         HudFrame hud;
         hud.health = 100;
         hud.ammo_mag = 12;
@@ -405,6 +418,7 @@ private:
     float player_yaw_ = 0.0f;
     const LocomotionState* locomotion_ = nullptr;
     const CombatState* combat_ = nullptr;
+    bool debug_overlay_ = false;
     const GridCell* grid_cells_ = nullptr;
     int grid_w_ = 0;
     int grid_h_ = 0;
@@ -544,6 +558,11 @@ int RunComposition(const GameConfig& config) {
     render->SetPlayerView(spawn, 0.0f);
     render->SetLocomotionSource(&services.player->Locomotion());
     render->SetCombatSource(&services.player->Combat());
+    bool debug_overlay = false;
+    services.player->SetDebugToggleCallback([&] {
+        debug_overlay = !debug_overlay;
+        render->SetDebugOverlay(debug_overlay);
+    });
     if (services.world->HasLoadedRoom()) {
         const Room& room = services.world->LoadedRoom();
         render->SetGridData(room.grid.Data().data(),
