@@ -16,6 +16,7 @@ void ResetCombatState(CombatState& state) {
     state.reserve = {48, 120, 30};
     state.reload_frames_left = 0;
     state.next_fire_frame = 0;
+    state.last_shot_frame = 0;
     state.aiming = false;
     state.spread_factor = 0.0f;
 }
@@ -42,6 +43,7 @@ bool ConsumeShot(CombatState& state, const WeaponDef& weapon, uint32_t frame) {
     --state.ammo_in_mag[slot];
     state.next_fire_frame = frame + static_cast<uint32_t>(
         (1.0f / weapon.fire_rate_hz) * kFramesPerSecond + 0.5f);
+    state.last_shot_frame = frame;
     state.spread_factor = std::min(1.0f, state.spread_factor + 0.08f);
     return true;
 }
@@ -134,6 +136,7 @@ void SerializeCombatState(Serializer& s, const CombatState& c) {
     }
     s.WriteU32(c.reload_frames_left);
     s.WriteU32(c.next_fire_frame);
+    s.WriteU32(c.last_shot_frame);
     s.WriteU8(c.aiming ? 1 : 0);
     s.WriteF32(c.spread_factor);
 }
@@ -148,6 +151,7 @@ void DeserializeCombatState(Deserializer& d, CombatState& c) {
     }
     c.reload_frames_left = d.ReadU32();
     c.next_fire_frame = d.ReadU32();
+    c.last_shot_frame = d.ReadU32();
     c.aiming = d.ReadU8() != 0;
     c.spread_factor = d.ReadF32();
 }

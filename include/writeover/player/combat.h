@@ -20,6 +20,7 @@ struct CombatState {
     std::array<uint16_t, kWeaponSlotCount> reserve = {48, 120, 30};
     uint32_t reload_frames_left = 0;
     uint32_t next_fire_frame = 0;
+    uint32_t last_shot_frame = 0;
     bool aiming = false;
     float spread_factor = 0.0f;  // grows while firing, decays with time
 };

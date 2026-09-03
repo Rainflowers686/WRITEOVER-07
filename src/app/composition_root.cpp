@@ -319,6 +319,8 @@ public:
     }
     // Per-frame source of truth: the renderer reads the player's live
     // locomotion state instead of a one-time snapshot (F-23 closure).
+    void SetCombatSource(const CombatState* combat) { combat_ = combat; }
+
     void SetLocomotionSource(const LocomotionState* locomotion) {
         locomotion_ = locomotion;
     }
@@ -362,7 +364,14 @@ public:
                                   ProductionSpriteKind::Terminal, Color{70,180,170},
                                   grid_cells_, grid_w_, grid_h_,
                                   logical_pixels_.data(), width_, logical_h, focal);
-            DrawWeaponViewmodel(logical_pixels_.data(), width_, logical_h, 0, 0.0f);
+            int vm_state = 0;
+            float recoil = 0.0f;
+            if (combat_ != nullptr && frame_index >= combat_->last_shot_frame &&
+                frame_index - combat_->last_shot_frame < 4) {
+                vm_state = 1;
+                recoil = 1.0f - static_cast<float>(frame_index - combat_->last_shot_frame) / 4.0f;
+            }
+            DrawWeaponViewmodel(logical_pixels_.data(), width_, logical_h, vm_state, recoil);
             ComposeHalfBlockFrame(logical_pixels_.data(), width_, logical_h,
                                   body_.data(), width_, height_);
         }
@@ -395,6 +404,7 @@ private:
     Vec3 player_pos_;
     float player_yaw_ = 0.0f;
     const LocomotionState* locomotion_ = nullptr;
+    const CombatState* combat_ = nullptr;
     const GridCell* grid_cells_ = nullptr;
     int grid_w_ = 0;
     int grid_h_ = 0;
@@ -533,6 +543,7 @@ int RunComposition(const GameConfig& config) {
                            : Vec3{1.5f, 6.0f, 0.0f};
     render->SetPlayerView(spawn, 0.0f);
     render->SetLocomotionSource(&services.player->Locomotion());
+    render->SetCombatSource(&services.player->Combat());
     if (services.world->HasLoadedRoom()) {
         const Room& room = services.world->LoadedRoom();
         render->SetGridData(room.grid.Data().data(),
