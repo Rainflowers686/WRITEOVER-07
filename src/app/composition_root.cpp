@@ -242,6 +242,12 @@ public:
         if (input_.action_pressed[static_cast<size_t>(GameAction::Help)] && narrator_intrusion_callback_) {
             narrator_intrusion_callback_();
         }
+        if (input_.action_pressed[static_cast<size_t>(GameAction::SaveGame)] && save_callback_) {
+            save_callback_();
+        }
+        if (input_.action_pressed[static_cast<size_t>(GameAction::LoadGame)] && load_callback_) {
+            load_callback_();
+        }
         if (input_.action_pressed[static_cast<size_t>(GameAction::Interact)] && interact_callback_) {
             interact_callback_();
         }
@@ -261,6 +267,8 @@ public:
     void SetRoomSwitchCallback(std::function<void(const std::string&, const Vec3&)> cb) { room_switch_callback_ = std::move(cb); }
     void SetInteractCallback(std::function<void()> cb) { interact_callback_ = std::move(cb); }
     void SetNarratorIntrusionCallback(std::function<void()> cb) { narrator_intrusion_callback_ = std::move(cb); }
+    void SetSaveCallback(std::function<void()> cb) { save_callback_ = std::move(cb); }
+    void SetLoadCallback(std::function<void()> cb) { load_callback_ = std::move(cb); }
 
     const char* Name() const override { return "player"; }
 
@@ -276,6 +284,8 @@ private:
     std::function<void(const std::string&, const Vec3&)> room_switch_callback_;
     std::function<void()> interact_callback_;
     std::function<void()> narrator_intrusion_callback_;
+    std::function<void()> save_callback_;
+    std::function<void()> load_callback_;
 };
 
 class NarrativeModule final : public IEngineModule {
@@ -625,6 +635,47 @@ int RunComposition(const GameConfig& config) {
     });
     services.player->SetNarratorIntrusionCallback([&] {
         render->TriggerNarratorIntrusion(240);
+    });
+    services.player->SetSaveCallback([&] {
+        std::vector<SaveSection> sections;
+        std::vector<uint8_t> rng_b, ev_b, pl_b, w_b, n_b, sy_b;
+        { Serializer s(rng_b); sim_rng.Save(s); }
+        { Serializer s(ev_b); events.Save(s); }
+        { Serializer s(pl_b); const LocomotionState& loco = services.player->Locomotion(); s.WriteF32(loco.position.x); s.WriteF32(loco.position.y); s.WriteF32(loco.position.z); s.WriteF32(loco.yaw); s.WriteU8(static_cast<uint8_t>(loco.posture)); s.WriteU8(static_cast<uint8_t>(loco.traversal)); s.WriteU8(loco.contact.grounded ? 1 : 0); }
+        { Serializer s(w_b); services.world->Infra().Save(s); const auto facts = services.world->Facts().Snapshot(); s.WriteU32(static_cast<uint32_t>(facts.size())); for (const auto& f : facts) { WriteId(s, f.id); s.WriteU8(1); } }
+        { Serializer s(n_b); services.narrative->Storylets().Save(s); }
+        sy_b = services.systemic->Serialize();
+        sections.push_back({SaveSectionId::Player, std::move(pl_b)});
+        sections.push_back({SaveSectionId::World, std::move(w_b)});
+        sections.push_back({SaveSectionId::Rng, std::move(rng_b)});
+        sections.push_back({SaveSectionId::Events, std::move(ev_b)});
+        sections.push_back({SaveSectionId::Narrative, std::move(n_b)});
+        sections.push_back({SaveSectionId::Systemic, std::move(sy_b)});
+        std::error_code ec; std::filesystem::create_directories("saves", ec);
+        SaveManager save;
+        const auto res = save.SaveWorld("saves/pvs_manual", sections);
+        render->SetSubtitleOnce(res.IsOk() ? "Saved." : "Save failed.", 120);
+    });
+    services.player->SetLoadCallback([&] {
+        SaveManager save;
+        const auto loaded = save.LoadWorld("saves/pvs_manual");
+        if (loaded.IsError()) { render->SetSubtitleOnce("Load failed.", 120); return; }
+        for (const auto& sec : loaded.Value()) {
+            if (sec.id == SaveSectionId::Systemic) {
+                auto restored = SystemicWorld::Deserialize(sec.data.data(), sec.data.size());
+                if (restored.IsOk()) { *services.systemic = restored.Value(); }
+            } else if (sec.id == SaveSectionId::Player && sec.data.size() >= 40) {
+                Deserializer d(sec.data.data(), sec.data.size());
+                services.player->Locomotion().position.x = d.ReadF32();
+                services.player->Locomotion().position.y = d.ReadF32();
+                services.player->Locomotion().position.z = d.ReadF32();
+                services.player->Locomotion().yaw = d.ReadF32();
+                services.player->Locomotion().posture = static_cast<Posture>(d.ReadU8());
+                services.player->Locomotion().traversal = static_cast<Traversal>(d.ReadU8());
+                services.player->Locomotion().contact.grounded = d.ReadU8() != 0;
+            }
+        }
+        render->SetSubtitleOnce("Loaded.", 120);
     });
     services.player->SetCurrentRoom(config.room_id.empty() ? std::string("room_b1_revival") : config.room_id);
     services.player->SetRoomSwitchCallback([&](const std::string& id, const Vec3& spawn) {

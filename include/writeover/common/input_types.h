@@ -40,7 +40,7 @@ enum class GameAction : uint8_t {
     LeanLeft, LeanRight, Interact, Reload,
     Fire, AimDownSights, Melee,
     WeaponSlot1, WeaponSlot2, WeaponSlot3,
-    Pause, DevPanel, Help,
+    Pause, DevPanel, Help, SaveGame, LoadGame,
     DialogOption1, DialogOption2, DialogOption3, DialogOption4,
     Count,
 };
