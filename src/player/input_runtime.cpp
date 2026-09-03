@@ -21,32 +21,73 @@ void InputRuntime::Shutdown() {
 }
 
 bool InputRuntime::HasFocus() const {
-    const bool kb = keyboard_ ? keyboard_->HasFocus() : false;
-    const bool ms = mouse_ ? mouse_->HasFocus() : false;
-    return kb && ms;
+    // Keyboard/console backend focus is authoritative (§13). When no keyboard
+    // exists (unusual), fall back to the pointer's view.
+    if (keyboard_) return keyboard_->HasFocus();
+    return mouse_ ? mouse_->HasFocus() : false;
+}
+
+void InputRuntime::SetActiveContext(InputContext ctx) {
+    active_context_ = ctx;
 }
 
 void InputRuntime::SampleTick(InputState& state, const InputMapper& mapper) {
-    // Clear transient state from the previous tick.
     state.action_pressed.fill(false);
     state.action_released.fill(false);
     state.mouse_delta = Vec2{};
 
-    // Focus check: when unfocused, clear all state.
-    const bool focus = HasFocus();
-    state.has_focus = focus;
-    if (!focus) {
+    // Focus authority = keyboard backend (console focus). Pointer backend
+    // focus is used only internally (Raw Input has no traditional focus).
+    const bool authoritative_focus = keyboard_
+        ? keyboard_->HasFocus()
+        : (mouse_ ? mouse_->HasFocus() : false);
+    state.has_focus = authoritative_focus;
+
+    InputEvent evt;
+
+    if (!authoritative_focus) {
+        // Focus loss: clear everything. Backends that receive background
+        // pointer input (Raw Input with RIDEV_INPUTSINK) are drained and
+        // discarded so no backlog can be applied on regain.
         ClearInputState(state);
+        if (mouse_ && mouse_->NeedsBackgroundDrain()) {
+            while (mouse_->Poll(evt)) {}
+            Vec2 discard;
+            mouse_->ConsumeMouseDelta(discard);
+        }
+        previous_focus_ = false;
         return;
     }
 
-    // Poll keyboard: drain all pending events and map to GameActions.
-    InputEvent evt;
+    // Focus regain: rebase the pointer and discard any remaining backlog.
+    // This tick's pointer delta is suppressed (no huge first delta); the
+    // next real movement tick applies normally.
+    bool suppress_delta_this_tick = false;
+    if (!previous_focus_) {
+        if (mouse_) {
+            mouse_->RebasePointer();
+            while (mouse_->Poll(evt)) {}
+            Vec2 discard;
+            mouse_->ConsumeMouseDelta(discard);
+        }
+        previous_focus_ = true;
+        suppress_delta_this_tick = true;
+    }
+
+    // Context transition: clear stale action_down from the previous context
+    // so held keys never stick into the new context.
+    if (active_context_ != last_context_) {
+        ClearInputState(state);
+        last_context_ = active_context_;
+    }
+
+    // Poll keyboard: drain all pending events and map through the ACTIVE
+    // input context (never hardcoded Gameplay).
     while (keyboard_ && keyboard_->Poll(evt)) {
         if (evt.key == PhysicalKey::Unknown) {
-            continue;  // pointer-sample marker from a mouse backend; skip
+            continue;
         }
-        const GameAction a = mapper.MapKey(InputContext::Gameplay, evt.key);
+        const GameAction a = mapper.MapKey(active_context_, evt.key);
         if (a == GameAction::Count) {
             continue;
         }
@@ -62,16 +103,13 @@ void InputRuntime::SampleTick(InputState& state, const InputMapper& mapper) {
         }
     }
 
-    // Drive the mouse backend sampling: Poll() is what samples the pointer
-    // (CursorDeltaBackend accumulates delta + recenters inside Poll). Drain
-    // until no new pointer sample/event is available, then consume the
-    // accumulated delta. Never treat an Unknown-key sample as a keyboard
-    // action.
+    // Drive the mouse backend sampling (raw or cursor). Buttons from the
+    // pointer backend are also mapped through the active context.
     while (mouse_ && mouse_->Poll(evt)) {
         if (evt.key == PhysicalKey::Unknown) {
-            continue;  // sample-only; delta is consumed below
+            continue;  // sample-only; delta consumed below
         }
-        const GameAction a = mapper.MapKey(InputContext::Gameplay, evt.key);
+        const GameAction a = mapper.MapKey(active_context_, evt.key);
         if (a == GameAction::Count) {
             continue;
         }
@@ -87,10 +125,13 @@ void InputRuntime::SampleTick(InputState& state, const InputMapper& mapper) {
         }
     }
 
-    // Consume the accumulated pointer delta.
+    // Consume the accumulated pointer delta. On the focus-regain tick the
+    // delta is discarded (already rebased); subsequent ticks apply normally.
     Vec2 delta;
     if (mouse_ && mouse_->ConsumeMouseDelta(delta)) {
-        state.mouse_delta = delta;
+        if (!suppress_delta_this_tick) {
+            state.mouse_delta = delta;
+        }
     }
 }
 

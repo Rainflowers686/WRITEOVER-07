@@ -69,6 +69,34 @@ private:
 // Platform backend factories (implemented in src/platform/windows/).
 std::unique_ptr<IInputBackend> CreateKeyboardOnlyBackend();
 std::unique_ptr<IInputBackend> CreateCursorDeltaBackend();
+std::unique_ptr<IInputBackend> CreateRawInputMouseBackend();
+
+// Pointer backend preference used by the app + the input probe. Auto tries
+// Raw Input first and falls back to CursorDelta only on Init failure.
+enum class PointerBackendPreference : uint8_t {
+    Auto = 0,   // Raw Input primary, CursorDelta fallback
+    RawInput = 1,
+    Cursor = 2,
+};
+
+// Result of building the runtime keyboard + pointer backends. `keyboard` is
+// the console keyboard backend (also carries focus authority); `pointer` is
+// either RawInputMouseBackend or CursorDeltaBackend. When Raw Input is
+// active, the keyboard backend's console MOUSE_EVENT buttons are disabled so
+// no double press/release occurs (single mouse-button source).
+struct PointerBackendSelection {
+    std::unique_ptr<IInputBackend> keyboard;
+    std::unique_ptr<IInputBackend> pointer;
+    bool raw_active = false;
+    bool raw_init_failed = false;
+    bool fallback_used = false;      // raw failed -> cursor fallback taken
+    const char* pointer_name = "cursor-delta";       // "raw-input" / "cursor-delta"
+    const char* mouse_button_source = "console";     // "raw-input" / "console"
+};
+
+// Builds the production keyboard + pointer backend pair honoring `pref`.
+// Implemented in the Windows platform layer.
+PointerBackendSelection CreateRuntimeBackendSelection(PointerBackendPreference pref);
 
 // Focus-lost helper: clears all action states (called by the app when the
 // backend reports loss of focus, per input contract).

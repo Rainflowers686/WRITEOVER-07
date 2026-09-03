@@ -169,6 +169,12 @@ public:
                 rec.key = MapVk(records[i].Event.KeyEvent.wVirtualKeyCode);
                 rec.pressed = records[i].Event.KeyEvent.bKeyDown != FALSE;
             } else if (records[i].EventType == MOUSE_EVENT) {
+                // When Raw Input is the active pointer backend, console mouse
+                // buttons are disabled to avoid double press/release (single
+                // mouse-button source arbitration).
+                if (!emit_mouse_buttons_) {
+                    continue;
+                }
                 rec.kind = InputBatchRecord::Kind::MouseButton;
                 rec.button_mask = ButtonMaskFromState(
                     records[i].Event.MouseEvent.dwButtonState);
@@ -188,22 +194,28 @@ public:
 
     bool HasFocus() const override { return has_focus_; }
 
+    void SetMouseButtonsEnabled(bool enabled) { emit_mouse_buttons_ = enabled; }
+
     const char* Name() const override { return "keyboard-console"; }
 
 private:
     HANDLE input_handle_ = nullptr;
     DWORD old_mode_ = 0;
     bool has_focus_ = true;
+    bool emit_mouse_buttons_ = true;  // false when Raw Input owns mouse buttons
     uint8_t prev_mouse_mask_ = 0;
     std::deque<InputEvent> queue_;
 };
 
 // Cursor-delta backend with center recapture (fallback #1).
-// When the console window is foreground, reads cursor delta, then recenters
-// the cursor to avoid cursor reaching the screen edge. Poll() drives the
-// sampling; the delta is retrieved via ConsumeMouseDelta. Poll never emits a
-// key event (key stays Unknown), so the runtime seam must not map it to an
-// action.
+// Reads the cursor delta, then recenters the cursor to the CURRENT FOREGROUND
+// window center (the visible terminal window; ConHost and Windows Terminal
+// both work because we never depend on GetConsoleWindow's hidden HWND).
+//
+// Poll is only driven by InputRuntime while gameplay has authoritative focus
+// (keyboard/console focus). Recapture therefore never happens while the app
+// is unfocused. RebasePointer (focus regain) re-baselines to the current
+// cursor position so the first frame after Alt+Tab has no huge delta.
 class CursorDeltaBackend final : public IInputBackend {
 public:
     bool Init() override {
@@ -221,10 +233,6 @@ public:
         out_event.key = PhysicalKey::Unknown;
         out_event.pressed = false;
         out_event.analog = 0.0f;
-        // Only accumulate delta when the console window is foreground.
-        if (!HasFocus()) {
-            return false;
-        }
         POINT p{};
         if (!GetCursorPos(&p)) {
             return false;
@@ -237,11 +245,14 @@ public:
         mouse_delta_x_ += static_cast<float>(dx);
         mouse_delta_y_ += static_cast<float>(dy);
 
-        // Recenter the cursor to the console window center.
-        HWND console = GetConsoleWindow();
-        if (console != nullptr) {
+        // Recenter the cursor to the CURRENT FOREGROUND window center.
+        // (Runtime drives Poll only while gameplay focus is confirmed, so
+        // recapture never moves the cursor of another application.)
+        HWND foreground = GetForegroundWindow();
+        if (foreground != nullptr) {
             RECT rect{};
-            if (GetWindowRect(console, &rect)) {
+            if (GetWindowRect(foreground, &rect) &&
+                rect.right > rect.left && rect.bottom > rect.top) {
                 const int cx = (rect.left + rect.right) / 2;
                 const int cy = (rect.top + rect.bottom) / 2;
                 SetCursorPos(cx, cy);
@@ -263,12 +274,23 @@ public:
         return true;
     }
 
+    // Advisory only: there is a foreground window. Authoritative gameplay
+    // focus lives on the keyboard backend (InputRuntime). Never treated as a
+    // gameplay gate.
     bool HasFocus() const override {
-        HWND fg = GetForegroundWindow();
-        if (fg == nullptr) {
-            return false;
+        return GetForegroundWindow() != nullptr;
+    }
+
+    // Focus regain rebaseline: clear accumulated delta and re-baseline to the
+    // current cursor position so the first frame after regain has no jump.
+    void RebasePointer() override {
+        mouse_delta_x_ = 0.0f;
+        mouse_delta_y_ = 0.0f;
+        POINT p{};
+        if (GetCursorPos(&p)) {
+            last_x_ = static_cast<double>(p.x);
+            last_y_ = static_cast<double>(p.y);
         }
-        return fg == GetConsoleWindow();
     }
 
     const char* Name() const override { return "cursor-delta"; }
@@ -290,6 +312,60 @@ std::unique_ptr<writeover::IInputBackend> writeover::CreateKeyboardOnlyBackend()
 std::unique_ptr<writeover::IInputBackend> writeover::CreateCursorDeltaBackend() {
     return std::unique_ptr<writeover::IInputBackend>(
         new writeover::CursorDeltaBackend());
+}
+
+writeover::PointerBackendSelection writeover::CreateRuntimeBackendSelection(
+    PointerBackendPreference pref) {
+    PointerBackendSelection sel;
+    // The console keyboard backend is always present (keys + authoritative
+    // focus). Mouse-button emission is toggled below by source arbitration.
+    auto keyboard = std::make_unique<KeyboardOnlyBackend>();
+
+    switch (pref) {
+    case PointerBackendPreference::RawInput: {
+        auto raw = writeover::CreateRawInputMouseBackend();
+        if (raw && raw->Init()) {
+            sel.raw_active = true;
+            sel.pointer = std::move(raw);
+            sel.pointer_name = "raw-input";
+            sel.mouse_button_source = "raw-input";
+            keyboard->SetMouseButtonsEnabled(false);  // raw owns buttons
+        } else {
+            sel.raw_init_failed = true;  // forced raw: NO fallback
+        }
+        break;
+    }
+    case PointerBackendPreference::Cursor: {
+        sel.pointer = CreateCursorDeltaBackend();
+        sel.pointer_name = "cursor-delta";
+        sel.mouse_button_source = "console";
+        keyboard->SetMouseButtonsEnabled(true);
+        break;
+    }
+    case PointerBackendPreference::Auto:
+    default: {
+        auto raw = writeover::CreateRawInputMouseBackend();
+        if (raw && raw->Init()) {
+            sel.raw_active = true;
+            sel.pointer = std::move(raw);
+            sel.pointer_name = "raw-input";
+            sel.mouse_button_source = "raw-input";
+            keyboard->SetMouseButtonsEnabled(false);
+        } else {
+            // Raw failed -> cursor fallback (reported, never hidden).
+            sel.raw_init_failed = true;
+            sel.fallback_used = true;
+            sel.pointer = CreateCursorDeltaBackend();
+            sel.pointer_name = "cursor-delta";
+            sel.mouse_button_source = "console";
+            keyboard->SetMouseButtonsEnabled(true);
+        }
+        break;
+    }
+    }
+
+    sel.keyboard = std::move(keyboard);
+    return sel;
 }
 
 #endif // _WIN32

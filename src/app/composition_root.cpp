@@ -378,12 +378,18 @@ struct GameServices {
 };
 
 // InputModule: private integration class that samples the keyboard and mouse
-// backends through InputRuntime each sim tick. InputRuntime is the testable
-// seam (fake backends in unit tests prove the full delta/button path).
+// backends through InputRuntime each sim tick. Uses the production runtime
+// backend selection (Raw Input primary, CursorDelta fallback) so the app and
+// the input probe share the same pointer path.
 class InputModule final : public IEngineModule {
 public:
-    InputModule() : runtime_(CreateKeyboardOnlyBackend(), CreateCursorDeltaBackend()) {}
+    InputModule()
+        : selection_(CreateRuntimeBackendSelection(PointerBackendPreference::Auto)),
+          runtime_(std::move(selection_.keyboard), std::move(selection_.pointer)) {}
     ~InputModule() override = default;
+
+    // Exposes the backend report for diagnostics / probe parity.
+    const PointerBackendSelection& Selection() const { return selection_; }
 
     void Init(const EngineContext&) override { runtime_.Init(); }
     void Shutdown() override { runtime_.Shutdown(); }
@@ -400,6 +406,7 @@ public:
     const char* Name() const override { return "input"; }
 
 private:
+    PointerBackendSelection selection_;
     InputRuntime runtime_;
     InputState* input_ = nullptr;
     const InputMapper* mapper_ = nullptr;

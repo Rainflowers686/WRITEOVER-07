@@ -85,6 +85,16 @@ public:
         (void)out;
         return false;
     }
+
+    // Called by InputRuntime when input focus is regained. Backends should
+    // discard/rebaseline any pointer backlog so the first frame after focus
+    // regain has no huge delta. Default: no-op.
+    virtual void RebasePointer() {}
+
+    // Returns true when the backend may receive pointer samples while the
+    // application is not foreground (e.g. Raw Input with RIDEV_INPUTSINK).
+    // InputRuntime drives background drain to prevent backlog accumulation.
+    virtual bool NeedsBackgroundDrain() const { return false; }
 };
 
 // ---------------------------------------------------------------------------
@@ -162,6 +172,91 @@ inline void ApplyInputBatchRecord(const InputBatchRecord& rec,
     if (rec.key != PhysicalKey::Unknown) {
         queue.push_back({rec.key, rec.pressed, 0.0f});
     }
+}
+
+// ---------------------------------------------------------------------------
+// Raw Input mouse packet translation seam (platform-neutral).
+// RawInputMouseBackend (Windows) converts RAWMOUSE into RawMousePacket and
+// pushes InputEvents via these helpers; unit tests exercise the same seam
+// without any Win32 types (R0 closure: translator tests are real, the
+// hardware end-to-end still requires the human R0 probe).
+// ---------------------------------------------------------------------------
+
+// RAWINPUT usButtonFlags bit values (mirrors Win32 RI_MOUSE_*).
+enum RawMouseButtonFlag : uint16_t {
+    kRawLeftButtonDown   = 0x0001,
+    kRawLeftButtonUp     = 0x0002,
+    kRawRightButtonDown  = 0x0004,
+    kRawRightButtonUp    = 0x0008,
+    kRawMiddleButtonDown = 0x0010,
+    kRawMiddleButtonUp   = 0x0020,
+    kRawX1ButtonDown     = 0x0040,
+    kRawX1ButtonUp       = 0x0080,
+    kRawX2ButtonDown     = 0x0100,
+    kRawX2ButtonUp       = 0x0200,
+};
+
+// RAWINPUT usFlags bit values (mirrors Win32 RI_MOUSE_*).
+enum RawMouseFlag : uint16_t {
+    kRawMouseMoveRelative = 0x00,
+    kRawMouseMoveAbsolute = 0x01,
+};
+
+// One raw mouse sample (platform-neutral; the platform layer fills this from
+// a RAWMOUSE record).
+struct RawMousePacket {
+    int32_t dx = 0;              // relative movement x
+    int32_t dy = 0;              // relative movement y
+    uint16_t button_flags = 0;   // RawMouseButtonFlag bits
+    uint16_t flags = kRawMouseMoveRelative;  // RawMouseFlag bits
+};
+
+// Translates one packet into queued button InputEvents. Relative movement is
+// accumulated into `acc_delta`; absolute packets contribute no delta.
+// Returns the number of events queued.
+inline size_t TranslateRawMousePacket(const RawMousePacket& packet,
+                                      Vec2& acc_delta,
+                                      std::deque<InputEvent>& queue) {
+    if ((packet.flags & kRawMouseMoveAbsolute) == 0) {
+        acc_delta.x += static_cast<float>(packet.dx);
+        acc_delta.y += static_cast<float>(packet.dy);
+    }
+    size_t n = 0;
+    const auto push = [&](PhysicalKey key, bool pressed) {
+        queue.push_back({key, pressed, 0.0f});
+        ++n;
+    };
+    if (packet.button_flags & kRawLeftButtonDown) {
+        push(PhysicalKey::MouseLeft, true);
+    }
+    if (packet.button_flags & kRawLeftButtonUp) {
+        push(PhysicalKey::MouseLeft, false);
+    }
+    if (packet.button_flags & kRawRightButtonDown) {
+        push(PhysicalKey::MouseRight, true);
+    }
+    if (packet.button_flags & kRawRightButtonUp) {
+        push(PhysicalKey::MouseRight, false);
+    }
+    if (packet.button_flags & kRawMiddleButtonDown) {
+        push(PhysicalKey::MouseMiddle, true);
+    }
+    if (packet.button_flags & kRawMiddleButtonUp) {
+        push(PhysicalKey::MouseMiddle, false);
+    }
+    if (packet.button_flags & kRawX1ButtonDown) {
+        push(PhysicalKey::MouseX1, true);
+    }
+    if (packet.button_flags & kRawX1ButtonUp) {
+        push(PhysicalKey::MouseX1, false);
+    }
+    if (packet.button_flags & kRawX2ButtonDown) {
+        push(PhysicalKey::MouseX2, true);
+    }
+    if (packet.button_flags & kRawX2ButtonUp) {
+        push(PhysicalKey::MouseX2, false);
+    }
+    return n;
 }
 
 } // namespace writeover

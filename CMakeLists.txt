@@ -117,6 +117,7 @@ writeover_configure_target(writeover_core)
 add_library(writeover_platform STATIC
     src/platform/windows/win_console.cpp
     src/platform/windows/win_input.cpp
+    src/platform/windows/win_raw_input.cpp
     src/platform/windows/win_terminal.cpp
     src/platform/windows/win_audio.cpp
     src/platform/windows/win_file_io.cpp
@@ -157,6 +158,12 @@ if(WO_BUILD_TOOLS)
     add_executable(mapc tools/mapc/main.cpp)
     target_link_libraries(mapc PRIVATE writeover_common writeover_world)
     writeover_configure_target(mapc)
+
+    add_executable(writeover_input_probe tools/input_probe/main.cpp)
+    target_link_libraries(writeover_input_probe PRIVATE
+        writeover_core writeover_player writeover_platform)
+    writeover_configure_target(writeover_input_probe)
+    target_include_directories(writeover_input_probe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
 # ---------------------------------------------------------------------------
