@@ -19,6 +19,12 @@ struct ProductionView {
     float pitch = 0.0f;     // radians
 };
 
+enum class ProductionSpriteKind : uint8_t {
+    Npc = 0,
+    Terminal = 1,
+    Lamp = 2,
+};
+
 // Rasterizes a Height-Span grid into a logical RGB pixel buffer.
 // logical_w == terminal cell width; logical_h == terminal height * 2.
 void RenderProductionFrame(const GridCell* cells, int grid_w, int grid_h,
@@ -26,11 +32,20 @@ void RenderProductionFrame(const GridCell* cells, int grid_w, int grid_h,
                            Color* out_pixels, int logical_w, int logical_h,
                            float focal_px_per_unit);
 
-// Composes a logical pixel framebuffer into half-block CharCell terminal frame.
-void DrawWeaponViewmodel(Color* logical_pixels,
-                          int logical_w, int logical_h,
-                          int state, float recoil_offset);
+// Draws a simple occluded production sprite into the logical framebuffer.
+void DrawProductionSprite(const Vec3& camera, float yaw, float pitch,
+                          const Vec3& world_pos, float sprite_height,
+                          ProductionSpriteKind kind, const Color& tint,
+                          const GridCell* cells, int grid_w, int grid_h,
+                          Color* logical_pixels, int logical_w, int logical_h,
+                          float focal_px_per_unit);
 
+// Draws a simple production weapon viewmodel into the logical framebuffer.
+void DrawWeaponViewmodel(Color* logical_pixels,
+                         int logical_w, int logical_h,
+                         int state, float recoil_offset);
+
+// Composes a logical pixel framebuffer into half-block CharCell terminal frame.
 void ComposeHalfBlockFrame(const Color* logical_pixels,
                            int logical_w, int logical_h,
                            CharCell* out_cells, int cell_w, int cell_h);

@@ -152,6 +152,84 @@ void RenderProductionFrame(const GridCell* cells, int grid_w, int grid_h,
     }
 }
 
+void DrawProductionSprite(const Vec3& camera, float yaw, float pitch,
+                          const Vec3& world_pos, float sprite_height,
+                          ProductionSpriteKind kind, const Color& tint,
+                          const GridCell* cells, int grid_w, int grid_h,
+                          Color* logical_pixels, int logical_w, int logical_h,
+                          float focal_px_per_unit) {
+    if (!logical_pixels || logical_w <= 0 || logical_h <= 0) return;
+    const float dx = world_pos.x - camera.x;
+    const float dy = world_pos.y - camera.y;
+    const float dist = std::sqrt(dx * dx + dy * dy);
+    if (dist < 0.05f) return;
+    const float to_yaw = std::atan2(dy, dx);
+    float rel = to_yaw - yaw;
+    while (rel > 3.14159265f) rel -= 2.0f * 3.14159265f;
+    while (rel < -3.14159265f) rel += 2.0f * 3.14159265f;
+    const float fov_per_column =
+        2.0f * std::atan(0.5f * static_cast<float>(logical_w) / focal_px_per_unit) /
+        static_cast<float>(logical_w);
+    const float col_f = static_cast<float>(logical_w) * 0.5f + rel / fov_per_column;
+    const int col = static_cast<int>(std::lround(col_f));
+    if (col < 0 || col >= logical_w) return;
+
+    // Vertical projection.
+    const float scale = focal_px_per_unit / dist;
+    const float row_center =
+        static_cast<float>(logical_h) * 0.5f + std::tan(pitch) * focal_px_per_unit;
+    const float dz = world_pos.z - camera.z;
+    const int row = static_cast<int>(std::lround(row_center - dz * scale));
+    if (row < 0 || row >= logical_h) return;
+
+    // Occlusion: any closer wall segment overlapping the sprite vertical area.
+    RayConfig cfg;
+    cfg.origin_xy = Vec2{camera.x, camera.y};
+    cfg.yaw = yaw + (col_f - static_cast<float>(logical_w) * 0.5f) * fov_per_column;
+    const RayResult ray = CastColumnRay(cfg, cells, grid_w, grid_h);
+    bool occluded = false;
+    const float half = sprite_height * scale * 0.5f;
+    for (uint32_t i = 0; i < ray.segment_count; ++i) {
+        const OccludingSegment& seg = ray.segments[i];
+        if (seg.distance >= dist - 0.05f) continue;
+        const WallProjection p = ProjectWall(seg, camera.z, pitch, focal_px_per_unit, logical_h);
+        if (p.visible && row + half >= p.screen_top_y - 0.5f &&
+            row - half <= p.screen_bottom_y + 0.5f) {
+            occluded = true;
+            break;
+        }
+    }
+    if (occluded) return;
+
+    const int size = std::max(2, static_cast<int>(sprite_height * scale * 0.55f));
+    auto set = [&](int x, int y, Color c) {
+        if (x >= 0 && x < logical_w && y >= 0 && y < logical_h) {
+            logical_pixels[static_cast<size_t>(y) * logical_w + x] = c;
+        }
+    };
+    if (kind == ProductionSpriteKind::Npc) {
+        for (int sy = -size; sy <= size; ++sy) {
+            for (int sx = -size / 2; sx <= size / 2; ++sx) {
+                const bool head = sy <= -size / 2 && sx >= -size / 4 && sx <= size / 4;
+                const bool body = sy > -size / 2 && sy <= size / 2;
+                if (head || body) set(col + sx, row + sy, tint);
+            }
+        }
+    } else if (kind == ProductionSpriteKind::Terminal) {
+        for (int sy = -size; sy <= size; ++sy) {
+            for (int sx = -size / 2; sx <= size / 2; ++sx) {
+                set(col + sx, row + sy, tint);
+            }
+        }
+    } else {
+        for (int sy = -size / 2; sy <= size / 2; ++sy) {
+            for (int sx = -size / 2; sx <= size / 2; ++sx) {
+                set(col + sx, row + sy, tint);
+            }
+        }
+    }
+}
+
 void DrawWeaponViewmodel(Color* logical_pixels,
                          int logical_w, int logical_h,
                          int state, float recoil_offset) {
