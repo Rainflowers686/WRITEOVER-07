@@ -617,9 +617,20 @@ int RunComposition(const GameConfig& config) {
                 render->SetPlayerView(Vec3{2.5f, 13.5f, 0.0f}, 0.0f);
             }
         } else if (services.player->CurrentRoom() == "room_b1_revival") {
-            const float dx = p.x - 18.5f; const float dy = p.y - 4.5f;
-            if (dx * dx + dy * dy < 6.25f) {
-                render->SetSubtitleOnce("TERMINAL: No active session. Credential required.", 180);
+            const float ndx = p.x - 10.5f; const float ndy = p.y - 5.5f;
+            if (ndx * ndx + ndy * ndy < 4.0f) {
+                for (const auto& item : services.systemic->Items()) {
+                    if (item.type == ItemType::Badge && item.owner == EntityId::New(10)) {
+                        services.systemic->TheftItem(item.id, EntityId::New(1), 0);
+                        render->SetSubtitleOnce("Badge acquired.", 120);
+                        break;
+                    }
+                }
+            } else {
+                const float dx = p.x - 18.5f; const float dy = p.y - 4.5f;
+                if (dx * dx + dy * dy < 6.25f) {
+                    render->SetSubtitleOnce("TERMINAL: No active session. Credential required.", 180);
+                }
             }
         }
     });
