@@ -4,114 +4,217 @@
 
 - MISSION_START_TIME: 2026-09-03 23:51:42
 - START_HEAD: 5dadd5f822e4668161bdf92fae8c5f057690995f
-- CURRENT_HEAD: 22121f2
-- CURRENT_PHASE: BLOCKS 1/2/3/5/6/7/8/9/10 partial — production renderer, sprites, fire feedback, subtitle/intrusion, room transition, NPC memory/relationship, F3, stolen badge route, maintenance side path, knowledge asset, F5/F9 save/load
-- MISSION_STATUS: ACTIVE
+- LAST_CLEAN_HEAD_BEFORE_PVS: 667b7399850e8a6ed718f4e73c17cb5e1549f7eb
+- CURRENT_HEAD: pending local PVS-01 release commit
+- CURRENT_PHASE: final three red teams complete; Silver release candidate
+- MISSION_STATUS: READY_FOR_HUMAN_PLAYTEST_WITH_SCOPE_LIMITS
 
 ## Grand Objective
 
-Create a Premium Vertical Slice:
-B1 Wake/Revival -> Calibration/Logistics -> Service/Medical -> 1F Lobby ->
-Security Checkpoint -> Restroom/Staff Lounge/Maintenance -> Elevator Lobby.
+Deliver one coherent vertical slice:
 
-Target first normal playthrough: 5-10 minutes. Quality over quantity.
+`B1 Wake -> Calibration / Logistics -> Service / Medical -> 1F Lobby -> Security Checkpoint -> Restroom / Staff route -> Elevator Lobby`
+
+The route is intentionally small. It proves one readable authored path and
+shared systemic consequences instead of pretending that the full building or
+full NPC population is already implemented.
 
 ## Victory Ladder
 
-- GOLD: B1 -> 1F Security Checkpoint -> Elevator Lobby, READY_FOR_HUMAN_PLAYTEST
-- SILVER: B1 + Production Renderer + Pistol + Narrator Opening + 1 Full NPC + 4 Semi NPC + one systemic route + real Save/Load + performance
-- BRONZE: production pixel renderer + beautiful B1 micro-space + excellent Pistol + narrator subtitle + one real NPC + all foundation gates green
+- GOLD: complete, polished, stable and ready for human playtest with final art,
+  effects, audio and full route recovery evidence.
+- SILVER: the intended authored path and interactions work with known,
+  non-fatal production-polish gaps. **Current level.**
+- BRONZE: a reproducible production renderer and B1 micro-space only.
 
-## Mandatory Gates
+## Implemented Route
 
-- BLOCK 1 Production Pixel Renderer
-- BLOCK 2 Sprites / Props / Weapon Viewmodel
-- BLOCK 3 Game Feel / Combat Feedback
-- BLOCK 4 B1 Playable Micro-space
-- BLOCK 5 Opening / Narrator / Subtitle / Intrusion proof
-- BLOCK 6 First Full-Human NPC + Slice NPC population
-- BLOCK 7 Runtime World Interaction
-- BLOCK 8 1F Security Checkpoint + routes
-- BLOCK 9 Restroom / Staff Lounge / Terminal / Social details
-- BLOCK 10 PVS Integration / Save / HUD / F3 / Performance / QA
+- B1 Revival: production half-block raster, opening subtitle, maintenance NPC
+  line, incapacitated body, body search, badge theft, memory/relationship
+  reaction, body drag, concealment cart, camera outage and terminal session.
+- Calibration / Logistics: the existing `room_01_calibration` is now part of
+  the normal route rather than an unreachable fallback-only room.
+- Service / Medical: authored room, medical prop, route feedback and transition
+  to the lobby.
+- 1F Security: authored checkpoint, credential access, bribe exchange and
+  maintenance/staff route knowledge.
+- Restroom / Staff and Elevator Lobby: authored side route, door/elevator props,
+  deterministic transitions and readable terminal subtitles.
+- F5/F9 uses the real SaveManager path and serializes player, world, RNG,
+  events, narrative and SystemicWorld sections. Systemic state is restored only
+  after fail-closed parsing and room validation.
 
-## Completed Blocks
+The runtime keeps one SystemicWorld. The authored callbacks are deliberately
+small PVS wiring; they are not a second gameplay framework and do not replace
+M3/M4/M5/M6 ownership.
 
-- BLOCK 1 initial implementation: production half-block pixel framebuffer renderer is now the active runtime path; ReferenceRenderer remains for tests/reference.
+## Final Validation Evidence
 
-## Current Work
+All commands below were run against the local PVS-01 working tree after the
+last code change. `PASS` means the command returned success; no status is
+derived from an earlier report.
 
-- BLOCK 1/2 progress: production renderer, grid lighting, B1 room, weapon viewmodel, and first sprite/prop pipeline (NPC/terminal sprites with occlusion) are in the runtime path.
-- Added room override CLI --room.\n- Added 1F security checkpoint room and golden G05 evidence.\n- BLOCK 5 partial: opening SYS/07 subtitle line added to production runtime.\n- BLOCK 3 partial: weapon viewmodel now reacts to actual fire with recoil/muzzle state.\n- BLOCK 10 partial: F3 debug overlay toggles runtime player position/yaw display.\n- BLOCK 8 partial: B1 to 1F room transition wired via interact at B1 exit zone.\n- BLOCK 6 partial: proximity NPC subtitle line in B1.\n- BLOCK 7 partial: generic interact wired; B1 terminal interact shows credential-required feedback, B1 exit switches to 1F.\n- BLOCK 7 partial: interact near B1 guard now steals badge into player through SystemicWorld.\n- BLOCK 8 partial: 1F interact checks stolen badge in systemic inventory and grants access feedback.\n- BLOCK 5 partial: F1 triggers a test full-screen narrator intrusion overlay (dim + large text).\n- BLOCK 8 partial: maintenance side-path feedback added to checkpoint interact.\n- BLOCK 6/7 progress: badge theft now creates guard memory (Fear) and relationship shift (trust down, suspicion up).\n- BLOCK 9 progress: staff lounge shift schedule can be acquired as a real KnowledgeAsset.\n- BLOCK 10 progress: F5 saves production save, F9 loads systemic/player state. This is now a real save/load path through SaveManager.\n- BLOCK 7/8 progress: bribe exchange added at 1F checkpoint; badge theft lookup corrected to actual seed runtime items.\n- BLOCK 7/8 progress: B1 camera can be disabled via interact, setting ObservationSource offline in SystemicWorld.\n- Next: finalize route and content.
+- `cmake --preset debug`: PASS
+- `cmake --build --preset debug --config Debug --parallel 4`: PASS
+- `cmake --preset release`: PASS
+- `cmake --build --preset release --config Release --parallel 4`: PASS
+- `cmake --preset ci`: PASS
+- `cmake --build --preset ci --config Debug --parallel 4`: PASS
+- `ctest --preset debug --output-on-failure`: PASS
+- `ctest --preset ci --output-on-failure`: PASS
+- `out/build/release/Release/writeover_tests.exe`: PASS, 158 tests, 0 failed
+  (the two printed assertion lines are intentional test-harness self-checks)
+- `powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1 -Preset debug`:
+  PASS; unit test, six `mapc` room checks and bounded app exit all passed
+- `powershell -ExecutionPolicy Bypass -File scripts/bench.ps1 -Preset release`:
+  PASS; all declared budgets passed
+- `powershell -ExecutionPolicy Bypass -File scripts/contract_check.ps1`: PASS
+- `python tools/audit/static_audit.py .`: PASS, `COUNT=0`
+- `python tools/contentc/contentc.py --data-dir data --out-dir data --check`:
+  PASS; six rooms, four facts and two storylets deterministically recompiled
+- `python tools/contentc/test_contentc.py`: PASS, 5/5
+- `python tools/systemic/systemic_schema_check.py --data-dir data`: PASS
+- `python tools/systemic/test_systemic_schema.py`: PASS, 5/5
+- `python tools/systemic/test_runtime_invalid_seed.py`: PASS; invalid seed
+  prevented startup
+- seed compiler explicit-cognition migration probe: PASS; explicit v1.2
+  `cognition` is honored and legacy `class` remains compatible
 
-## Visual Decisions
+## Benchmarks
 
-- Follow VISUAL_BIBLE_V1_2: half-block framebuffer, not ReferenceRenderer.
-- Reject bright/light-gray floor.
-- Normal world world-pixel FPS; text/corruption only for narrator/HUD/terminal.
+Release benchmark output:
 
-## Game-feel Decisions
+- raycast column sweep worst1% average: 0.098 ms
+- terminal full worst1% average: 0.263 ms; budget result PASS
+- terminal delta worst1% average: 0.055 ms; budget result PASS
+- terminal unchanged worst1% average: 0.035 ms; budget result PASS
+- terminal worst-case safety: 0.234 ms worst1% average, 50,659 bytes; PASS
+- systemic lookup worst1% average: 0.012 ms; PASS
+- systemic update workload worst1% average: 0.185 ms; PASS
+- PVS render workload `240x67` worst1% average: 0.981 ms; PASS
+- overall declared benchmark budget: PASS
 
-- TBD after real play.
+The systemic benchmark is a representative foundation workload covering current
+relationship, memory, evidence, body drag/discovery, item, promise, quest,
+search, exchange, terminal, observability and event-bridge records. It does not
+claim to be a full future M5 AI decision benchmark.
 
-## Content Decisions
+## Visual / Input Evidence
 
-- Not yet authored beyond foundation seeds.
+- Six release frame dumps (`B1`, `Calibration`, `Service`, `1F`, `Restroom`,
+  `Elevator`) exited 0 and each produced a `240x134` logical-pixel PPM of
+  96,495 bytes.
+- Visual review found dark industrial floor/ceiling bands, mid-dark walls,
+  distinct cyan/amber authored props, occluded scene sprites and a bottom-right
+  weapon viewmodel within the declared safe area. No large-area light-gray or
+  white floor was observed.
+- `writeover_input_probe.exe --backend auto --context gameplay --seconds 2`:
+  PASS for `keyboard-console`, `raw-input`, `raw-input` mouse buttons,
+  gameplay context and focus. The probe run did not inject a complete route;
+  automated end-to-end key replay remains UNVERIFIED and is intentionally left
+  for human playtest.
+- Existing tracked golden samples remain in `evidence/pvs01/`. The temporary
+  six-scene visual captures used for this review are cleanup artifacts, not
+  product assets.
 
-## Golden Scene Evidence
+## Code Red Team
 
-- evidence/pvs01/G01_B1_WAKE.ppm
-- evidence/pvs01/G05_SECURITY_CHECKPOINT.ppm
+PASS with no Fatal or Major finding open.
 
-## Current Benchmarks
+- `HideBody` now exposes the missing semantic transition and emits typed
+  `BodyHidden`; the body concealment test follows physical search -> revealed
+  badge -> theft -> drag -> hide -> discovery observation -> explicit response.
+- `DiscoverBody` records observation/evidence/memory only. Security escalation
+  occurs only through `ApplyDiscoveryResponse`, so medical call, cover-up,
+  ignore and report remain distinct outcomes.
+- Duplicate IDs, vector/string bounds, enum/range validation, canonical
+  observability-source mirroring, item provenance and fail-closed systemic seed
+  loading are covered by code/tests.
+- The seed compiler now honors explicit `cognition` and retains legacy class
+  migration behavior.
+- Public header drift was recorded in ADR-0007 and the contract baseline; the
+  contract checker is green.
+- No second gameplay world, broad framework, new branch, hook, PR or unrelated
+  architecture change was introduced.
 
-- Systemic lookup: worst1 ~0.02ms Release
-- Systemic update: worst1 ~0.17ms Release
-- PVS render workload 240x67: worst1 ~0.41ms Release
+## Real-Play / Effects Red Team
 
-## Code Red Team Results
+PASS for deterministic bounded runtime scene generation; CONDITIONAL for full
+human route play because this environment cannot provide a complete automated
+keyboard/mouse playthrough.
 
-- Pending.
+- The production executable generated all six canonical scene frames.
+- The route now follows the execution contract ordering and uses authored room
+  files for every scene in the slice.
+- The real input backend reports the production keyboard and Raw Input pointer
+  path; unit tests cover pointer deltas, buttons, focus loss/regain and context
+  switching.
+- F1 narrator intrusion, F3 overlay, fire/recoil/muzzle feedback, pause and
+  melee feedback are wired in the production composition root. Audio playback
+  is not implemented in this slice.
 
-## Effect Red Team Results
+## Perfection Red Team
 
-- Pending.
+SILVER, not GOLD. The first-time-player complaint list is explicit:
 
-## Perfection Red Team Results
+1. The renderer is a deterministic procedural production path, not final art
+   atlas content; the scene prop set is intentionally sparse.
+2. Audio playback, full particle/debris/smoke authoring and damage/explosion
+   presentation are not yet implemented.
+3. `AiModule` remains a legal no-op in the PVS executable; the cleaner and
+   social outcomes are foundation contracts plus authored route callbacks, not
+   a complete M5 autonomous schedule.
+4. There is no automated end-to-end input replay for the route; the bounded
+   human playtest is the next evidence step.
 
-- Pending.
+These are medium, scope-bounded issues. None is a current Fatal or Major
+blocker for a Silver human-playtest candidate.
 
-## Open Fatal / Major / P0 / P1
+## Top Quality Gaps / Controlled Defers
+
+- PVS-M01 — Owner: M2. Replace procedural silhouettes with the formal material
+  atlas and finish audio/particle/effect assets. Reason: Visual Bible fidelity
+  and premium feel. Evidence: six scenes are readable and within the render
+  budget, but no final atlas/audio asset exists. Revisit when the first formal
+  production art/audio batch is available; required before GOLD.
+- PVS-M02 — Owner: M5. Replace the PVS no-op AI wiring with the approved small
+  autonomous NPC routine and cleaner decision loop. Reason: the current route
+  proves systemic records but not independent behavior. Evidence: foundation
+  transitions/tests pass; the composition root intentionally contains authored
+  callbacks. Revisit at M5 implementation start; do not expand the PVS kernel
+  now.
+- PVS-M03 — Owner: PVS QA. Perform a human keyboard/mouse run through the six
+  scenes and record interaction recovery, pacing and effect readability.
+  Reason: the input probe proves backend selection and focus, not player intent.
+  Evidence: six bounded app runs and input probe pass; route replay is
+  UNVERIFIED. Revisit at the first human playtest session.
+- PVS-M04 — Owner: M6/content pipeline. Extend seed authoring/compiler coverage
+  for the currently documented quest, knowledge, terminal, observation and
+  relationship authoring records. Reason: the current authoring validator and
+  compiler intentionally cover the foundation seed subset; runtime contracts
+  already exist. Evidence: current seed/schema/invalid-seed gates pass and the
+  explicit cognition migration is fixed. Revisit before those records move from
+  runtime-authored PVS wiring into data-driven content.
+
+No issue is deferred with an ownerless “later” condition.
+
+## Open Counts
 
 - Open Fatal: 0
-- Open Major: 0 (foundation closed as of micro-patch)
-- Open P0: 0 (none observed yet)
-- Open P1: 0 (none observed yet)
+- Open Major: 0
+- Open Medium: 4
+- Open Low: 0
+- Open P0/P1: 0
 
-## Deferred Issues
+## Commits / Remote
 
-- None yet.
-
-## Research Performed
-
-- None yet for production slice.
-
-## Failed Attempts
-
-- None yet.
-
-## Fallbacks
-
-- None yet.
-
-## Commits
-
-- None in this mission yet.
-
-## CI State
-
-- Last observed SUCCESS on 5dadd5f.
+- PVS-01 code and route commit: pending local commit
+- PVS-01 evidence/ledger commit: pending local commit
+- Remote push: pending final verification
+- Only `main` is in scope; no branch or PR is to be created.
 
 ## Next Action
 
-- Inspect current renderer internals and implement production half-block framebuffer.
+After the scoped commits and remote verification, stop implementation and hand
+the Silver candidate to a human for the six-scene playtest. Do not start M5 AI,
+formal art production or broader game development in this task.

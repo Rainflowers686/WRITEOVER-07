@@ -23,6 +23,12 @@ enum class ProductionSpriteKind : uint8_t {
     Npc = 0,
     Terminal = 1,
     Lamp = 2,
+    Door = 3,
+    Medical = 4,
+    Crate = 5,
+    Elevator = 6,
+    Camera = 7,
+    Sign = 8,
 };
 
 // Rasterizes a Height-Span grid into a logical RGB pixel buffer.

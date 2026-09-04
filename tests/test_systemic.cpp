@@ -69,7 +69,9 @@ bool SystemicBodyConcealmentChain() {
     WO_CHECK(w.AddContainer(MakeCart(ContainerId::New(1), 0.6f)));
     WO_CHECK(w.AddBody(MakeUnconsciousBody(EntityId::New(20), NpcId::New(10))));
     ItemRecord badge = MakeBadge(ItemId::New(1), kGuard);
-    badge.current_holder = kPlayer;
+    // The badge is physically on the incapacitated guard. The search result,
+    // rather than a pre-seeded player inventory field, must expose it.
+    badge.current_holder = EntityId::New(20);
     WO_CHECK(w.AddItem(badge));
 
     // Search body: the player takes the badge.
@@ -82,7 +84,12 @@ bool SystemicBodyConcealmentChain() {
     search.frame = 10;
     SearchOutcome outcome = w.PerformSearch(search);
     WO_CHECK(outcome.success);
-    WO_CHECK(w.TransferItem(ItemId::New(1), kPlayer));
+    WO_CHECK(outcome.items_revealed.size() == 1);
+    WO_CHECK(outcome.items_revealed.front() == ItemId::New(1));
+    WO_CHECK(w.TheftItem(outcome.items_revealed.front(), kPlayer, 11));
+    WO_CHECK(w.Events().size() >= 2);
+    WO_CHECK(w.Events()[w.Events().size() - 2].type == SystemicEventType::SearchPerformed);
+    WO_CHECK(w.Events().back().type == SystemicEventType::Theft);
 
     // Drag lifecycle.
     WO_CHECK(w.BeginDrag(kPlayer, EntityId::New(20), 20));
@@ -92,6 +99,7 @@ bool SystemicBodyConcealmentChain() {
 
     // Hide.
     WO_CHECK(w.HideBody(EntityId::New(20), ContainerId::New(1)));
+    WO_CHECK(w.Events().back().type == SystemicEventType::BodyHidden);
     WO_CHECK(!w.CanDirectlyObserveBody(kPatrol, EntityId::New(20)));
 
     // Discovery is observation-only: no automatic alert.
@@ -245,7 +253,9 @@ bool SystemicDiscoveryObservationOnly() {
     const FacilityAlertLevel before = w.AlertLevel();
     WO_CHECK(w.DiscoverBody(NpcId::New(2), ContainerId::New(1), 50));
     WO_CHECK(w.AlertLevel() == before);
-    WO_CHECK(w.EventCount() == 1);
+    WO_CHECK(w.EventCount() == 2);
+    WO_CHECK(w.Events().front().type == SystemicEventType::BodyHidden);
+    WO_CHECK(w.Events().back().type == SystemicEventType::BodyDiscovered);
     return true;
 }
 
@@ -286,6 +296,8 @@ bool SystemicPromiseTransitionMatrix() {
     SystemicWorld w;
     PromiseRecord p;
     p.id = PromiseId::New(1);
+    p.giver = EntityId::New(10);
+    p.receiver = kPlayer;
     p.status = PromiseStatus::Offered;
     WO_CHECK(w.AddPromise(p));
     // Offered -> Accepted legal.
@@ -297,6 +309,8 @@ bool SystemicPromiseTransitionMatrix() {
 
     PromiseRecord p2;
     p2.id = PromiseId::New(2);
+    p2.giver = EntityId::New(11);
+    p2.receiver = kPlayer;
     p2.status = PromiseStatus::Offered;
     WO_CHECK(w.AddPromise(p2));
     WO_CHECK(w.TransitionPromise(PromiseId::New(2), PromiseStatus::Cancelled, 1, ""));
@@ -476,6 +490,8 @@ bool SystemicSaveCorruptionRejected() {
         // bytes; at least require the deserializer to reject empty data.
         const auto res = SystemicWorld::Deserialize(nullptr, 0);
         WO_CHECK(res.IsError());
+        const auto null_data = SystemicWorld::Deserialize(nullptr, 1);
+        WO_CHECK(null_data.IsError());
     }
     {
         // Invalid enum: make a tiny actor buffer with bad faction byte.

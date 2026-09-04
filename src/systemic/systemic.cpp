@@ -74,6 +74,14 @@ bool WriteStringsBounded(Serializer& s, const std::vector<std::string>& values) 
     return true;
 }
 
+bool WriteStringBounded(Serializer& s, const std::string& value) {
+    if (value.size() > kMaxString) {
+        return false;
+    }
+    s.WriteString(value);
+    return true;
+}
+
 bool ReadBoundedString(Deserializer& d, std::string& out) {
     if (d.Remaining() < 4) {
         d.MarkError();
@@ -331,8 +339,7 @@ bool WriteDrag(Serializer& s, const BodyDragRecord& r) {
     s.WriteU8(r.sprint_forbidden ? 1 : 0);
     s.WriteU8(r.weapon_restricted ? 1 : 0);
     s.WriteF32(r.movement_modifier);
-    s.WriteString(r.noise_profile);
-    return true;
+    return WriteStringBounded(s, r.noise_profile);
 }
 
 bool ReadDrag(Deserializer& d, BodyDragRecord& r) {
@@ -457,11 +464,11 @@ bool WritePromise(Serializer& s, const PromiseRecord& p) {
     WriteId(s, p.id);
     WriteId(s, p.giver);
     WriteId(s, p.receiver);
-    s.WriteString(p.subject);
+    if (!WriteStringBounded(s, p.subject)) return false;
     s.WriteU64(p.accepted_frame);
     s.WriteU64(p.deadline_frame);
     s.WriteU64(p.transition_frame);
-    s.WriteString(p.reason);
+    if (!WriteStringBounded(s, p.reason)) return false;
     s.WriteU8(static_cast<uint8_t>(p.status));
     s.WriteU8(p.storylet_eligible ? 1 : 0);
     return true;
@@ -489,12 +496,11 @@ bool ReadPromise(Deserializer& d, PromiseRecord& p) {
 
 bool WriteQuest(Serializer& s, const QuestRecord& q) {
     WriteId(s, q.id);
-    s.WriteString(q.title);
-    s.WriteString(q.presentation_objective);
+    if (!WriteStringBounded(s, q.title) ||
+        !WriteStringBounded(s, q.presentation_objective)) return false;
     s.WriteU8(static_cast<uint8_t>(q.status));
     s.WriteU64(q.transition_frame);
-    s.WriteString(q.reason);
-    return true;
+    return WriteStringBounded(s, q.reason);
 }
 
 bool ReadQuest(Deserializer& d, QuestRecord& q) {
@@ -567,7 +573,7 @@ bool WriteExchange(Serializer& s, const SocialExchangeRecord& e) {
     if (!WriteIdVector(s, e.items) || !WriteIdVector(s, e.information)) return false;
     s.WriteU32(e.cash);
     if (!WriteIdVector(s, e.witnesses)) return false;
-    s.WriteString(e.risk_context);
+    if (!WriteStringBounded(s, e.risk_context)) return false;
     s.WriteU8(static_cast<uint8_t>(e.outcome));
     s.WriteU64(e.frame);
     return true;
@@ -642,7 +648,7 @@ bool WriteAudit(Serializer& s, const TerminalAuditLog& a) {
     WriteId(s, a.user);
     s.WriteU8(static_cast<uint8_t>(a.method));
     s.WriteU64(a.frame);
-    s.WriteString(a.action);
+    if (!WriteStringBounded(s, a.action)) return false;
     s.WriteU8(a.unauthorized ? 1 : 0);
     return true;
 }
@@ -667,9 +673,8 @@ bool WriteSource(Serializer& s, const ObservationSource& o) {
     s.WriteU8(static_cast<uint8_t>(o.type));
     WriteId(s, o.room);
     s.WriteU8(o.online ? 1 : 0);
-    s.WriteString(o.network_segment);
-    s.WriteString(o.provenance);
-    return true;
+    return WriteStringBounded(s, o.network_segment) &&
+           WriteStringBounded(s, o.provenance);
 }
 
 bool ReadSource(Deserializer& d, ObservationSource& o) {
@@ -700,7 +705,7 @@ bool WriteSystemicEvent(Serializer& s, const SystemicEvent& e) {
     s.WriteU8(e.severity);
     s.WriteU8(static_cast<uint8_t>(e.legality));
     WriteId(s, e.owner);
-    s.WriteString(e.method);
+    if (!WriteStringBounded(s, e.method)) return false;
     s.WriteU8(static_cast<uint8_t>(e.outcome));
     if (!WriteIdVector(s, e.evidence) || !WriteStringsBounded(s, e.tags)) return false;
     return true;
@@ -850,6 +855,15 @@ bool ReadRecordVector(Deserializer& d, std::vector<T>& out, uint32_t max,
     return !d.HasError();
 }
 
+template <typename T, typename IdFn>
+uint64_t NextIdValue(const std::vector<T>& values, IdFn id_fn) {
+    uint64_t max_id = 0;
+    for (const auto& value : values) {
+        max_id = std::max(max_id, id_fn(value).GetValue());
+    }
+    return max_id == UINT64_MAX ? 0 : max_id + 1;
+}
+
 bool ValidateWorld(const SystemicWorld& w, std::string& error) {
     auto has_dup = [](const auto& values, const auto& idFn) {
         std::set<uint64_t> seen;
@@ -859,6 +873,32 @@ bool ValidateWorld(const SystemicWorld& w, std::string& error) {
         }
         return false;
     };
+    auto bounded_strings = [](const std::vector<std::string>& values) {
+        if (values.size() > kMaxVector) return false;
+        for (const auto& value : values) {
+            if (value.size() > kMaxString) return false;
+        }
+        return true;
+    };
+    auto finite_vec3 = [](const Vec3& v) {
+        return IsFinite(v.x) && IsFinite(v.y) && IsFinite(v.z);
+    };
+    if (w.Actors().size() > kMaxActors || w.Items().size() > kMaxItems ||
+        w.Bodies().size() > kMaxBodies || w.Containers().size() > kMaxContainers ||
+        w.Drags().size() > kMaxDrags || w.Evidence().size() > kMaxEvidence ||
+        w.Memories().size() > kMaxMemories ||
+        w.Relationships().size() > kMaxRelationships ||
+        w.Promises().size() > kMaxPromises || w.Quests().size() > kMaxQuests ||
+        w.Knowledge().size() > kMaxKnowledge || w.Searches().size() > kMaxSearches ||
+        w.SocialExchanges().size() > kMaxExchanges ||
+        w.Terminals().size() > kMaxTerminals ||
+        w.TerminalSessions().size() > kMaxSessions ||
+        w.TerminalAudits().size() > kMaxAudits ||
+        w.ObservationSources().size() > kMaxSources ||
+        w.SystemEvents().size() > kMaxEvents) {
+        error = "systemic vector exceeds bounds";
+        return false;
+    }
     if (has_dup(w.Actors(), [](const ActorRecord& a){ return a.id; })) { error = "duplicate actor id"; return false; }
     if (has_dup(w.Items(), [](const ItemRecord& i){ return i.id; })) { error = "duplicate item id"; return false; }
     if (has_dup(w.Bodies(), [](const BodyRecord& b){ return b.id; })) { error = "duplicate body id"; return false; }
@@ -869,7 +909,282 @@ bool ValidateWorld(const SystemicWorld& w, std::string& error) {
     if (has_dup(w.Quests(), [](const QuestRecord& q){ return q.id; })) { error = "duplicate quest id"; return false; }
     if (has_dup(w.Knowledge(), [](const KnowledgeAssetRecord& k){ return k.id; })) { error = "duplicate knowledge id"; return false; }
     if (has_dup(w.Terminals(), [](const TerminalRecord& t){ return t.id; })) { error = "duplicate terminal id"; return false; }
+    if (has_dup(w.SocialExchanges(), [](const SocialExchangeRecord& e){ return e.id; })) { error = "duplicate exchange id"; return false; }
+    if (has_dup(w.ObservationSources(), [](const ObservationSource& s){ return s.id; })) { error = "duplicate observation source id"; return false; }
     if (has_dup(w.SystemEvents(), [](const SystemicEvent& e){ return e.id; })) { error = "duplicate systemic event id"; return false; }
+    {
+        std::set<uint64_t> dragged_bodies;
+        for (const auto& drag : w.Drags()) {
+            if (!drag.actor.IsValid() || !drag.body.IsValid() ||
+                !drag.room.IsValid() || !finite_vec3(drag.position) ||
+                !IsFinite(drag.movement_modifier) ||
+                drag.movement_modifier < 0.0f || drag.movement_modifier > 1.0f ||
+                !bounded_strings({drag.noise_profile})) {
+                error = "invalid body drag record";
+                return false;
+            }
+            if (!dragged_bodies.insert(drag.body.GetValue()).second) {
+                error = "duplicate body drag";
+                return false;
+            }
+            const BodyRecord* body = w.GetBody(drag.body);
+            if (!body || body->drag_status != BodyDragStatus::Dragging) {
+                error = "body drag does not match body state";
+                return false;
+            }
+        }
+    }
+    for (const auto& actor : w.Actors()) {
+        if (!IsFaction(static_cast<uint8_t>(actor.faction)) ||
+            !IsCognition(static_cast<uint8_t>(actor.cognition)) ||
+            !IsRole(static_cast<uint8_t>(actor.role)) ||
+            !bounded_strings(actor.personality_tags) ||
+            actor.known_identities.size() > kMaxVector) {
+            error = "actor field exceeds bounds";
+            return false;
+        }
+        for (const auto known : actor.known_identities) {
+            if (!known.IsValid()) {
+                error = "actor identity reference is invalid";
+                return false;
+            }
+        }
+    }
+    for (const auto& item : w.Items()) {
+        if (!IsItemType(static_cast<uint8_t>(item.type)) ||
+            !IsItemLocation(static_cast<uint8_t>(item.location)) ||
+            item.credential_level > 3 || !finite_vec3(item.ground_position) ||
+            !bounded_strings(item.provenance_tags) ||
+            (item.location == ItemLocationKind::Holder &&
+             !item.current_holder.IsValid()) ||
+            (item.location == ItemLocationKind::Ground &&
+             (item.current_holder.IsValid() || item.container.IsValid())) ||
+            (item.location == ItemLocationKind::Container &&
+             (!item.container.IsValid() || item.current_holder.IsValid()))) {
+            error = "invalid item provenance or location";
+            return false;
+        }
+    }
+    for (const auto& body : w.Bodies()) {
+        if (!IsBodyStatus(static_cast<uint8_t>(body.status)) ||
+            !IsBodyDisposition(static_cast<uint8_t>(body.disposition)) ||
+            !IsBodyDragStatus(static_cast<uint8_t>(body.drag_status)) ||
+            !body.npc.IsValid() || !body.room.IsValid() ||
+            !finite_vec3(body.position) ||
+            (body.disposition == BodyDisposition::HiddenInContainer &&
+             !body.container.IsValid()) ||
+            (body.disposition == BodyDisposition::Exposed &&
+             body.container.IsValid())) {
+            error = "invalid body state";
+            return false;
+        }
+    }
+    for (const auto& container : w.Containers()) {
+        if (!IsContainerKind(static_cast<uint8_t>(container.kind)) ||
+            !container.room.IsValid() || !finite_vec3(container.position) ||
+            !IsFinite(container.capacity_volume) ||
+            container.capacity_volume <= 0.0f ||
+            container.concealment > 100 || container.accessibility > 100 ||
+            container.routine_tags.size() > kMaxVector ||
+            container.current_occupants.size() > kMaxVector) {
+            error = "invalid container record";
+            return false;
+        }
+        std::set<uint64_t> occupants;
+        for (const auto body_id : container.current_occupants) {
+            if (!body_id.IsValid() || !occupants.insert(body_id.GetValue()).second) {
+                error = "duplicate container occupant";
+                return false;
+            }
+            const BodyRecord* body = w.GetBody(body_id);
+            if (!body || body->container != container.id ||
+                body->disposition != BodyDisposition::HiddenInContainer) {
+                error = "container occupant mismatch";
+                return false;
+            }
+        }
+    }
+    for (const auto& evidence : w.Evidence()) {
+        if (!IsEvidenceType(static_cast<uint8_t>(evidence.type)) ||
+            !finite_vec3(evidence.position) || !IsUnit(evidence.visibility) ||
+            evidence.discovered_by.size() > kMaxVector) {
+            error = "invalid evidence record";
+            return false;
+        }
+        for (const auto discoverer : evidence.discovered_by) {
+            if (!discoverer.IsValid()) {
+                error = "evidence discoverer reference is invalid";
+                return false;
+            }
+        }
+    }
+    for (const auto& memory : w.Memories()) {
+        if (!IsMemoryKind(static_cast<uint8_t>(memory.kind)) ||
+            !IsKnowledgeSource(static_cast<uint8_t>(memory.source)) ||
+            !IsUnit(memory.salience) || !IsUnit(memory.confidence) ||
+            !bounded_strings(memory.tags)) {
+            error = "invalid memory record";
+            return false;
+        }
+    }
+    {
+        std::set<std::pair<uint64_t, uint64_t>> relationships;
+        for (const auto& rel : w.Relationships()) {
+            if (!rel.a.IsValid() || !rel.b.IsValid() || rel.a == rel.b ||
+                !IsUnit(rel.trust) || !IsUnit(rel.fear) ||
+                !IsUnit(rel.respect) || !IsUnit(rel.suspicion) ||
+                !IsUnit(rel.debt) || !IsUnit(rel.attachment) ||
+                !IsFinite(rel.ideological_alignment) ||
+                rel.ideological_alignment < -1.0f ||
+                rel.ideological_alignment > 1.0f ||
+                !relationships.insert({rel.a.GetValue(), rel.b.GetValue()}).second) {
+                error = "invalid or duplicate directed relationship";
+                return false;
+            }
+        }
+    }
+    for (const auto& promise : w.Promises()) {
+        if (!IsPromiseStatus(static_cast<uint8_t>(promise.status)) ||
+            !promise.giver.IsValid() || !promise.receiver.IsValid() ||
+            !bounded_strings({promise.subject, promise.reason})) {
+            error = "invalid promise record";
+            return false;
+        }
+    }
+    for (const auto& quest : w.Quests()) {
+        if (!IsQuestStatus(static_cast<uint8_t>(quest.status)) ||
+            !bounded_strings({quest.title, quest.presentation_objective, quest.reason})) {
+            error = "invalid quest record";
+            return false;
+        }
+    }
+    for (const auto& asset : w.Knowledge()) {
+        if (!IsKnowledgeAssetType(static_cast<uint8_t>(asset.type)) ||
+            !IsUnit(asset.confidence) || asset.known_by.size() > kMaxVector) {
+            error = "invalid knowledge record";
+            return false;
+        }
+        for (const auto known_by : asset.known_by) {
+            if (!known_by.IsValid()) {
+                error = "knowledge owner reference is invalid";
+                return false;
+            }
+        }
+    }
+    for (const auto& search : w.Searches()) {
+        if (!IsSearchTarget(static_cast<uint8_t>(search.target_type)) ||
+            !search.actor.IsValid() || !search.target.IsValid() ||
+            !search.room.IsValid()) {
+            error = "invalid search record";
+            return false;
+        }
+    }
+    for (const auto& exchange : w.SocialExchanges()) {
+        if (!IsSocialExchangeType(static_cast<uint8_t>(exchange.type)) ||
+            !IsSocialExchangeOutcome(static_cast<uint8_t>(exchange.outcome)) ||
+            !exchange.actor.IsValid() || !exchange.target.IsValid() ||
+            !bounded_strings({exchange.risk_context}) ||
+            exchange.items.size() > kMaxVector ||
+            exchange.information.size() > kMaxVector ||
+            exchange.witnesses.size() > kMaxVector) {
+            error = "invalid social exchange record";
+            return false;
+        }
+    }
+    for (const auto& terminal : w.Terminals()) {
+        if (!terminal.room.IsValid() || terminal.credential_requirement > 3 ||
+            !bounded_strings(terminal.access_scope)) {
+            error = "invalid terminal record";
+            return false;
+        }
+    }
+    for (const auto& session : w.TerminalSessions()) {
+        if (!IsTerminalAccessMethod(static_cast<uint8_t>(session.method)) ||
+            !session.terminal.IsValid() || !session.user.IsValid()) {
+            error = "invalid terminal session";
+            return false;
+        }
+    }
+    for (const auto& audit : w.TerminalAudits()) {
+        if (!IsTerminalAccessMethod(static_cast<uint8_t>(audit.method)) ||
+            !audit.terminal.IsValid() || !audit.user.IsValid() ||
+            !bounded_strings({audit.action})) {
+            error = "invalid terminal audit";
+            return false;
+        }
+    }
+    for (const auto& source : w.ObservationSources()) {
+        if (!IsObservationSourceType(static_cast<uint8_t>(source.type)) ||
+            !source.room.IsValid() || !bounded_strings({source.network_segment, source.provenance})) {
+            error = "invalid observation source";
+            return false;
+        }
+    }
+    if (w.NarratorObservability().sources.size() != w.ObservationSources().size()) {
+        error = "observability source mirror mismatch";
+        return false;
+    }
+    for (size_t i = 0; i < w.ObservationSources().size(); ++i) {
+        const auto& canonical = w.ObservationSources()[i];
+        const auto& mirror = w.NarratorObservability().sources[i];
+        if (canonical.id != mirror.id || canonical.type != mirror.type ||
+            canonical.room != mirror.room || canonical.online != mirror.online ||
+            canonical.network_segment != mirror.network_segment ||
+            canonical.provenance != mirror.provenance) {
+            error = "divergent observability source mirror";
+            return false;
+        }
+    }
+    for (const auto& event : w.SystemEvents()) {
+        if (!IsSystemicEventType(static_cast<uint8_t>(event.type)) ||
+            !IsLegality(static_cast<uint8_t>(event.legality)) ||
+            !IsOutcome(static_cast<uint8_t>(event.outcome)) ||
+            event.witnesses.size() > kMaxVector || event.evidence.size() > kMaxVector ||
+            event.tags.size() > kMaxVector || event.method.size() > kMaxString ||
+            event.severity > 100) {
+            error = "invalid systemic event";
+            return false;
+        }
+        for (const auto witness : event.witnesses) {
+            if (!witness.IsValid()) {
+                error = "event witness reference is invalid";
+                return false;
+            }
+        }
+        for (const auto evidence : event.evidence) {
+            if (!evidence.IsValid()) {
+                error = "event evidence reference is invalid";
+                return false;
+            }
+        }
+        if (!bounded_strings(event.tags)) {
+            error = "event tags exceed bounds";
+            return false;
+        }
+    }
+    if (w.Alert().scope.size() > kMaxVector) {
+        error = "alert scope exceeds bounds";
+        return false;
+    }
+    const auto& state = w.PlayerState();
+    if (!IsUnit(state.humanity) || !IsUnit(state.violence) ||
+        !IsUnit(state.reliability) || !IsUnit(state.coercion) ||
+        !IsUnit(state.public_trust) || !IsUnit(state.security_standing) ||
+        !IsUnit(state.medical_research_standing) ||
+        !IsUnit(state.maintenance_standing) ||
+        !IsFinite(state.narrator_alignment) || state.narrator_alignment < -1.0f ||
+        state.narrator_alignment > 1.0f || !IsUnit(state.narrator_dominance) ||
+        !IsUnit(state.autonomy) || !IsUnit(state.truth_exposure) ||
+        !IsUnit(state.self_knowledge) || !IsUnit(state.infrastructure_integrity) ||
+        !IsUnit(state.timeline_instability) ||
+        !IsUnit(state.residual_memory_pressure) ||
+        !IsFinite(w.NarratorAuthority().intervention_cost) ||
+        w.NarratorAuthority().intervention_cost < 0.0f ||
+        w.NarratorAuthority().authority_stage > 3 ||
+        !IsAlertLevel(static_cast<uint8_t>(w.Alert().level))) {
+        error = "invalid global systemic state";
+        return false;
+    }
     return true;
 }
 
@@ -894,7 +1209,18 @@ void SystemicEventBridge::OnWorldEvent(const WorldEvent& event) {
 // ---------------------------------------------------------------------------
 
 bool SystemicWorld::AddActor(const ActorRecord& actor) {
-    if (!actor.id.IsValid()) return false;
+    if (!actor.id.IsValid() || actors_.size() >= kMaxActors ||
+        !IsFaction(static_cast<uint8_t>(actor.faction)) ||
+        !IsCognition(static_cast<uint8_t>(actor.cognition)) ||
+        !IsRole(static_cast<uint8_t>(actor.role)) ||
+        actor.known_identities.size() > kMaxVector ||
+        actor.personality_tags.size() > kMaxVector) return false;
+    for (const auto known : actor.known_identities) {
+        if (!known.IsValid()) return false;
+    }
+    for (const auto& tag : actor.personality_tags) {
+        if (tag.size() > kMaxString) return false;
+    }
     if (GetActor(actor.id) != nullptr) return false;
     if (actor.role == Role::Other && actor.occupation.GetValue() == 0) return false;
     actors_.push_back(actor);
@@ -907,7 +1233,17 @@ const ActorRecord* SystemicWorld::GetActor(NpcId id) const {
 }
 
 bool SystemicWorld::AddItem(const ItemRecord& item) {
-    if (!item.id.IsValid()) return false;
+    if (!item.id.IsValid() || items_.size() >= kMaxItems ||
+        !IsItemType(static_cast<uint8_t>(item.type)) ||
+        !IsItemLocation(static_cast<uint8_t>(item.location)) ||
+        item.credential_level > 3 ||
+        !IsFinite(item.ground_position.x) || !IsFinite(item.ground_position.y) ||
+        !IsFinite(item.ground_position.z) || item.provenance_tags.size() > kMaxVector) {
+        return false;
+    }
+    for (const auto& tag : item.provenance_tags) {
+        if (tag.size() > kMaxString) return false;
+    }
     if (GetItem(item.id) != nullptr) return false;
     items_.push_back(item);
     return true;
@@ -946,10 +1282,10 @@ bool SystemicWorld::AuthorizedTransferItem(ItemId id, EntityId to) {
 }
 
 bool SystemicWorld::TheftItem(ItemId id, EntityId to, uint64_t frame) {
-    if (!TransferItem(id, to)) return false;
+    if (events_.size() >= kMaxEvents || !TransferItem(id, to)) return false;
     // Theft is not automatically reported; discovery is a separate transition.
     SystemicEvent e;
-    e.id = EventId::New(events_.size() + 1);
+    e.id = EventId::New(NextIdValue(events_, [](const SystemicEvent& value) { return value.id; }));
     e.type = SystemicEventType::Theft;
     e.actor = to;
     e.target = GetItem(id) ? GetItem(id)->owner : EntityId::Invalid();
@@ -957,16 +1293,15 @@ bool SystemicWorld::TheftItem(ItemId id, EntityId to, uint64_t frame) {
     e.legality = LegalityClass::Illegal;
     e.tags.push_back("item_theft");
     e.tags.push_back("not_reported_automatically");
-    events_.push_back(e);
-    return true;
+    return AddSystemicEvent(e);
 }
 
 bool SystemicWorld::ReportItemStolen(ItemId id, uint64_t frame) {
     ItemRecord* item = const_cast<ItemRecord*>(GetItem(id));
-    if (!item) return false;
+    if (!item || events_.size() >= kMaxEvents) return false;
     item->reported_stolen = true;
     SystemicEvent e;
-    e.id = EventId::New(events_.size() + 1);
+    e.id = EventId::New(NextIdValue(events_, [](const SystemicEvent& value) { return value.id; }));
     e.type = SystemicEventType::Generic;
     e.actor = item->owner;
     e.target = item->current_holder;
@@ -974,77 +1309,97 @@ bool SystemicWorld::ReportItemStolen(ItemId id, uint64_t frame) {
     e.method = "reported_stolen";
     e.legality = LegalityClass::Legal;
     e.tags.push_back("reported_stolen");
-    events_.push_back(e);
-    return true;
+    return AddSystemicEvent(e);
 }
 
 bool SystemicWorld::ReturnItem(ItemId id, uint64_t frame) {
     const ItemRecord* item = GetItem(id);
-    if (!item) return false;
+    if (!item || events_.size() >= kMaxEvents || !item->legal_holder.IsValid()) return false;
     ItemRecord* it = const_cast<ItemRecord*>(item);
     // Return goes to the current legal holder, not necessarily the original owner.
     it->current_holder = it->legal_holder;
     it->location = ItemLocationKind::Holder;
     it->container = ContainerId::Invalid();
     SystemicEvent e;
-    e.id = EventId::New(events_.size() + 1);
+    e.id = EventId::New(NextIdValue(events_, [](const SystemicEvent& value) { return value.id; }));
     e.type = SystemicEventType::ItemReturn;
     e.frame = frame;
     e.tags.push_back("item_return");
-    events_.push_back(e);
-    return true;
+    return AddSystemicEvent(e);
 }
 
 bool SystemicWorld::DropItem(ItemId id, const Vec3& pos, RoomId room, uint64_t frame) {
-    (void)frame;
     ItemRecord* item = const_cast<ItemRecord*>(GetItem(id));
-    if (!item) return false;
+    if (!item || !room.IsValid() || !IsFinite(pos.x) || !IsFinite(pos.y) ||
+        !IsFinite(pos.z) || events_.size() >= kMaxEvents) return false;
     item->location = ItemLocationKind::Ground;
+    item->current_holder = EntityId::Invalid();
     item->ground_position = pos;
     item->room = room;
     item->container = ContainerId::Invalid();
-    return true;
+    SystemicEvent e;
+    e.id = EventId::New(NextIdValue(events_, [](const SystemicEvent& value) { return value.id; }));
+    e.type = SystemicEventType::ItemTransfer;
+    e.frame = frame;
+    e.location = room;
+    e.method = "drop";
+    e.outcome = OutcomeType::Success;
+    e.tags.push_back("item_drop");
+    return AddSystemicEvent(e);
 }
 
 bool SystemicWorld::PlaceItemInContainer(ItemId id, ContainerId container, uint64_t frame) {
-    (void)frame;
     const HideableContainer* c = GetContainer(container);
     if (!c) return false;
     ItemRecord* item = const_cast<ItemRecord*>(GetItem(id));
-    if (!item) return false;
+    if (!item || events_.size() >= kMaxEvents) return false;
     item->location = ItemLocationKind::Container;
+    item->current_holder = EntityId::Invalid();
+    item->room = c->room;
     item->container = container;
-    return true;
+    SystemicEvent e;
+    e.id = EventId::New(NextIdValue(events_, [](const SystemicEvent& value) { return value.id; }));
+    e.type = SystemicEventType::ItemTransfer;
+    e.frame = frame;
+    e.location = c->room;
+    e.method = "place_in_container";
+    e.outcome = OutcomeType::Success;
+    e.tags.push_back("item_container");
+    return AddSystemicEvent(e);
 }
 
 bool SystemicWorld::RevokeCredential(ItemId id, uint64_t frame) {
     ItemRecord* item = const_cast<ItemRecord*>(GetItem(id));
-    if (!item) return false;
+    if (!item || events_.size() >= kMaxEvents) return false;
     item->revoked = true;
     SystemicEvent e;
-    e.id = EventId::New(events_.size() + 1);
+    e.id = EventId::New(NextIdValue(events_, [](const SystemicEvent& value) { return value.id; }));
     e.type = SystemicEventType::RevokeCredential;
     e.frame = frame;
     e.tags.push_back("credential_revoked");
-    events_.push_back(e);
-    return true;
+    return AddSystemicEvent(e);
 }
 
 bool SystemicWorld::RestoreAuthorization(ItemId id, uint64_t frame) {
     ItemRecord* item = const_cast<ItemRecord*>(GetItem(id));
-    if (!item) return false;
+    if (!item || events_.size() >= kMaxEvents) return false;
     item->revoked = false;
     SystemicEvent e;
-    e.id = EventId::New(events_.size() + 1);
+    e.id = EventId::New(NextIdValue(events_, [](const SystemicEvent& value) { return value.id; }));
     e.type = SystemicEventType::RestoreAuthorization;
     e.frame = frame;
     e.tags.push_back("credential_restored");
-    events_.push_back(e);
-    return true;
+    return AddSystemicEvent(e);
 }
 
 bool SystemicWorld::AddBody(const BodyRecord& body) {
-    if (!body.id.IsValid()) return false;
+    if (!body.id.IsValid() || bodies_.size() >= kMaxBodies ||
+        !body.npc.IsValid() || !body.room.IsValid() ||
+        !IsBodyStatus(static_cast<uint8_t>(body.status)) ||
+        !IsBodyDisposition(static_cast<uint8_t>(body.disposition)) ||
+        !IsBodyDragStatus(static_cast<uint8_t>(body.drag_status)) ||
+        !IsFinite(body.position.x) || !IsFinite(body.position.y) ||
+        !IsFinite(body.position.z)) return false;
     for (const auto& b : bodies_) if (b.id == body.id) return false;
     bodies_.push_back(body);
     return true;
@@ -1056,9 +1411,22 @@ const BodyRecord* SystemicWorld::GetBody(EntityId id) const {
 }
 
 bool SystemicWorld::AddContainer(const HideableContainer& container) {
-    if (!container.id.IsValid()) return false;
+    if (!container.id.IsValid() || containers_.size() >= kMaxContainers ||
+        !IsContainerKind(static_cast<uint8_t>(container.kind)) ||
+        container.routine_tags.size() > kMaxVector ||
+        container.current_occupants.size() > kMaxVector) return false;
     if (GetContainer(container.id) != nullptr) return false;
-    if (container.capacity_volume <= 0.0f) return false;
+    if (!container.room.IsValid() || !IsFinite(container.position.x) ||
+        !IsFinite(container.position.y) || !IsFinite(container.position.z) ||
+        !IsFinite(container.capacity_volume) ||
+        container.capacity_volume <= 0.0f || container.concealment > 100 ||
+        container.accessibility > 100) return false;
+    for (const auto tag : container.routine_tags) {
+        if (!IsRoutineTag(static_cast<uint8_t>(tag))) return false;
+    }
+    for (const auto occupant : container.current_occupants) {
+        if (!occupant.IsValid()) return false;
+    }
     containers_.push_back(container);
     return true;
 }
@@ -1070,7 +1438,9 @@ const HideableContainer* SystemicWorld::GetContainer(ContainerId id) const {
 
 bool SystemicWorld::BeginDrag(EntityId actor, EntityId body_id, uint64_t frame) {
     const BodyRecord* body = GetBody(body_id);
-    if (!body || body->status == BodyStatus::Alive) return false;
+    if (!actor.IsValid() || !body || body->status == BodyStatus::Alive ||
+        body->disposition != BodyDisposition::Exposed || drags_.size() >= kMaxDrags ||
+        events_.size() >= kMaxEvents) return false;
     for (const auto& d : drags_) if (d.body == body_id) return false;
     BodyDragRecord d;
     d.actor = actor;
@@ -1082,10 +1452,23 @@ bool SystemicWorld::BeginDrag(EntityId actor, EntityId body_id, uint64_t frame) 
     drags_.push_back(d);
     BodyRecord* b = const_cast<BodyRecord*>(body);
     b->drag_status = BodyDragStatus::Dragging;
-    return true;
+    SystemicEvent e;
+    e.id = EventId::New(NextIdValue(events_, [](const SystemicEvent& value) { return value.id; }));
+    e.type = SystemicEventType::BodyDragged;
+    e.actor = actor;
+    e.target = body_id;
+    e.location = body->room;
+    e.frame = frame;
+    e.legality = LegalityClass::Unauthorized;
+    e.outcome = OutcomeType::Success;
+    e.method = "drag_start";
+    e.tags.push_back("body_drag_start");
+    return AddSystemicEvent(e);
 }
 
 bool SystemicWorld::UpdateDrag(EntityId body_id, const Vec3& pos, RoomId room, uint64_t frame) {
+    if (!room.IsValid() || !IsFinite(pos.x) || !IsFinite(pos.y) ||
+        !IsFinite(pos.z)) return false;
     for (auto& d : drags_) {
         if (d.body == body_id) {
             d.position = pos;
@@ -1100,13 +1483,26 @@ bool SystemicWorld::UpdateDrag(EntityId body_id, const Vec3& pos, RoomId room, u
 }
 
 bool SystemicWorld::EndDrag(EntityId body_id, uint64_t frame) {
-    (void)frame;
+    if (events_.size() >= kMaxEvents) return false;
     for (auto it = drags_.begin(); it != drags_.end(); ++it) {
         if (it->body == body_id) {
+            const EntityId actor = it->actor;
+            const RoomId room = it->room;
             drags_.erase(it);
             BodyRecord* b = const_cast<BodyRecord*>(GetBody(body_id));
             if (b) b->drag_status = BodyDragStatus::None;
-            return true;
+            SystemicEvent e;
+            e.id = EventId::New(NextIdValue(events_, [](const SystemicEvent& value) { return value.id; }));
+            e.type = SystemicEventType::BodyDragged;
+            e.actor = actor;
+            e.target = body_id;
+            e.location = room;
+            e.frame = frame;
+            e.legality = LegalityClass::Unauthorized;
+            e.outcome = OutcomeType::Success;
+            e.method = "drag_end";
+            e.tags.push_back("body_drag_end");
+            return AddSystemicEvent(e);
         }
     }
     return false;
@@ -1117,10 +1513,10 @@ const BodyDragRecord* SystemicWorld::GetDrag(EntityId body_id) const {
     return nullptr;
 }
 
-bool SystemicWorld::HideBody(EntityId body_id, ContainerId container_id) {
+bool SystemicWorld::HideBody(EntityId body_id, ContainerId container_id, uint64_t frame) {
     BodyRecord* body = const_cast<BodyRecord*>(GetBody(body_id));
     HideableContainer* container = const_cast<HideableContainer*>(GetContainer(container_id));
-    if (!body || !container) return false;
+    if (!body || !container || events_.size() >= kMaxEvents) return false;
     if (body->status == BodyStatus::Alive) return false;
     if (body->disposition == BodyDisposition::HiddenInContainer) return false;
     if (body->drag_status != BodyDragStatus::None) return false;
@@ -1135,7 +1531,17 @@ bool SystemicWorld::HideBody(EntityId body_id, ContainerId container_id) {
     body->room = container->room;
     body->position = container->position;
     container->current_occupants.push_back(body_id);
-    return true;
+    SystemicEvent event;
+    event.id = EventId::New(NextIdValue(events_, [](const SystemicEvent& value) { return value.id; }));
+    event.type = SystemicEventType::BodyHidden;
+    event.target = body_id;
+    event.location = container->room;
+    event.frame = frame;
+    event.legality = LegalityClass::Unauthorized;
+    event.outcome = OutcomeType::Success;
+    event.method = "hide_body";
+    event.tags.push_back("body_hidden");
+    return AddSystemicEvent(event);
 }
 
 bool SystemicWorld::CanDirectlyObserveBody(EntityId, EntityId body_id) const {
@@ -1145,7 +1551,9 @@ bool SystemicWorld::CanDirectlyObserveBody(EntityId, EntityId body_id) const {
 
 bool SystemicWorld::DiscoverBody(NpcId discoverer, ContainerId container_id, uint64_t frame) {
     HideableContainer* container = const_cast<HideableContainer*>(GetContainer(container_id));
-    if (!container || container->current_occupants.empty()) return false;
+    if (!discoverer.IsValid() || !container || container->current_occupants.empty() ||
+        evidence_.size() >= kMaxEvidence || memories_.size() >= kMaxMemories ||
+        events_.size() >= kMaxEvents) return false;
     const EntityId body_id = container->current_occupants.front();
     BodyRecord* body = const_cast<BodyRecord*>(GetBody(body_id));
     if (!body) return false;
@@ -1156,7 +1564,7 @@ bool SystemicWorld::DiscoverBody(NpcId discoverer, ContainerId container_id, uin
         container->current_occupants.end());
 
     EvidenceRecord ev;
-    ev.id = EvidenceId::New(evidence_.size() + 1);
+    ev.id = EvidenceId::New(NextIdValue(evidence_, [](const EvidenceRecord& value) { return value.id; }));
     ev.type = EvidenceType::VisibleBody;
     ev.subject = body_id;
     ev.owner = EntityId::New(body->npc.GetValue());
@@ -1166,10 +1574,10 @@ bool SystemicWorld::DiscoverBody(NpcId discoverer, ContainerId container_id, uin
     ev.persists = true;
     ev.frame = frame;
     ev.discovered_by.push_back(discoverer);
-    evidence_.push_back(ev);
+    if (!AddEvidence(ev)) return false;
 
     MemoryRecord mem;
-    mem.id = MemoryId::New(memories_.size() + 1);
+    mem.id = MemoryId::New(NextIdValue(memories_, [](const MemoryRecord& value) { return value.id; }));
     mem.npc = EntityId::New(discoverer.GetValue());
     mem.kind = MemoryKind::BodyDiscovery;
     mem.subject = body_id;
@@ -1179,10 +1587,10 @@ bool SystemicWorld::DiscoverBody(NpcId discoverer, ContainerId container_id, uin
     mem.salience = 0.9f;
     mem.confidence = 1.0f;
     mem.source = KnowledgeSource::DirectWitness;
-    memories_.push_back(mem);
+    if (!AddMemory(mem)) return false;
 
     SystemicEvent evt;
-    evt.id = EventId::New(events_.size() + 1);
+    evt.id = EventId::New(NextIdValue(events_, [](const SystemicEvent& value) { return value.id; }));
     evt.type = SystemicEventType::BodyDiscovered;
     evt.actor = EntityId::New(discoverer.GetValue());
     evt.target = EntityId::New(body->npc.GetValue());
@@ -1196,14 +1604,16 @@ bool SystemicWorld::DiscoverBody(NpcId discoverer, ContainerId container_id, uin
     evt.evidence.push_back(ev.id);
     evt.tags.push_back("body_discovery");
     evt.tags.push_back("observation_only");
-    events_.push_back(evt);
+    if (!AddSystemicEvent(evt)) return false;
     return true;
 }
 
 bool SystemicWorld::ApplyDiscoveryResponse(EntityId actor, EventId discovery_event_id,
                                            BodyDiscoveryResponse response, uint64_t frame) {
+    if (!actor.IsValid() || events_.size() >= kMaxEvents ||
+        !IsBodyDiscoveryResponse(static_cast<uint8_t>(response))) return false;
     SystemicEvent e;
-    e.id = EventId::New(events_.size() + 1);
+    e.id = EventId::New(NextIdValue(events_, [](const SystemicEvent& value) { return value.id; }));
     e.actor = actor;
     e.frame = frame;
     e.source_world_event_id = discovery_event_id;
@@ -1241,12 +1651,19 @@ bool SystemicWorld::ApplyDiscoveryResponse(EntityId actor, EventId discovery_eve
         e.tags.push_back("flee");
         break;
     }
-    events_.push_back(e);
-    return true;
+    return AddSystemicEvent(e);
 }
 
 bool SystemicWorld::AddEvidence(const EvidenceRecord& evidence) {
-    if (!evidence.id.IsValid() || GetEvidence(evidence.id) != nullptr) return false;
+    if (!evidence.id.IsValid() || evidence_.size() >= kMaxEvidence ||
+        GetEvidence(evidence.id) != nullptr ||
+        !IsEvidenceType(static_cast<uint8_t>(evidence.type)) ||
+        !evidence.room.IsValid() || !IsFinite(evidence.position.x) ||
+        !IsFinite(evidence.position.y) || !IsFinite(evidence.position.z) ||
+        !IsUnit(evidence.visibility) || evidence.discovered_by.size() > kMaxVector) return false;
+    for (const auto discoverer : evidence.discovered_by) {
+        if (!discoverer.IsValid()) return false;
+    }
     evidence_.push_back(evidence);
     return true;
 }
@@ -1257,7 +1674,15 @@ const EvidenceRecord* SystemicWorld::GetEvidence(EvidenceId id) const {
 }
 
 bool SystemicWorld::AddMemory(const MemoryRecord& memory) {
-    if (!memory.id.IsValid() || GetMemory(memory.id) != nullptr) return false;
+    if (!memory.id.IsValid() || memories_.size() >= kMaxMemories ||
+        GetMemory(memory.id) != nullptr ||
+        !IsMemoryKind(static_cast<uint8_t>(memory.kind)) ||
+        !IsKnowledgeSource(static_cast<uint8_t>(memory.source)) ||
+        !IsUnit(memory.salience) || !IsUnit(memory.confidence) ||
+        memory.tags.size() > kMaxVector) return false;
+    for (const auto& tag : memory.tags) {
+        if (tag.size() > kMaxString) return false;
+    }
     memories_.push_back(memory);
     return true;
 }
@@ -1285,6 +1710,7 @@ bool SystemicWorld::SetRelationship(const RelationshipRecord& rel) {
             return true;
         }
     }
+    if (relationships_.size() >= kMaxRelationships) return false;
     relationships_.push_back(rel);
     return true;
 }
@@ -1297,7 +1723,11 @@ const RelationshipRecord* SystemicWorld::GetRelationship(EntityId a, EntityId b)
 }
 
 bool SystemicWorld::AddPromise(const PromiseRecord& promise) {
-    if (!promise.id.IsValid() || GetPromise(promise.id) != nullptr) return false;
+    if (!promise.id.IsValid() || promises_.size() >= kMaxPromises ||
+        GetPromise(promise.id) != nullptr ||
+        !promise.giver.IsValid() || !promise.receiver.IsValid() ||
+        promise.subject.size() > kMaxString || promise.reason.size() > kMaxString ||
+        !IsPromiseStatus(static_cast<uint8_t>(promise.status))) return false;
     if (promise.status != PromiseStatus::Offered && promise.status != PromiseStatus::Accepted) return false;
     promises_.push_back(promise);
     return true;
@@ -1309,9 +1739,10 @@ const PromiseRecord* SystemicWorld::GetPromise(PromiseId id) const {
 }
 
 bool SystemicWorld::TransitionPromise(PromiseId id, PromiseStatus next, uint64_t frame,
-                                     const std::string& reason) {
+                                      const std::string& reason) {
     PromiseRecord* p = const_cast<PromiseRecord*>(GetPromise(id));
-    if (!p) return false;
+    if (!p || events_.size() >= kMaxEvents || reason.size() > kMaxString ||
+        !IsPromiseStatus(static_cast<uint8_t>(next))) return false;
     const PromiseStatus cur = p->status;
     bool legal = false;
     SystemicEventType ev_type = SystemicEventType::PromiseOffered;
@@ -1323,7 +1754,6 @@ bool SystemicWorld::TransitionPromise(PromiseId id, PromiseStatus next, uint64_t
         legal = true; ev_type = SystemicEventType::PromiseFulfilled;
     } else if (cur == PromiseStatus::Accepted && next == PromiseStatus::Broken) {
         legal = true; ev_type = SystemicEventType::PromiseBroken;
-    } else if (cur == PromiseStatus::Accepted && next == PromiseStatus::Expired) {
     } else if (cur == PromiseStatus::Accepted && next == PromiseStatus::Expired) {
         legal = true; ev_type = SystemicEventType::Generic; // distinct expired, not broken
     } else if (cur == PromiseStatus::Accepted && next == PromiseStatus::Cancelled) {
@@ -1353,7 +1783,7 @@ bool SystemicWorld::TransitionPromise(PromiseId id, PromiseStatus next, uint64_t
         }
     }
     SystemicEvent e;
-    e.id = EventId::New(events_.size() + 1);
+    e.id = EventId::New(NextIdValue(events_, [](const SystemicEvent& value) { return value.id; }));
     e.type = ev_type;
     e.actor = p->giver;
     e.target = p->receiver;
@@ -1362,12 +1792,16 @@ bool SystemicWorld::TransitionPromise(PromiseId id, PromiseStatus next, uint64_t
     e.tags.push_back("promise");
     if (next == PromiseStatus::Expired) e.tags.push_back("promise_expired");
     e.tags.push_back(p->reason);
-    events_.push_back(e);
-    return true;
+    return AddSystemicEvent(e);
 }
 
 bool SystemicWorld::AddQuest(const QuestRecord& quest) {
-    if (!quest.id.IsValid() || GetQuest(quest.id) != nullptr) return false;
+    if (!quest.id.IsValid() || quests_.size() >= kMaxQuests ||
+        GetQuest(quest.id) != nullptr ||
+        quest.title.size() > kMaxString ||
+        quest.presentation_objective.size() > kMaxString ||
+        quest.reason.size() > kMaxString ||
+        !IsQuestStatus(static_cast<uint8_t>(quest.status))) return false;
     if (quest.status != QuestStatus::Offered) return false;
     quests_.push_back(quest);
     return true;
@@ -1380,7 +1814,8 @@ const QuestRecord* SystemicWorld::GetQuest(QuestId id) const {
 
 bool SystemicWorld::TransitionQuest(QuestId id, QuestStatus next, uint64_t frame, const std::string& reason) {
     QuestRecord* q = const_cast<QuestRecord*>(GetQuest(id));
-    if (!q) return false;
+    if (!q || reason.size() > kMaxString ||
+        !IsQuestStatus(static_cast<uint8_t>(next))) return false;
     const QuestStatus cur = q->status;
     bool legal = false;
     if (cur == QuestStatus::Offered && next == QuestStatus::Accepted) legal = true;
@@ -1396,7 +1831,13 @@ bool SystemicWorld::TransitionQuest(QuestId id, QuestStatus next, uint64_t frame
 }
 
 bool SystemicWorld::AddKnowledgeAsset(const KnowledgeAssetRecord& asset) {
-    if (!asset.id.IsValid() || GetKnowledgeAsset(asset.id) != nullptr) return false;
+    if (!asset.id.IsValid() || knowledge_.size() >= kMaxKnowledge ||
+        GetKnowledgeAsset(asset.id) != nullptr ||
+        !IsKnowledgeAssetType(static_cast<uint8_t>(asset.type)) ||
+        !IsUnit(asset.confidence) || asset.known_by.size() > kMaxVector) return false;
+    for (const auto known_by : asset.known_by) {
+        if (!known_by.IsValid()) return false;
+    }
     knowledge_.push_back(asset);
     return true;
 }
@@ -1408,32 +1849,61 @@ const KnowledgeAssetRecord* SystemicWorld::GetKnowledgeAsset(KnowledgeAssetId id
 
 SearchOutcome SystemicWorld::PerformSearch(const SearchAction& action) {
     SearchOutcome out;
+    if (!action.actor.IsValid() || !action.target.IsValid() || !action.room.IsValid() ||
+        searches_.size() >= kMaxSearches || events_.size() >= kMaxEvents ||
+        !IsSearchTarget(static_cast<uint8_t>(action.target_type))) {
+        return out;
+    }
     searches_.push_back(action);
+    bool target_exists = false;
     if (action.target_type == SearchTargetType::Body) {
         BodyRecord* b = const_cast<BodyRecord*>(GetBody(action.target));
         if (b) {
+            target_exists = true;
             b->searched = true;
             out.success = true;
             out.legality = action.consent ? LegalityClass::Legal : LegalityClass::Unauthorized;
+            for (const auto& item : items_) {
+                if (item.current_holder == action.target &&
+                    item.location == ItemLocationKind::Holder) {
+                    out.items_revealed.push_back(item.id);
+                }
+            }
         }
+    } else if (action.target_type == SearchTargetType::Person) {
+        target_exists = GetActor(NpcId::New(action.target.GetValue())) != nullptr;
+        out.success = target_exists;
+        out.legality = action.consent ? LegalityClass::Legal : LegalityClass::Unauthorized;
     } else {
-        out.success = true;
+        target_exists = GetContainer(ContainerId::New(action.target.GetValue())) != nullptr;
+        out.success = target_exists;
         out.legality = action.consent ? LegalityClass::Legal : LegalityClass::Unauthorized;
     }
     SystemicEvent e;
-    e.id = EventId::New(events_.size() + 1);
+    e.id = EventId::New(NextIdValue(events_, [](const SystemicEvent& value) { return value.id; }));
     e.type = SystemicEventType::SearchPerformed;
     e.actor = action.actor;
     e.target = action.target;
     e.location = action.room;
     e.frame = action.frame;
     e.legality = out.legality;
-    events_.push_back(e);
+    e.outcome = target_exists ? OutcomeType::Success : OutcomeType::Failure;
+    e.method = action.consent ? "search_consent" : "search_unauthorized";
+    e.tags.push_back(target_exists ? "search_succeeded" : "search_target_missing");
+    AddSystemicEvent(e);
     return out;
 }
 
 bool SystemicWorld::AddSocialExchange(const SocialExchangeRecord& exchange) {
-    if (!exchange.id.IsValid() || GetSocialExchange(exchange.id) != nullptr) return false;
+    if (!exchange.id.IsValid() || exchanges_.size() >= kMaxExchanges ||
+        GetSocialExchange(exchange.id) != nullptr ||
+        !IsSocialExchangeType(static_cast<uint8_t>(exchange.type)) ||
+        !IsSocialExchangeOutcome(static_cast<uint8_t>(exchange.outcome)) ||
+        !exchange.actor.IsValid() || !exchange.target.IsValid() ||
+        exchange.items.size() > kMaxVector ||
+        exchange.information.size() > kMaxVector ||
+        exchange.witnesses.size() > kMaxVector ||
+        exchange.risk_context.size() > kMaxString) return false;
     exchanges_.push_back(exchange);
     return true;
 }
@@ -1444,7 +1914,12 @@ const SocialExchangeRecord* SystemicWorld::GetSocialExchange(SocialExchangeId id
 }
 
 bool SystemicWorld::AddTerminal(const TerminalRecord& terminal) {
-    if (!terminal.id.IsValid() || GetTerminal(terminal.id) != nullptr) return false;
+    if (!terminal.id.IsValid() || terminals_.size() >= kMaxTerminals ||
+        GetTerminal(terminal.id) != nullptr || !terminal.room.IsValid() ||
+        terminal.credential_requirement > 3 || terminal.access_scope.size() > kMaxVector) return false;
+    for (const auto& scope : terminal.access_scope) {
+        if (scope.size() > kMaxString) return false;
+    }
     terminals_.push_back(terminal);
     return true;
 }
@@ -1455,20 +1930,41 @@ const TerminalRecord* SystemicWorld::GetTerminal(TerminalId id) const {
 }
 
 bool SystemicWorld::AddTerminalSession(const TerminalSession& session) {
-    if (session.terminal.GetValue() == 0) return false;
+    if (!session.terminal.IsValid() || !session.user.IsValid() ||
+        sessions_.size() >= kMaxSessions ||
+        !IsTerminalAccessMethod(static_cast<uint8_t>(session.method))) return false;
+    for (const auto& existing : sessions_) {
+        if (existing.terminal == session.terminal && existing.user == session.user &&
+            existing.started_frame == session.started_frame) return false;
+    }
     sessions_.push_back(session);
     return true;
 }
 
 bool SystemicWorld::AddTerminalAudit(const TerminalAuditLog& audit) {
-    if (audit.terminal.GetValue() == 0) return false;
+    if (!audit.terminal.IsValid() || !audit.user.IsValid() ||
+        audits_.size() >= kMaxAudits ||
+        !IsTerminalAccessMethod(static_cast<uint8_t>(audit.method)) ||
+        audit.action.size() > kMaxString) return false;
+    for (const auto& existing : audits_) {
+        if (existing.terminal == audit.terminal && existing.user == audit.user &&
+            existing.method == audit.method && existing.frame == audit.frame &&
+            existing.action == audit.action && existing.unauthorized == audit.unauthorized) {
+            return false;
+        }
+    }
     audits_.push_back(audit);
     return true;
 }
 
 bool SystemicWorld::AddObservationSource(const ObservationSource& source) {
-    if (!source.id.IsValid() || GetObservationSource(source.id) != nullptr) return false;
+    if (!source.id.IsValid() || sources_.size() >= kMaxSources ||
+        GetObservationSource(source.id) != nullptr ||
+        !IsObservationSourceType(static_cast<uint8_t>(source.type)) ||
+        !source.room.IsValid() || source.network_segment.size() > kMaxString ||
+        source.provenance.size() > kMaxString) return false;
     sources_.push_back(source);
+    observability_.sources = sources_;
     return true;
 }
 
@@ -1479,7 +1975,11 @@ const ObservationSource* SystemicWorld::GetObservationSource(ObservationSourceId
 
 bool SystemicWorld::SetObservationSourceOnline(ObservationSourceId id, bool online) {
     for (auto& s : sources_) {
-        if (s.id == id) { s.online = online; return true; }
+        if (s.id == id) {
+            s.online = online;
+            observability_.sources = sources_;
+            return true;
+        }
     }
     return false;
 }
@@ -1498,6 +1998,11 @@ bool SystemicWorld::NarratorCanObserveRoom(RoomId room, ObservationSourceType ty
 
 void SystemicWorld::SetAlert(FacilityAlertLevel level, const std::vector<RoomId>& scope,
                              uint64_t frame) {
+    if (static_cast<uint8_t>(level) > static_cast<uint8_t>(FacilityAlertLevel::Critical) ||
+        scope.size() > kMaxVector) return;
+    for (const auto room : scope) {
+        if (!room.IsValid()) return;
+    }
     alert_.level = level;
     alert_.scope = scope;
     alert_.last_change_frame = frame;
@@ -1508,7 +2013,22 @@ float SystemicWorld::DerivedAlertScalar() const {
 }
 
 bool SystemicWorld::AddSystemicEvent(const SystemicEvent& event) {
-    if (!event.id.IsValid()) return false;
+    if (!event.id.IsValid() || events_.size() >= kMaxEvents ||
+        !IsSystemicEventType(static_cast<uint8_t>(event.type)) ||
+        !IsLegality(static_cast<uint8_t>(event.legality)) ||
+        !IsOutcome(static_cast<uint8_t>(event.outcome)) ||
+        event.witnesses.size() > kMaxVector || event.evidence.size() > kMaxVector ||
+        event.tags.size() > kMaxVector || event.method.size() > kMaxString ||
+        event.severity > 100) return false;
+    for (const auto witness : event.witnesses) {
+        if (!witness.IsValid()) return false;
+    }
+    for (const auto evidence : event.evidence) {
+        if (!evidence.IsValid()) return false;
+    }
+    for (const auto& tag : event.tags) {
+        if (tag.size() > kMaxString) return false;
+    }
     for (const auto& e : events_) if (e.id == event.id) return false;
     events_.push_back(event);
     return true;
@@ -1519,7 +2039,7 @@ bool SystemicWorld::BridgeWorldEventOnce(const WorldEvent& we) {
         if (e.source_world_event_id == we.id) return false;
     }
     SystemicEvent e;
-    e.id = EventId::New(events_.size() + 1);
+    e.id = EventId::New(NextIdValue(events_, [](const SystemicEvent& value) { return value.id; }));
     e.source_world_event_id = we.id;
     e.actor = we.source_entity;
     e.target = we.target_entity;
@@ -1540,8 +2060,7 @@ bool SystemicWorld::BridgeWorldEventOnce(const WorldEvent& we) {
         e.type = SystemicEventType::Communication;
     }
     e.tags.push_back("world_event_bridge");
-    events_.push_back(e);
-    return true;
+    return AddSystemicEvent(e);
 }
 
 bool SystemicWorld::ReaderAcceptsItem(ItemId id, uint8_t required_clearance) const {
@@ -1628,7 +2147,9 @@ void SystemicWorld::Save(Serializer& s) const {
     s.WriteF32(authority_.intervention_cost);
     s.WriteU64(authority_.intervention_cooldown_frame);
     s.WriteU8(observability_.meta_observability ? 1 : 0);
-    WriteRecordVector(s, observability_.sources, &WriteSource);
+    // sources_ is the canonical owner; the public observability vector is a
+    // compatibility mirror and must never create a second state truth.
+    WriteRecordVector(s, sources_, &WriteSource);
 
     s.WriteU8(static_cast<uint8_t>(alert_.level));
     s.WriteU64(alert_.last_change_frame);
@@ -1637,6 +2158,10 @@ void SystemicWorld::Save(Serializer& s) const {
 
 std::vector<uint8_t> SystemicWorld::Serialize() const {
     std::vector<uint8_t> bytes;
+    std::string error;
+    if (!ValidateWorld(*this, error)) {
+        return bytes;
+    }
     Serializer s(bytes);
     Save(s);
     return bytes;
@@ -1644,6 +2169,9 @@ std::vector<uint8_t> SystemicWorld::Serialize() const {
 
 Result<SystemicWorld> SystemicWorld::Deserialize(const uint8_t* data, size_t size) {
     SystemicWorld w;
+    if (data == nullptr && size != 0) {
+        return Result<SystemicWorld>::Err(1000, "systemic deserialize failed: null data");
+    }
     Deserializer d(data, size);
 
     if (!ReadRecordVector(d, w.actors_, kMaxActors, &ReadActor) ||
@@ -1696,6 +2224,19 @@ Result<SystemicWorld> SystemicWorld::Deserialize(const uint8_t* data, size_t siz
     if (!ReadRecordVector(d, w.observability_.sources, kMaxSources, &ReadSource)) {
         return Result<SystemicWorld>::Err(1001, "systemic deserialize failed: observability read");
     }
+    if (w.observability_.sources.size() != w.sources_.size()) {
+        return Result<SystemicWorld>::Err(1001, "systemic deserialize failed: observability source mismatch");
+    }
+    for (size_t i = 0; i < w.sources_.size(); ++i) {
+        const auto& canonical = w.sources_[i];
+        const auto& mirror = w.observability_.sources[i];
+        if (canonical.id != mirror.id || canonical.type != mirror.type ||
+            canonical.room != mirror.room || canonical.online != mirror.online ||
+            canonical.network_segment != mirror.network_segment ||
+            canonical.provenance != mirror.provenance) {
+            return Result<SystemicWorld>::Err(1001, "systemic deserialize failed: divergent observability source");
+        }
+    }
 
     const uint8_t alert = d.ReadU8();
     if (!IsAlertLevel(alert)) return Result<SystemicWorld>::Err(1002, "invalid alert enum");
@@ -1711,9 +2252,13 @@ Result<SystemicWorld> SystemicWorld::Deserialize(const uint8_t* data, size_t siz
         !IsUnit(w.player_state_.reliability) || !IsUnit(w.player_state_.coercion) ||
         !IsUnit(w.player_state_.public_trust) || !IsUnit(w.player_state_.security_standing) ||
         !IsUnit(w.player_state_.medical_research_standing) || !IsUnit(w.player_state_.maintenance_standing) ||
-        !IsFinite(w.player_state_.narrator_alignment) || !IsFinite(w.player_state_.narrator_dominance) ||
+        !IsFinite(w.player_state_.narrator_alignment) ||
+        w.player_state_.narrator_alignment < -1.0f ||
+        w.player_state_.narrator_alignment > 1.0f ||
+        !IsUnit(w.player_state_.narrator_dominance) ||
         !IsUnit(w.player_state_.autonomy) || !IsUnit(w.player_state_.truth_exposure) ||
-        !IsUnit(w.player_state_.self_knowledge) || !IsFinite(w.player_state_.infrastructure_integrity) ||
+        !IsUnit(w.player_state_.self_knowledge) ||
+        !IsUnit(w.player_state_.infrastructure_integrity) ||
         !IsUnit(w.player_state_.timeline_instability) || !IsUnit(w.player_state_.residual_memory_pressure) ||
         !IsFinite(w.authority_.intervention_cost) || w.authority_.authority_stage > 3) {
         return Result<SystemicWorld>::Err(1005, "systemic deserialize failed: invalid state range");
@@ -1727,6 +2272,9 @@ Result<SystemicWorld> SystemicWorld::Deserialize(const uint8_t* data, size_t siz
 }
 
 Result<void> SystemicWorld::LoadSeedBytes(const uint8_t* data, size_t size) {
+    if (data == nullptr && size != 0) {
+        return Result<void>::Err(2000, "null seed data");
+    }
     Deserializer d(data, size);
     if (d.Remaining() < 8) return Result<void>::Err(2000, "seed too small");
     const uint32_t magic = d.ReadU32();
@@ -1750,11 +2298,19 @@ Result<void> SystemicWorld::LoadSeedBytes(const uint8_t* data, size_t size) {
         !d.AtEnd()) {
         return Result<void>::Err(2002, "invalid systemic seed");
     }
-    for (auto& a : actors) if (!AddActor(a)) return Result<void>::Err(2003, "seed actor rejected");
-    for (auto& i : items) if (!AddItem(i)) return Result<void>::Err(2004, "seed item rejected");
-    for (auto& c : containers) if (!AddContainer(c)) return Result<void>::Err(2005, "seed container rejected");
-    for (auto& e : evidence) if (!AddEvidence(e)) return Result<void>::Err(2006, "seed evidence rejected");
-    for (auto& p : promises) if (!AddPromise(p)) return Result<void>::Err(2007, "seed promise rejected");
+    // Parse and validate into a temporary world. A failed or repeated seed
+    // load must never leave a partially appended runtime state.
+    SystemicWorld parsed;
+    for (auto& a : actors) if (!parsed.AddActor(a)) return Result<void>::Err(2003, "seed actor rejected");
+    for (auto& i : items) if (!parsed.AddItem(i)) return Result<void>::Err(2004, "seed item rejected");
+    for (auto& c : containers) if (!parsed.AddContainer(c)) return Result<void>::Err(2005, "seed container rejected");
+    for (auto& e : evidence) if (!parsed.AddEvidence(e)) return Result<void>::Err(2006, "seed evidence rejected");
+    for (auto& p : promises) if (!parsed.AddPromise(p)) return Result<void>::Err(2007, "seed promise rejected");
+    std::string validation_error;
+    if (!ValidateWorld(parsed, validation_error)) {
+        return Result<void>::Err(2008, "seed validation failed: " + validation_error);
+    }
+    *this = std::move(parsed);
     return Result<void>::Ok();
 }
 

@@ -660,7 +660,7 @@ public:
     const BodyDragRecord* GetDrag(EntityId body_id) const;
     size_t DragCount() const { return drags_.size(); }
 
-    bool HideBody(EntityId body_id, ContainerId container_id);
+    bool HideBody(EntityId body_id, ContainerId container_id, uint64_t frame = 0);
     bool CanDirectlyObserveBody(EntityId observer_id, EntityId body_id) const;
 
     bool DiscoverBody(NpcId discoverer, ContainerId container_id, uint64_t frame);
@@ -779,7 +779,13 @@ public:
     const std::vector<PromiseRecord>& Promises() const { return promises_; }
     const std::vector<QuestRecord>& Quests() const { return quests_; }
     const std::vector<KnowledgeAssetRecord>& Knowledge() const { return knowledge_; }
+    const std::vector<BodyDragRecord>& Drags() const { return drags_; }
+    const std::vector<SearchAction>& Searches() const { return searches_; }
+    const std::vector<SocialExchangeRecord>& SocialExchanges() const { return exchanges_; }
     const std::vector<TerminalRecord>& Terminals() const { return terminals_; }
+    const std::vector<TerminalSession>& TerminalSessions() const { return sessions_; }
+    const std::vector<TerminalAuditLog>& TerminalAudits() const { return audits_; }
+    const std::vector<ObservationSource>& ObservationSources() const { return sources_; }
     const std::vector<SystemicEvent>& SystemEvents() const { return events_; }
 
 private:

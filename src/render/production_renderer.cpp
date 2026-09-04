@@ -91,13 +91,55 @@ Color CeilingColor(int row, int logical_h, float distance) {
     return {Clamp8(r), Clamp8(g), Clamp8(b)};
 }
 
+Color ScaleColor(const Color& color, float scale) {
+    return {Clamp8(static_cast<float>(color.r) * scale),
+            Clamp8(static_cast<float>(color.g) * scale),
+            Clamp8(static_cast<float>(color.b) * scale)};
+}
+
+Color SurfaceColor(uint8_t material, uint8_t light, float distance,
+                   int cell_x, int cell_y, bool ceiling) {
+    const Color base = MaterialBase(material);
+    const float light_level = 0.28f + 0.72f * (static_cast<float>(light) / 255.0f);
+    const float fog = ceiling
+        ? (0.42f + 0.58f * Saturate(1.0f - distance * 0.025f))
+        : (0.48f + 0.52f * Saturate(1.0f - distance * 0.022f));
+    const float material_scale = ceiling ? 0.34f : 0.46f;
+    Color out = ScaleColor(base, material_scale * light_level * fog);
+
+    // A restrained industrial tile rhythm makes the ground readable without
+    // turning the large area into a bright checkerboard.
+    const bool seam_x = (static_cast<int>(std::floor(distance * 0.55f)) + cell_x) % 4 == 0;
+    const bool seam_y = (static_cast<int>(std::floor(distance * 0.35f)) + cell_y) % 3 == 0;
+    if (seam_x || seam_y) out = ScaleColor(out, ceiling ? 0.72f : 0.78f);
+    if (material == 7 && !ceiling) {
+        out.r = Clamp8(static_cast<float>(out.r) + 18.0f);
+        out.g = Clamp8(static_cast<float>(out.g) + 10.0f);
+    }
+    return out;
+}
+
+GridCell SampleCell(const GridCell* cells, int grid_w, int grid_h,
+                    float x, float y) {
+    const int col = static_cast<int>(std::floor(x));
+    const int row = static_cast<int>(std::floor(y));
+    if (cells == nullptr || col < 0 || row < 0 || col >= grid_w || row >= grid_h) {
+        GridCell edge;
+        edge.material = 1;
+        edge.light = 70;
+        return edge;
+    }
+    return cells[row * grid_w + col];
+}
+
 } // namespace
 
 void RenderProductionFrame(const GridCell* cells, int grid_w, int grid_h,
                            const ProductionView& view,
                            Color* out_pixels, int logical_w, int logical_h,
                            float focal_px_per_unit) {
-    if (!out_pixels || logical_w <= 0 || logical_h <= 0) {
+    if (!out_pixels || logical_w <= 0 || logical_h <= 0 ||
+        grid_w <= 0 || grid_h <= 0 || focal_px_per_unit <= 0.01f) {
         return;
     }
 
@@ -105,6 +147,8 @@ void RenderProductionFrame(const GridCell* cells, int grid_w, int grid_h,
         2.0f * std::atan(0.5f * static_cast<float>(logical_w) / focal_px_per_unit) /
         static_cast<float>(logical_w);
 
+    const float screen_center = static_cast<float>(logical_h) * 0.5f;
+    const float horizon = screen_center + std::tan(view.pitch) * focal_px_per_unit;
     for (int x = 0; x < logical_w; ++x) {
         RayConfig cfg;
         cfg.origin_xy = Vec2{view.origin.x, view.origin.y};
@@ -113,40 +157,57 @@ void RenderProductionFrame(const GridCell* cells, int grid_w, int grid_h,
                       fov_per_column;
         const RayResult res = CastColumnRay(cfg, cells, grid_w, grid_h);
 
-        float min_top = static_cast<float>(logical_h);
-        float max_bottom = -1.0f;
+        const float ray_dx = std::cos(cfg.yaw);
+        const float ray_dy = std::sin(cfg.yaw);
+        const float far_distance = 50.0f;
+
+        // Explicit floor/ceiling casting. This is deliberately a small,
+        // deterministic raster policy: the raycaster still owns Height-Span
+        // wall semantics, while planes sample the final world cell.
+        for (int y = 0; y < logical_h; ++y) {
+            const float delta = static_cast<float>(y) - horizon;
+            const bool ceiling = delta < 0.0f;
+            const float plane_z = ceiling ? res.final_ceiling_z : res.final_floor_z;
+            const float height_delta = std::fabs(view.origin.z - plane_z);
+            const float abs_delta = std::fabs(delta);
+            const float distance = abs_delta > 0.5f
+                ? std::min(far_distance, std::max(0.25f,
+                    height_delta * focal_px_per_unit / abs_delta))
+                : far_distance;
+            const GridCell sample = SampleCell(cells, grid_w, grid_h,
+                view.origin.x + ray_dx * distance,
+                view.origin.y + ray_dy * distance);
+            out_pixels[static_cast<size_t>(y) * logical_w + x] =
+                SurfaceColor(sample.material, sample.light, distance,
+                             static_cast<int>(std::floor(view.origin.x + ray_dx * distance)),
+                             static_cast<int>(std::floor(view.origin.y + ray_dy * distance)),
+                             ceiling);
+        }
 
         // Walls.
-        for (uint32_t i = 0; i < res.segment_count; ++i) {
+        // Segments are recorded near-to-far. Draw in reverse so a nearer
+        // face is the final visible surface when spans overlap.
+        for (uint32_t i = res.segment_count; i > 0; --i) {
             const WallProjection p =
-                ProjectWall(res.segments[i], view.origin.z, view.pitch,
+                ProjectWall(res.segments[i - 1], view.origin.z, view.pitch,
                             focal_px_per_unit, logical_h);
             if (!p.visible) {
                 continue;
             }
-            min_top = std::min(min_top, p.screen_top_y);
-            max_bottom = std::max(max_bottom, p.screen_bottom_y);
             const int top = std::max(0, static_cast<int>(std::ceil(p.screen_top_y)));
             const int bottom = std::min(logical_h - 1,
                                         static_cast<int>(std::floor(p.screen_bottom_y)));
             for (int y = top; y <= bottom; ++y) {
-                const Color c = MaterialColor(p.material, p.distance, y, x, res.segments[i].light);
+                Color c = MaterialColor(p.material, p.distance, y, x,
+                                        res.segments[i - 1].light);
+                if (res.segments[i - 1].flag == SegFloorRise ||
+                    res.segments[i - 1].flag == SegFloorDrop) {
+                    c = ScaleColor(c, 0.82f);
+                } else if (res.segments[i - 1].flag == SegCeilingRise ||
+                           res.segments[i - 1].flag == SegCeilingDrop) {
+                    c = ScaleColor(c, 0.68f);
+                }
                 out_pixels[static_cast<size_t>(y) * logical_w + x] = c;
-            }
-        }
-
-        // Ceiling and floor fills.
-        for (int y = 0; y < logical_h; ++y) {
-            const float fy = static_cast<float>(y);
-            const float dist = res.full_occlusion_distance > 0.01f
-                                   ? res.full_occlusion_distance
-                                   : 4.0f;
-            if (fy < min_top) {
-                out_pixels[static_cast<size_t>(y) * logical_w + x] =
-                    CeilingColor(y, logical_h, dist);
-            } else if (fy > max_bottom) {
-                out_pixels[static_cast<size_t>(y) * logical_w + x] =
-                    FloorColor(y, logical_h, dist);
             }
         }
     }
@@ -158,11 +219,12 @@ void DrawProductionSprite(const Vec3& camera, float yaw, float pitch,
                           const GridCell* cells, int grid_w, int grid_h,
                           Color* logical_pixels, int logical_w, int logical_h,
                           float focal_px_per_unit) {
-    if (!logical_pixels || logical_w <= 0 || logical_h <= 0) return;
+    if (!logical_pixels || logical_w <= 0 || logical_h <= 0 ||
+        focal_px_per_unit <= 0.01f || sprite_height <= 0.01f) return;
     const float dx = world_pos.x - camera.x;
     const float dy = world_pos.y - camera.y;
-    const float dist = std::sqrt(dx * dx + dy * dy);
-    if (dist < 0.05f) return;
+    const float euclidean_dist = std::sqrt(dx * dx + dy * dy);
+    if (euclidean_dist < 0.05f) return;
     const float to_yaw = std::atan2(dy, dx);
     float rel = to_yaw - yaw;
     while (rel > 3.14159265f) rel -= 2.0f * 3.14159265f;
@@ -171,61 +233,114 @@ void DrawProductionSprite(const Vec3& camera, float yaw, float pitch,
         2.0f * std::atan(0.5f * static_cast<float>(logical_w) / focal_px_per_unit) /
         static_cast<float>(logical_w);
     const float col_f = static_cast<float>(logical_w) * 0.5f + rel / fov_per_column;
-    const int col = static_cast<int>(std::lround(col_f));
-    if (col < 0 || col >= logical_w) return;
+    if (col_f < -100.0f || col_f > static_cast<float>(logical_w) + 100.0f) return;
+    const float depth = euclidean_dist * std::cos(rel);
+    if (depth <= 0.05f) return;
 
     // Vertical projection.
-    const float scale = focal_px_per_unit / dist;
+    const float scale = focal_px_per_unit / depth;
     const float row_center =
         static_cast<float>(logical_h) * 0.5f + std::tan(pitch) * focal_px_per_unit;
-    const float dz = world_pos.z - camera.z;
-    const int row = static_cast<int>(std::lround(row_center - dz * scale));
-    if (row < 0 || row >= logical_h) return;
-
-    // Occlusion: any closer wall segment overlapping the sprite vertical area.
-    RayConfig cfg;
-    cfg.origin_xy = Vec2{camera.x, camera.y};
-    cfg.yaw = yaw + (col_f - static_cast<float>(logical_w) * 0.5f) * fov_per_column;
-    const RayResult ray = CastColumnRay(cfg, cells, grid_w, grid_h);
-    bool occluded = false;
-    const float half = sprite_height * scale * 0.5f;
-    for (uint32_t i = 0; i < ray.segment_count; ++i) {
-        const OccludingSegment& seg = ray.segments[i];
-        if (seg.distance >= dist - 0.05f) continue;
-        const WallProjection p = ProjectWall(seg, camera.z, pitch, focal_px_per_unit, logical_h);
-        if (p.visible && row + half >= p.screen_top_y - 0.5f &&
-            row - half <= p.screen_bottom_y + 0.5f) {
-            occluded = true;
-            break;
-        }
-    }
-    if (occluded) return;
-
-    const int size = std::max(2, static_cast<int>(sprite_height * scale * 0.55f));
+    const float ground_row = row_center - (world_pos.z - camera.z) * scale;
+    const float top_row = ground_row - sprite_height * scale;
+    const float bottom_row = ground_row;
+    if (bottom_row < 0.0f || top_row >= static_cast<float>(logical_h)) return;
+    const int half_width = std::max(2, static_cast<int>(sprite_height * scale * 0.26f));
+    const int top = std::max(0, static_cast<int>(std::floor(top_row)));
+    const int bottom = std::min(logical_h - 1, static_cast<int>(std::ceil(bottom_row)));
     auto set = [&](int x, int y, Color c) {
         if (x >= 0 && x < logical_w && y >= 0 && y < logical_h) {
             logical_pixels[static_cast<size_t>(y) * logical_w + x] = c;
         }
     };
-    if (kind == ProductionSpriteKind::Npc) {
-        for (int sy = -size; sy <= size; ++sy) {
-            for (int sx = -size / 2; sx <= size / 2; ++sx) {
-                const bool head = sy <= -size / 2 && sx >= -size / 4 && sx <= size / 4;
-                const bool body = sy > -size / 2 && sy <= size / 2;
-                if (head || body) set(col + sx, row + sy, tint);
+
+    auto sprite_pixel = [&](float u, float v) -> Color {
+        const Color shadow = ScaleColor(tint, 0.42f);
+        const Color mid = ScaleColor(tint, 0.78f);
+        const Color hi = ScaleColor(tint, 1.18f);
+        const Color glow{80, 210, 198};
+        const Color amber{224, 156, 54};
+        const float cx = std::fabs(u - 0.5f);
+        if (kind == ProductionSpriteKind::Npc) {
+            if (v < 0.22f && cx < 0.19f) return hi;
+            if (v >= 0.22f && v < 0.68f && cx < (0.30f - v * 0.08f)) return mid;
+            if (v >= 0.68f && v < 0.96f && (cx < 0.13f || (cx > 0.18f && cx < 0.28f))) return shadow;
+            return Color{0, 0, 0};
+        }
+        if (kind == ProductionSpriteKind::Terminal) {
+            if (v > 0.10f && v < 0.88f && cx < 0.42f) {
+                if (v > 0.22f && v < 0.53f && cx < 0.31f) return glow;
+                return v < 0.18f ? hi : mid;
+            }
+            return Color{0, 0, 0};
+        }
+        if (kind == ProductionSpriteKind::Medical) {
+            if (v > 0.12f && v < 0.88f && cx < 0.38f) return mid;
+            if (cx < 0.11f && v > 0.22f && v < 0.78f) return hi;
+            if (v > 0.42f && v < 0.58f && cx < 0.32f) return hi;
+            return Color{0, 0, 0};
+        }
+        if (kind == ProductionSpriteKind::Crate) {
+            if (v > 0.30f && v < 0.92f && cx < 0.42f) {
+                return ((u > 0.45f && u < 0.55f) || (v > 0.59f && v < 0.65f)) ? hi : mid;
+            }
+            return Color{0, 0, 0};
+        }
+        if (kind == ProductionSpriteKind::Door || kind == ProductionSpriteKind::Elevator) {
+            if (v > 0.03f && v < 0.98f && cx < 0.40f) {
+                if (kind == ProductionSpriteKind::Elevator && v > 0.32f && v < 0.39f && cx < 0.12f) return glow;
+                return (cx < 0.04f || cx > 0.36f) ? shadow : mid;
+            }
+            return Color{0, 0, 0};
+        }
+        if (kind == ProductionSpriteKind::Camera) {
+            if (v > 0.28f && v < 0.68f && cx < 0.36f) return mid;
+            if (cx < 0.14f && v > 0.40f && v < 0.58f) return amber;
+            return Color{0, 0, 0};
+        }
+        if (kind == ProductionSpriteKind::Sign) {
+            if (v > 0.18f && v < 0.58f && cx < 0.46f) return hi;
+            if (cx < 0.04f && v > 0.55f) return shadow;
+            return Color{0, 0, 0};
+        }
+        // Lamp / unknown: a compact glowing head and stem.
+        if (v < 0.20f && cx < 0.28f) return amber;
+        if (cx < 0.06f && v > 0.18f) return shadow;
+        return Color{0, 0, 0};
+    };
+
+    for (int x = static_cast<int>(std::floor(col_f)) - half_width;
+         x <= static_cast<int>(std::ceil(col_f)) + half_width; ++x) {
+        if (x < 0 || x >= logical_w) continue;
+        const float ray_rel = (static_cast<float>(x) + 0.5f -
+                               static_cast<float>(logical_w) * 0.5f) * fov_per_column;
+        const float ray_depth = euclidean_dist * std::cos(ray_rel);
+        if (ray_depth <= 0.05f) continue;
+        RayConfig cfg;
+        cfg.origin_xy = Vec2{camera.x, camera.y};
+        cfg.yaw = yaw + ray_rel;
+        const RayResult ray = CastColumnRay(cfg, cells, grid_w, grid_h);
+        bool occluded = false;
+        for (uint32_t i = 0; i < ray.segment_count; ++i) {
+            const OccludingSegment& seg = ray.segments[i];
+            if (seg.distance >= ray_depth - 0.05f) continue;
+            const WallProjection wall = ProjectWall(seg, camera.z, pitch,
+                                                    focal_px_per_unit, logical_h);
+            if (wall.visible && bottom_row >= wall.screen_top_y - 0.5f &&
+                top_row <= wall.screen_bottom_y + 0.5f) {
+                occluded = true;
+                break;
             }
         }
-    } else if (kind == ProductionSpriteKind::Terminal) {
-        for (int sy = -size; sy <= size; ++sy) {
-            for (int sx = -size / 2; sx <= size / 2; ++sx) {
-                set(col + sx, row + sy, tint);
-            }
-        }
-    } else {
-        for (int sy = -size / 2; sy <= size / 2; ++sy) {
-            for (int sx = -size / 2; sx <= size / 2; ++sx) {
-                set(col + sx, row + sy, tint);
-            }
+        if (occluded) continue;
+        const float u = (static_cast<float>(x) - col_f + half_width) /
+                        static_cast<float>(std::max(1, half_width * 2));
+        if (u < 0.0f || u > 1.0f) continue;
+        for (int y = top; y <= bottom; ++y) {
+            const float v = (static_cast<float>(y) - top_row) /
+                            std::max(1.0f, bottom_row - top_row);
+            const Color pixel = sprite_pixel(u, v);
+            if (pixel.r != 0 || pixel.g != 0 || pixel.b != 0) set(x, y, pixel);
         }
     }
 }
@@ -236,9 +351,17 @@ void DrawWeaponViewmodel(Color* logical_pixels,
     if (!logical_pixels || logical_w <= 0 || logical_h <= 0) {
         return;
     }
-    const int base_y = logical_h - 14;
-    const int base_x = logical_w - 42;
-    const int recoil = static_cast<int>(recoil_offset * 5.0f);
+    constexpr int kRightSafe = 24;
+    constexpr int kBottomSafe = 12;
+    // Keep the authored silhouette within the Visual Bible's 22% x 30%
+    // maximum occupation at the 240x134 ULTRA framebuffer.
+    constexpr int kArtworkWidth = 64;
+    constexpr int kArtworkHeight = 48;
+    constexpr int kWeaponWidth = 52;
+    constexpr int kWeaponHeight = 40;
+    const int base_x = logical_w - kRightSafe - kWeaponWidth;
+    const int base_y = logical_h - kBottomSafe - kWeaponHeight;
+    const int recoil = static_cast<int>(std::clamp(recoil_offset, 0.0f, 1.0f) * 7.0f);
 
     auto set = [&](int x, int y, Color c) {
         if (x >= 0 && x < logical_w && y >= 0 && y < logical_h) {
@@ -246,47 +369,58 @@ void DrawWeaponViewmodel(Color* logical_pixels,
         }
     };
 
-    // Gun body: dark gunmetal with a lighter top edge.
-    const Color steel{72, 76, 84};
-    const Color steel_hi{94, 98, 108};
-    const Color grip{58, 48, 44};
-    const Color muzzle{210, 150, 60};
-
-    for (int y = 0; y < 12; ++y) {
-        for (int x = 0; x < 30; ++x) {
-            int px = base_x + x;
-            int py = base_y + y - recoil;
-            if (y < 3) {
-                set(px, py, steel_hi);
-            } else {
-                set(px, py, steel);
+    // Pixel-art sidearm silhouette. The safe-zone anchor is part of the
+    // contract: its rightmost pixel stops 24px before the logical edge and
+    // its lowest pixel stops 12px above the logical edge.
+    const Color shadow{18, 22, 28};
+    const Color steel{58, 68, 80};
+    const Color steel_hi{118, 132, 144};
+    const Color grip{48, 38, 40};
+    const Color grip_hi{92, 62, 54};
+    const Color muzzle{244, 170, 48};
+    const int kick = -recoil;
+    auto rect = [&](int x0, int y0, int x1, int y1, Color color) {
+        const int scaled_x0 = static_cast<int>(std::lround(
+            static_cast<float>(x0) * kWeaponWidth / kArtworkWidth));
+        const int scaled_y0 = static_cast<int>(std::lround(
+            static_cast<float>(y0) * kWeaponHeight / kArtworkHeight));
+        const int scaled_x1 = static_cast<int>(std::lround(
+            static_cast<float>(x1) * kWeaponWidth / kArtworkWidth));
+        const int scaled_y1 = static_cast<int>(std::lround(
+            static_cast<float>(y1) * kWeaponHeight / kArtworkHeight));
+        for (int y = scaled_y0; y <= scaled_y1; ++y) {
+            for (int x = scaled_x0; x <= scaled_x1; ++x) {
+                set(base_x + x, base_y + y + kick, color);
             }
         }
-    }
-    // Barrel / muzzle.
-    for (int y = 3; y < 6; ++y) {
-        for (int x = 30; x < 38; ++x) {
-            set(base_x + x, base_y + y - recoil, steel_hi);
-        }
-    }
+    };
+    rect(4, 9, 48, 28, shadow);
+    rect(8, 7, 42, 20, steel);
+    rect(10, 7, 39, 9, steel_hi);
+    rect(39, 11, 58, 16, steel);
+    rect(56, 12, 63, 15, steel_hi);
+    rect(12, 20, 28, 25, steel_hi);
+    rect(15, 27, 27, 43, grip);
+    rect(17, 30, 25, 39, grip_hi);
+    rect(15, 42, 29, 46, shadow);
+    rect(15, 47, 29, 47, shadow);
+    rect(20, 21, 28, 25, shadow);
+    // A short sight and ejection slot keep the weapon readable at 1:1.
+    rect(19, 4, 27, 7, shadow);
+    rect(29, 11, 35, 13, shadow);
     if (state == 1) {
-        for (int i = 0; i < 6; ++i) {
-            set(base_x + 38 + (i % 2), base_y + 3 + (i / 2) - recoil, muzzle);
-        }
-    }
-    // Grip.
-    for (int y = 12; y < 20; ++y) {
-        for (int x = 4; x < 14; ++x) {
-            set(base_x + x, base_y + y - recoil, grip);
-        }
+        rect(62, 7, 63, 20, muzzle);
+        rect(60, 9, 61, 18, muzzle);
+        rect(59, 12, 59, 15, Color{255, 218, 100});
     }
 }
 
 void ComposeHalfBlockFrame(const Color* logical_pixels,
                            int logical_w, int logical_h,
                            CharCell* out_cells, int cell_w, int cell_h) {
-    if (!logical_pixels || !out_cells ||
-        cell_w <= 0 || cell_h <= 0 || logical_h < cell_h * 2) {
+    if (!logical_pixels || !out_cells || logical_w <= 0 ||
+        cell_w <= 0 || cell_h <= 0 || logical_w < cell_w ||
+        logical_h < cell_h * 2) {
         return;
     }
     for (int cy = 0; cy < cell_h; ++cy) {

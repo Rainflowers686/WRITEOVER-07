@@ -77,8 +77,13 @@ def write_actor(out: bytearray, a: dict):
     out.extend(struct.pack("<Q", stable_id64(a["id"])))
     out.extend(struct.pack("<Q", stable_id64(a["id"])))  # data_key same stable id
     out.extend(struct.pack("<B", FACTION[a["faction"]]))
+    # v1.2 content should use cognition directly. Keep the legacy class field
+    # as a migration path, but never let it override an explicit v1.2 value.
     cls = a.get("class", "SemiHuman")
-    cognition = COGNITION.get(cls, COGNITION["SemiHuman"]) if cls in ("Full", "SemiHuman") else COGNITION["SemiHuman"]
+    if "cognition" in a:
+        cognition = COGNITION[a["cognition"]]
+    else:
+        cognition = COGNITION.get(cls, COGNITION["SemiHuman"]) if cls in ("Full", "SemiHuman") else COGNITION["SemiHuman"]
     role = ROLE.get(a.get("role", "Other"), ROLE["Other"])
     if cls == "Guard": role = ROLE["Guard"]
     out.extend(struct.pack("<B", cognition))
