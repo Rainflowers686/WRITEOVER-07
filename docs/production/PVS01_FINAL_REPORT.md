@@ -22,8 +22,10 @@ automated input replay are not part of this release.
 - Trusted pre-PVS head: `5dadd5f822e4668161bdf92fae8c5f057690995f`
 - Clean head immediately before this PVS closure: `667b7399850e8a6ed718f4e73c17cb5e1549f7eb`
 - PVS-01 release content commit: `a36904eb2161eb8127e711ae871b662100c024d8`
-- Final documentation receipt commit: recorded in the handoff after this report
-  is committed
+- Documentation receipt commit before remote verification:
+  `1e45349636463493159692a5bffd0a2522f805de`
+- Final remote-verification receipt commit: recorded in the handoff after this
+  docs-only receipt is committed
 - New branches: none
 - Pull requests: none
 - Gameplay framework/ECS/plugin expansion: none
@@ -223,7 +225,9 @@ This release deliberately does not add:
 
 ## Commit / Push Receipt
 
-The final documentation receipt SHA, remote URL, branch state and remote-head
-equality are recorded in the task handoff after the receipt commit and push
-complete. No claim of remote success is made in this document before that
-verification.
+Remote verification before this final receipt observed
+`1e45349636463493159692a5bffd0a2522f805de` at `refs/heads/main`. GitHub
+Actions CI run `33833247931` completed SUCCESS for that head. The final
+receipt commit is intentionally docs-only; its exact SHA, the final remote
+head, branch state and remote-head equality are printed in the task handoff.
+The repository is public as it was before this task; visibility was not changed.
