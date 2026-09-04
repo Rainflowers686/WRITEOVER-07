@@ -5,7 +5,7 @@
 - MISSION_START_TIME: 2026-09-03 23:51:42
 - START_HEAD: 5dadd5f822e4668161bdf92fae8c5f057690995f
 - LAST_CLEAN_HEAD_BEFORE_PVS: 667b7399850e8a6ed718f4e73c17cb5e1549f7eb
-- CURRENT_HEAD: pending local PVS-01 release commit
+- CURRENT_HEAD: a36904eb2161eb8127e711ae871b662100c024d8 (PVS-01 release content)
 - CURRENT_PHASE: final three red teams complete; Silver release candidate
 - MISSION_STATUS: READY_FOR_HUMAN_PLAYTEST_WITH_SCOPE_LIMITS
 
@@ -208,8 +208,9 @@ No issue is deferred with an ownerless “later” condition.
 
 ## Commits / Remote
 
-- PVS-01 code and route commit: pending local commit
-- PVS-01 evidence/ledger commit: pending local commit
+- PVS-01 code, route, validation records and final report commit:
+  a36904eb2161eb8127e711ae871b662100c024d8
+- PVS-01 documentation receipt commit: pending local commit
 - Remote push: pending final verification
 - Only `main` is in scope; no branch or PR is to be created.
 

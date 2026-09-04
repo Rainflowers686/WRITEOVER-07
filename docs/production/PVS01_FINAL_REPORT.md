@@ -21,7 +21,9 @@ automated input replay are not part of this release.
 - Branch: `main`
 - Trusted pre-PVS head: `5dadd5f822e4668161bdf92fae8c5f057690995f`
 - Clean head immediately before this PVS closure: `667b7399850e8a6ed718f4e73c17cb5e1549f7eb`
-- Final release head: recorded in the handoff after the scoped commits
+- PVS-01 release content commit: `a36904eb2161eb8127e711ae871b662100c024d8`
+- Final documentation receipt commit: recorded in the handoff after this report
+  is committed
 - New branches: none
 - Pull requests: none
 - Gameplay framework/ECS/plugin expansion: none
@@ -221,6 +223,7 @@ This release deliberately does not add:
 
 ## Commit / Push Receipt
 
-The exact final commit SHA, remote URL, branch state and remote-head equality
-are recorded in the task handoff after the scoped commits complete. No claim of
-remote success is made in this document before that verification.
+The final documentation receipt SHA, remote URL, branch state and remote-head
+equality are recorded in the task handoff after the receipt commit and push
+complete. No claim of remote success is made in this document before that
+verification.
