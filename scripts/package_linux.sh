@@ -18,7 +18,7 @@ if [[ "${1:-}" != "--skip-build" ]]; then
 fi
 
 commit="$(git rev-parse HEAD)"
-version="$(tr -d '\r\n' < VERSION)"
+version="$(tr -d '\r\n' < PRODUCT_VERSION)"
 python3 tools/release/package_release.py \
   --platform linux-x64 \
   --binary out/build/linux-release/writeover_app \

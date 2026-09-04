@@ -1135,11 +1135,9 @@ int RunComposition(const GameConfig& config) {
     const std::filesystem::path& data_root = runtime_paths.data_dir;
     const std::filesystem::path& user_data_root = runtime_paths.user_data_dir;
     std::error_code data_ec;
-    const bool data_ready =
-        std::filesystem::is_directory(data_root / "rooms", data_ec) &&
-        std::filesystem::is_regular_file(
-            data_root / "systemic" / "systemic_seed.bin", data_ec);
-    if (!data_ready) {
+    const bool seed_present = std::filesystem::is_regular_file(
+        data_root / "systemic" / "systemic_seed.bin", data_ec);
+    if (!seed_present) {
         std::fprintf(stderr,
                      "Missing game data: expected %s relative to the player executable.\n",
                      (data_root / "systemic" / "systemic_seed.bin").string().c_str());
@@ -1182,6 +1180,12 @@ int RunComposition(const GameConfig& config) {
         return 8;
     }
     GameServices services = std::move(build_result.Value());
+    if (!services.world->HasLoadedRoom()) {
+        std::fprintf(stderr,
+                     "Missing game data: expected a compiled room under %s relative to the player executable.\n",
+                     (data_root / "rooms").string().c_str());
+        return 8;
+    }
     SystemicEventBridge systemic_bridge(services.systemic.get());
     systemic_bridge.Register(events);
 

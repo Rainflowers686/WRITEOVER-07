@@ -64,14 +64,14 @@ def absolute(path: Path) -> Path:
 
 
 def read_version(source_root: Path, requested: str | None) -> str:
-    version_file = source_root / "VERSION"
+    version_file = source_root / "PRODUCT_VERSION"
     if not version_file.is_file():
         fail(f"missing version source of truth: {version_file}")
     version = version_file.read_text(encoding="utf-8").strip()
     if not version or any(ch.isspace() for ch in version):
-        fail("VERSION must contain exactly one non-empty line")
+        fail("PRODUCT_VERSION must contain exactly one non-empty line")
     if requested is not None and requested != version:
-        fail(f"requested version {requested!r} does not match VERSION {version!r}")
+        fail(f"requested version {requested!r} does not match PRODUCT_VERSION {version!r}")
     return version
 
 

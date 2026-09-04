@@ -17,8 +17,8 @@ jobs:
       - name: Verify release tag
         shell: pwsh
         run: |
-          $version = (Get-Content -LiteralPath VERSION -Raw).Trim()
-          if ($env:GITHUB_REF_NAME -ne "v$version") { throw "Tag does not match VERSION: $env:GITHUB_REF_NAME vs v$version" }
+          $version = (Get-Content -LiteralPath PRODUCT_VERSION -Raw).Trim()
+          if ($env:GITHUB_REF_NAME -ne "v$version") { throw "Tag does not match PRODUCT_VERSION: $env:GITHUB_REF_NAME vs v$version" }
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -48,7 +48,7 @@ jobs:
       - name: Verify release tag
         shell: bash
         run: |
-          version="$(tr -d '\r\n' < VERSION)"
+          version="$(tr -d '\r\n' < PRODUCT_VERSION)"
           test "$GITHUB_REF_NAME" = "v$version"
 
       - name: Set up Python
@@ -79,7 +79,7 @@ jobs:
       - name: Verify release tag
         shell: bash
         run: |
-          version="$(tr -d '\r\n' < VERSION)"
+          version="$(tr -d '\r\n' < PRODUCT_VERSION)"
           test "$GITHUB_REF_NAME" = "v$version"
 
       - name: Set up Python

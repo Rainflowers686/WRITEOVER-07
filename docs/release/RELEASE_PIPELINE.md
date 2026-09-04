@@ -5,7 +5,7 @@ This document covers the small portable player packages for
 
 ## Source of truth
 
-`VERSION` is the single release version source. CMake reads its numeric prefix
+`PRODUCT_VERSION` is the single release version source. CMake reads its numeric prefix
 for the project version, and the package tools use the complete value for
 `version.json`, archive names, README text, and the release tag.
 
@@ -49,7 +49,7 @@ run the exact Release gates. It does not weaken the clean-package smoke.
 ## Tagged release
 
 The release workflow is `.github/workflows/release.yml`. It accepts a `v*` tag
-but verifies that the tag is exactly `v$(Get-Content VERSION)` before doing
+but verifies that the tag is exactly `v$(Get-Content PRODUCT_VERSION)` before doing
 any release work. Each platform job checks content, builds Release, runs
 tests/bench, packages, and clean-package smokes. The aggregate job computes
 the archive checksums and creates a GitHub pre-release with the three archives

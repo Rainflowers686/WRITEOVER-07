@@ -31,7 +31,7 @@ try {
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     }
     $commit = (git rev-parse HEAD).Trim()
-    $version = (Get-Content -LiteralPath VERSION -Raw).Trim()
+    $version = (Get-Content -LiteralPath PRODUCT_VERSION -Raw).Trim()
     python tools/release/package_release.py --platform windows-x64 --binary "out\build\release\Release\writeover_app.exe" --source-root $repo --dist-root $DistRoot --version $version --commit $commit
     exit $LASTEXITCODE
 }
