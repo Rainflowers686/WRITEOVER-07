@@ -68,3 +68,9 @@ The safe publication order is:
 The workflow requires only the GitHub Actions `contents: write` permission;
 it does not read Apple or Windows signing secrets. Signing and notarization
 remain explicit `NOT_CONFIGURED` states until real credentials are supplied.
+
+If a tag-triggered run fails after the immutable tag has already been pushed,
+the workflow can be dispatched from `main` with `source_ref` set to that exact
+tag. The platform jobs still check out and package the requested immutable
+source ref; the current `main` checkout is used only for the release validator
+needed by the recovery run. This recovery path never moves or deletes a tag.
