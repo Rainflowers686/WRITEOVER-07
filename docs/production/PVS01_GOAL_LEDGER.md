@@ -114,8 +114,8 @@ actually ran on the final source state.
 - Cross-platform save: PASS locally for Windows Release save -> Linux Release
   load using the same `saves/pvs_manual.wo07` bytes.
 - GitHub Actions: required remote result is recorded after the final push. The
-  macOS arm64 job is intentionally a real CI build/test/smoke/benchmark gate;
-  no macOS physical host is assumed locally.
+  macOS arm64 job is intentionally a real Debug build/test/smoke gate plus a
+  Release benchmark gate; no macOS physical host is assumed locally.
 
 ## Local performance evidence
 

@@ -160,8 +160,14 @@ jobs:
       - name: macOS arm64 smoke
         run: ./out/build/macos-arm64/writeover_app --smoke --data-dir data --frames 61 --width 80 --height 30
 
-      - name: macOS arm64 benchmark gate
-        run: ./out/build/macos-arm64/writeover_bench
+      - name: Configure macOS arm64 Release benchmark
+        run: cmake --preset macos-arm64-release
+
+      - name: Build macOS arm64 Release benchmark
+        run: cmake --build --preset macos-arm64-release --parallel 2
+
+      - name: macOS arm64 Release benchmark gate
+        run: ./out/build/macos-arm64-release/writeover_bench
 
   linux-clang:
     runs-on: ubuntu-24.04
