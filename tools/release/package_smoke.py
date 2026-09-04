@@ -186,6 +186,12 @@ def check_metadata(root: Path, platform: str) -> None:
 
 def run_smoke(root: Path, platform: str, clean_root: Path) -> None:
     entry = root / PLATFORMS[platform][0]
+    if platform in {"linux-x64", "macos-arm64"}:
+        # Python's zipfile extractor does not restore POSIX executable bits.
+        # The archive still carries the mode in its central directory; restore
+        # it here so the clean-package launch tests the extracted player,
+        # rather than an extractor implementation detail.
+        entry.chmod(entry.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     workdir = clean_root / "unrelated-working-directory"
     user_data = clean_root / "user-data"
     workdir.mkdir()

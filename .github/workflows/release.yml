@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Immutable tag/ref to package and publish
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -13,12 +19,22 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref || github.ref }}
+
+      - name: Checkout current release validators for immutable-tag recovery
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: release-validation-tools
 
       - name: Verify release tag
         shell: pwsh
         run: |
           $version = (Get-Content -LiteralPath PRODUCT_VERSION -Raw).Trim()
-          if ($env:GITHUB_REF_NAME -ne "v$version") { throw "Tag does not match PRODUCT_VERSION: $env:GITHUB_REF_NAME vs v$version" }
+          $releaseTag = "${{ inputs.source_ref || github.ref_name }}"
+          if ($releaseTag -ne "v$version") { throw "Tag does not match PRODUCT_VERSION: $releaseTag vs v$version" }
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -31,7 +47,10 @@ jobs:
 
       - name: Clean-package Windows smoke
         shell: pwsh
-        run: python tools/release/package_smoke.py --platform windows-x64 --archive dist/WRITEOVER-07-v0.1.0-pvs01-gold-win-x64.zip
+        run: |
+          $smoke = "tools/release/package_smoke.py"
+          if (Test-Path "release-validation-tools/tools/release/package_smoke.py") { $smoke = "release-validation-tools/tools/release/package_smoke.py" }
+          python $smoke --platform windows-x64 --archive dist/WRITEOVER-07-v0.1.0-pvs01-gold-win-x64.zip
 
       - name: Upload Windows package
         uses: actions/upload-artifact@v4
@@ -44,12 +63,22 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref || github.ref }}
+
+      - name: Checkout current release validators for immutable-tag recovery
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: release-validation-tools
 
       - name: Verify release tag
         shell: bash
         run: |
           version="$(tr -d '\r\n' < PRODUCT_VERSION)"
-          test "$GITHUB_REF_NAME" = "v$version"
+          release_tag="${{ inputs.source_ref || github.ref_name }}"
+          test "$release_tag" = "v$version"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -62,7 +91,10 @@ jobs:
 
       - name: Clean-package Linux smoke
         shell: bash
-        run: python3 tools/release/package_smoke.py --platform linux-x64 --archive dist/WRITEOVER-07-v0.1.0-pvs01-gold-linux-x64.tar.gz
+        run: |
+          smoke="tools/release/package_smoke.py"
+          if [[ -f release-validation-tools/tools/release/package_smoke.py ]]; then smoke="release-validation-tools/tools/release/package_smoke.py"; fi
+          python3 "$smoke" --platform linux-x64 --archive dist/WRITEOVER-07-v0.1.0-pvs01-gold-linux-x64.tar.gz
 
       - name: Upload Linux package
         uses: actions/upload-artifact@v4
@@ -75,12 +107,22 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref || github.ref }}
+
+      - name: Checkout current release validators for immutable-tag recovery
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: release-validation-tools
 
       - name: Verify release tag
         shell: bash
         run: |
           version="$(tr -d '\r\n' < PRODUCT_VERSION)"
-          test "$GITHUB_REF_NAME" = "v$version"
+          release_tag="${{ inputs.source_ref || github.ref_name }}"
+          test "$release_tag" = "v$version"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -93,7 +135,10 @@ jobs:
 
       - name: Clean-package macOS smoke
         shell: bash
-        run: python3 tools/release/package_smoke.py --platform macos-arm64 --archive dist/WRITEOVER-07-v0.1.0-pvs01-gold-macos-arm64.zip
+        run: |
+          smoke="tools/release/package_smoke.py"
+          if [[ -f release-validation-tools/tools/release/package_smoke.py ]]; then smoke="release-validation-tools/tools/release/package_smoke.py"; fi
+          python3 "$smoke" --platform macos-arm64 --archive dist/WRITEOVER-07-v0.1.0-pvs01-gold-macos-arm64.zip
 
       - name: Upload macOS package
         uses: actions/upload-artifact@v4
@@ -107,6 +152,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref || github.ref }}
 
       - name: Download Windows package
         uses: actions/download-artifact@v4
@@ -138,9 +185,10 @@ jobs:
       - name: Create GitHub pre-release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.source_ref || github.ref_name }}
         shell: bash
         run: |
-          gh release create "$GITHUB_REF_NAME" \
+          gh release create "$RELEASE_TAG" \
             --repo "$GITHUB_REPOSITORY" \
             --title "WRITEOVER-07 — PVS-01 Gold" \
             --notes-file docs/release/RELEASE_NOTES_v0.1.0-pvs01-gold.md \
