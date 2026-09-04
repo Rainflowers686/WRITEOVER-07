@@ -1,0 +1,15 @@
+WRITEOVER-07 — THIRD-PARTY NOTICES
+
+PVS-01 Gold player packages contain no external art pack, font file, audio
+file, runtime middleware, SDK, or other third-party asset. The visual glyphs,
+procedural presentation cues, authored runtime data, and package metadata are
+generated or owned by this repository.
+
+The executable uses operating-system facilities supplied by the target
+platform: WinMM/Win32 on Windows and the standard terminal/system libraries
+on POSIX platforms. Those system facilities are not redistributed in this
+package and remain subject to their platform terms.
+
+No LICENSES/ directory is required for the files included in this package.
+This notice records the included runtime provenance; it does not grant rights
+beyond the terms that apply to the WRITEOVER-07 project and its owner.

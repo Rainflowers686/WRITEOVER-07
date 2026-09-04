@@ -32,6 +32,7 @@
 #include "writeover/world/room.h"
 
 #include "src/app/composition_root.h"
+#include "src/app/runtime_paths.h"
 #include "writeover/platform/platform_api.h"
 
 #include <cstdint>
@@ -1129,12 +1130,42 @@ Result<GameServices> BuildGame(const EngineContext& ctx, const GameConfig& confi
 }
 
 int RunComposition(const GameConfig& config) {
+    const RuntimePaths runtime_paths = ResolveRuntimePaths(
+        config.executable_path, config.data_dir, config.user_data_dir);
+    const std::filesystem::path& data_root = runtime_paths.data_dir;
+    const std::filesystem::path& user_data_root = runtime_paths.user_data_dir;
+    std::error_code data_ec;
+    const bool data_ready =
+        std::filesystem::is_directory(data_root / "rooms", data_ec) &&
+        std::filesystem::is_regular_file(
+            data_root / "systemic" / "systemic_seed.bin", data_ec);
+    if (!data_ready) {
+        std::fprintf(stderr,
+                     "Missing game data: expected %s relative to the player executable.\n",
+                     (data_root / "systemic" / "systemic_seed.bin").string().c_str());
+        return 8;
+    }
+    std::error_code user_data_ec;
+    std::filesystem::create_directories(user_data_root, user_data_ec);
+
     SimClock clock;
     EventBus events;
     DeterministicRNG sim_rng(config.seed);
     Settings settings = Settings::Defaults();
     Logger logger;
     logger.SetMinLevel(LogLevel::Info);
+    if (std::filesystem::is_regular_file(user_data_root / "settings.cfg")) {
+        SettingsRegistry registry;
+        const auto loaded = registry.Load((user_data_root / "settings.cfg").string());
+        if (loaded.IsOk()) {
+            settings = loaded.Value();
+        } else {
+            logger.Warn("settings", "settings.cfg is invalid; using defaults");
+        }
+    }
+    if (user_data_ec) {
+        logger.Warn("userdata", "user data directory is unavailable; saves may fail");
+    }
 
     EngineContext ctx;
     ctx.clock = &clock;
@@ -1142,7 +1173,7 @@ int RunComposition(const GameConfig& config) {
     ctx.sim_rng = &sim_rng;
     ctx.settings = &settings;
     ctx.logger = &logger;
-    ctx.data_dir = config.data_dir;
+    ctx.data_dir = data_root.string();
 
     auto build_result = BuildGame(ctx, config);
     if (build_result.IsError()) {
@@ -1464,16 +1495,24 @@ int RunComposition(const GameConfig& config) {
         sections.push_back({SaveSectionId::Ai, std::move(ai_b)});
         sections.push_back({SaveSectionId::Narrative, std::move(n_b)});
         sections.push_back({SaveSectionId::Systemic, std::move(sy_b)});
-        std::error_code ec; std::filesystem::create_directories("saves", ec);
+        std::error_code ec;
+        const std::filesystem::path save_dir = user_data_root / "saves";
+        std::filesystem::create_directories(save_dir, ec);
+        if (ec) {
+            replay_save_ok = false;
+            render->SetSubtitleOnce("Save failed: user data unavailable.", 180);
+            return;
+        }
         SaveManager save;
-        const auto res = save.SaveWorld("saves/pvs_manual", sections);
+        const auto res = save.SaveWorld((save_dir / "pvs_manual").string(), sections);
         replay_save_ok = res.IsOk();
         render->SetSubtitleOnce(res.IsOk() ? "Saved." : "Save failed.", 120);
     });
     services.player->SetLoadCallback([&] {
         replay_load_attempted = true;
         SaveManager save;
-        const auto loaded = save.LoadWorld("saves/pvs_manual");
+        const auto loaded = save.LoadWorld(
+            (user_data_root / "saves" / "pvs_manual").string());
         if (loaded.IsError()) { render->SetSubtitleOnce("Load failed.", 120); return; }
         const SaveSection* player_section = nullptr;
         const SaveSection* world_section = nullptr;
@@ -1998,9 +2037,14 @@ int RunComposition(const GameConfig& config) {
         sections.push_back({SaveSectionId::Systemic, std::move(systemic_bytes)});
         // Ensure the runtime saves directory exists (best-effort).
         std::error_code ec;
-        std::filesystem::create_directories("saves", ec);
+        const std::filesystem::path save_dir = user_data_root / "saves";
+        std::filesystem::create_directories(save_dir, ec);
+        if (ec) {
+            std::fprintf(stderr, "smoke save setup failed: user data unavailable\n");
+            return 3;
+        }
         SaveManager save;
-        const std::string save_path = "saves/smoke";
+        const std::string save_path = (save_dir / "smoke").string();
         const auto res = save.SaveWorld(save_path, sections);
         if (res.IsError()) {
             std::fprintf(stderr,

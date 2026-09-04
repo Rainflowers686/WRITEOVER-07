@@ -10,12 +10,19 @@
 - Release `/MT` 静态运行时（preset 已实现，release build exit 0）。
 - 未知机器自动降级：probe → SuggestPreset → 用户可覆写。
 
-## Release 目录（scripts/package.ps1 生成）
+## Player package and mutable data
 
 ```
-WRITEOVER-07/  WRITEOVER-07.exe  README.txt  data/  saves/  logs/  ASSET_PROVENANCE.csv
-+ SHA256SUMS.txt
+WRITEOVER-07-v0.1.0-pvs01-gold-win-x64/
+  WRITEOVER-07.exe  README.txt  data/  version.json
+  THIRD_PARTY_NOTICES.txt  manifest.json  SHA256SUMS.txt
 ```
+
+The formal package scripts create versioned Windows/Linux/macOS archives and
+keep `dist/stage/<platform>/` as the future Steam depot source. Saves and
+settings never belong in this tree: Windows uses `%LOCALAPPDATA%\\WRITEOVER-07`,
+Linux uses `$XDG_DATA_HOME/WRITEOVER-07` with the standard home fallback, and
+macOS uses `~/Library/Application Support/WRITEOVER-07`.
 
 ## 启动探测（与 12 文档同源）
 
@@ -31,7 +38,7 @@ Preset=COMPATIBILITY / Volume 70% / Subtitles ON / Mouse 50% / Difficulty normal
 
 - ConsoleGuard RAII：**正常退出恢复 = 保证**；`atexit` 兜底已注册。
 - 崩溃（SEH dump + 恢复）：release-gate 清单项，当前状态 NOT_READY（诚实）。
-- 回退 exe：上一版保留 `WRITEOVER-07-ROLLBACK.exe`；干净机器失败即切回。
+- 回退：保留已发布的 Git tag/release；不把 rollback exe 放入玩家包。
 
 ## Clean-machine checklist（release gate）
 
@@ -42,7 +49,7 @@ Alt+Tab 恢复 / 退出终端正常 / README 在场 / 录屏备份 / SHA256 记�
 ## 打包
 
 ```powershell
-pwsh -File scripts/package.ps1     # release build → dist/ zip + SHA256
+pwsh -File scripts/package_windows.ps1  # release build → stage + versioned zip + SHA256
 ```
 
 ## 报告友好

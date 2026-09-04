@@ -1,7 +1,18 @@
 cmake_minimum_required(VERSION 3.20)
 
+set(WO_VERSION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
+if(NOT EXISTS "${WO_VERSION_FILE}")
+    message(FATAL_ERROR "VERSION file is required")
+endif()
+file(STRINGS "${WO_VERSION_FILE}" WO_PRODUCT_VERSION LIMIT_COUNT 1)
+string(STRIP "${WO_PRODUCT_VERSION}" WO_PRODUCT_VERSION)
+if(NOT WO_PRODUCT_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+(-[A-Za-z0-9.-]+)?$")
+    message(FATAL_ERROR "Invalid product version: ${WO_PRODUCT_VERSION}")
+endif()
+string(REGEX REPLACE "-.*$" "" WO_CMAKE_VERSION "${WO_PRODUCT_VERSION}")
+
 project(writeover
-    VERSION 0.1.0
+    VERSION ${WO_CMAKE_VERSION}
     DESCRIPTION "WRITEOVER-07 terminal character-3D FPS foundation"
     LANGUAGES CXX)
 
@@ -162,6 +173,7 @@ writeover_configure_target(writeover_platform)
 add_executable(writeover_app
     src/app/game_main.cpp
     src/app/composition_root.cpp
+    src/app/runtime_paths.cpp
 )
 target_include_directories(writeover_app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(writeover_app PRIVATE
@@ -176,6 +188,9 @@ target_link_libraries(writeover_app PRIVATE
 )
 writeover_configure_target(writeover_app)
 target_include_directories(writeover_app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/app)
+target_compile_definitions(writeover_app PRIVATE
+    WO_PRODUCT_NAME="WRITEOVER-07"
+    WO_PRODUCT_VERSION="${WO_PRODUCT_VERSION}")
 
 # ---------------------------------------------------------------------------
 # Tools

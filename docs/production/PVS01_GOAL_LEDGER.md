@@ -112,7 +112,9 @@ actually ran on the final source state.
 - Invalid-seed startup gate: PASS locally; malformed systemic seed prevents
   startup.
 - Cross-platform save: PASS locally for Windows Release save -> Linux Release
-  load using the same `saves/pvs_manual.wo07` bytes.
+  load using the same user-data `saves/pvs_manual.wo07` bytes; the application
+  keeps this mutable path outside the packaged content when no override is
+  supplied.
 - GitHub Actions: PASS for head `58487cffea0825f92a73b8321d6ce21d2d0a3473`,
   run `33844911347`. The macOS arm64 job is a real Debug build/test/smoke gate
   plus a Release benchmark gate; no macOS physical host is assumed locally.

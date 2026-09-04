@@ -14,12 +14,17 @@
 #include <cstdlib>
 #include <string>
 
+#ifndef WO_PRODUCT_VERSION
+#define WO_PRODUCT_VERSION "0.0.0-dev"
+#endif
+
 using namespace writeover;
 
 namespace {
 
 GameConfig ParseArgs(int argc, char** argv) {
     GameConfig config;
+    if (argc > 0 && argv[0] != nullptr) config.executable_path = argv[0];
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--smoke") {
@@ -31,6 +36,8 @@ GameConfig ParseArgs(int argc, char** argv) {
             config.seed = std::strtoull(argv[++i], nullptr, 0);
         } else if (arg == "--data-dir" && i + 1 < argc) {
             config.data_dir = argv[++i];
+        } else if (arg == "--user-data-dir" && i + 1 < argc) {
+            config.user_data_dir = argv[++i];
         } else if (arg == "--width" && i + 1 < argc) {
             config.terminal_w = std::atoi(argv[++i]);
         } else if (arg == "--height" && i + 1 < argc) {
@@ -50,6 +57,8 @@ GameConfig ParseArgs(int argc, char** argv) {
 
 int main(int argc, char** argv) {
     const GameConfig config = ParseArgs(argc, argv);
+
+    std::fprintf(stderr, "WRITEOVER-07 v%s\n", WO_PRODUCT_VERSION);
 
     ConsoleGuard guard;                     // restores console mode on exit
     InstallPlatformAtomicReplace();          // MoveFileExW atomic saves

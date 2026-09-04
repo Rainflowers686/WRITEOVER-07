@@ -1,0 +1,151 @@
+name: Release Player Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify release tag
+        shell: pwsh
+        run: |
+          $version = (Get-Content -LiteralPath VERSION -Raw).Trim()
+          if ($env:GITHUB_REF_NAME -ne "v$version") { throw "Tag does not match VERSION: $env:GITHUB_REF_NAME vs v$version" }
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Package Windows x64
+        shell: pwsh
+        run: pwsh -ExecutionPolicy Bypass -File scripts/package_windows.ps1
+
+      - name: Clean-package Windows smoke
+        shell: pwsh
+        run: python tools/release/package_smoke.py --platform windows-x64 --archive dist/WRITEOVER-07-v0.1.0-pvs01-gold-win-x64.zip
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: writeover-windows-x64
+          path: dist/WRITEOVER-07-v0.1.0-pvs01-gold-win-x64.zip
+          if-no-files-found: error
+
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify release tag
+        shell: bash
+        run: |
+          version="$(tr -d '\r\n' < VERSION)"
+          test "$GITHUB_REF_NAME" = "v$version"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Package Linux x64
+        shell: bash
+        run: bash scripts/package_linux.sh
+
+      - name: Clean-package Linux smoke
+        shell: bash
+        run: python3 tools/release/package_smoke.py --platform linux-x64 --archive dist/WRITEOVER-07-v0.1.0-pvs01-gold-linux-x64.tar.gz
+
+      - name: Upload Linux package
+        uses: actions/upload-artifact@v4
+        with:
+          name: writeover-linux-x64
+          path: dist/WRITEOVER-07-v0.1.0-pvs01-gold-linux-x64.tar.gz
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify release tag
+        shell: bash
+        run: |
+          version="$(tr -d '\r\n' < VERSION)"
+          test "$GITHUB_REF_NAME" = "v$version"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Package macOS arm64
+        shell: bash
+        run: bash scripts/package_macos.sh
+
+      - name: Clean-package macOS smoke
+        shell: bash
+        run: python3 tools/release/package_smoke.py --platform macos-arm64 --archive dist/WRITEOVER-07-v0.1.0-pvs01-gold-macos-arm64.zip
+
+      - name: Upload macOS package
+        uses: actions/upload-artifact@v4
+        with:
+          name: writeover-macos-arm64
+          path: dist/WRITEOVER-07-v0.1.0-pvs01-gold-macos-arm64.zip
+          if-no-files-found: error
+
+  publish:
+    needs: [windows, linux, macos]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Windows package
+        uses: actions/download-artifact@v4
+        with:
+          name: writeover-windows-x64
+          path: dist
+
+      - name: Download Linux package
+        uses: actions/download-artifact@v4
+        with:
+          name: writeover-linux-x64
+          path: dist
+
+      - name: Download macOS package
+        uses: actions/download-artifact@v4
+        with:
+          name: writeover-macos-arm64
+          path: dist
+
+      - name: Aggregate checksums
+        shell: bash
+        run: |
+          cd dist
+          sha256sum WRITEOVER-07-v0.1.0-pvs01-gold-win-x64.zip \
+            WRITEOVER-07-v0.1.0-pvs01-gold-linux-x64.tar.gz \
+            WRITEOVER-07-v0.1.0-pvs01-gold-macos-arm64.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create GitHub pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "WRITEOVER-07 — PVS-01 Gold" \
+            --notes-file docs/release/RELEASE_NOTES_v0.1.0-pvs01-gold.md \
+            --prerelease \
+            dist/WRITEOVER-07-v0.1.0-pvs01-gold-win-x64.zip \
+            dist/WRITEOVER-07-v0.1.0-pvs01-gold-linux-x64.tar.gz \
+            dist/WRITEOVER-07-v0.1.0-pvs01-gold-macos-arm64.zip \
+            dist/SHA256SUMS.txt

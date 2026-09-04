@@ -34,12 +34,14 @@ counts, loop/response counts and Save/Load flags.
 
 ## Cross-platform save
 
-1. Run the Windows Release save probe or the normal/systemic replay, which
-   writes `saves/pvs_manual.wo07` through the real SaveManager.
+1. Choose one empty shared user-data directory and pass it explicitly to both
+   runs with `--user-data-dir`. The Windows Release save probe or the
+   normal/systemic replay then writes `<shared-user-data>/saves/pvs_manual.wo07`
+   through the real SaveManager.
 2. Run:
 
    ```text
-   ./out/build/linux-release/writeover_app --data-dir data --frames 40 --replay tools/replay/pvs01_cross_platform_load.txt
+   ./out/build/linux-release/writeover_app --data-dir data --user-data-dir <shared-user-data> --frames 40 --replay tools/replay/pvs01_cross_platform_load.txt
    ```
 
 3. Require `LOAD_ATTEMPTED=YES` and `LOAD_OK=YES` in the Linux summary, with

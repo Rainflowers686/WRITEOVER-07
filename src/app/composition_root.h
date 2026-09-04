@@ -15,7 +15,9 @@ struct GameConfig {
     bool smoke = false;
     uint64_t max_frames = 0;
     uint64_t seed = 0x12345678;
-    std::string data_dir = "data";
+    std::string executable_path;
+    std::string data_dir;
+    std::string user_data_dir;
     int terminal_w = 240;
     int terminal_h = 67;
     bool save_after_smoke = true;
