@@ -4,7 +4,7 @@
 
 - Mission: `PRODUCT v1.2 / SYSTEMIC GAMEPLAY FOUNDATION / PVS-01 GOLD`
 - Mission start head: `33e5e73c3f8845ed7236f749d0392fa9d53f59918`
-- Current closure head: the final Gold receipt commit printed by `git rev-parse HEAD`
+- Current closure head: `58487cffea0825f92a73b8321d6ce21d2d0a3473` before this final docs receipt
 - Branch: `main` only
 - Current phase: Gold closure evidence and cross-platform gates
 - Local status at the time of this ledger update: all scoped changes are being
@@ -113,9 +113,9 @@ actually ran on the final source state.
   startup.
 - Cross-platform save: PASS locally for Windows Release save -> Linux Release
   load using the same `saves/pvs_manual.wo07` bytes.
-- GitHub Actions: required remote result is recorded after the final push. The
-  macOS arm64 job is intentionally a real Debug build/test/smoke gate plus a
-  Release benchmark gate; no macOS physical host is assumed locally.
+- GitHub Actions: PASS for head `58487cffea0825f92a73b8321d6ce21d2d0a3473`,
+  run `33844911347`. The macOS arm64 job is a real Debug build/test/smoke gate
+  plus a Release benchmark gate; no macOS physical host is assumed locally.
 
 ## Local performance evidence
 
@@ -204,13 +204,15 @@ bounded PVS-01 Gold target. They must remain visible in the final report.
 
 ## Commit / remote receipt
 
-- Final Gold closure commit: the SHA printed in the final task receipt.
+- Final Gold closure implementation commit: `58487cffea0825f92a73b8321d6ce21d2d0a3473`.
+- Final docs receipt commit: the SHA printed in the final task receipt.
 - Remote: `https://github.com/Rainflowers686/WRITEOVER-07`
 - Branch: `main` only; no PR and no additional branch.
 - Remote visibility: pre-existing `PUBLIC`; no visibility mutation is authorized
   or required by this PVS task.
-- Required final check: remote `refs/heads/main` SHA equals local `HEAD`, and
-  every required GitHub Actions job is green for that exact head.
+- Verified check: remote `refs/heads/main` and local `HEAD` were both
+  `58487cffea0825f92a73b8321d6ce21d2d0a3473`; all five required jobs in
+  Actions run `33844911347` concluded `success`.
 
 ## Stop rule
 
