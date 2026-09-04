@@ -4,7 +4,8 @@
     {
       "id": "guard_7",
       "faction": "Security",
-      "class": "Guard",
+      "cognition": "SemiHuman",
+      "role": "Guard",
       "occupation": "Security_Guard",
       "fullHumanIllusion": false,
       "knownIdentities": [
@@ -18,7 +19,7 @@
     {
       "id": "officer_davis",
       "faction": "Security",
-      "class": "SemiHuman",
+      "cognition": "SemiHuman",
       "role": "Guard",
       "occupation": "Security_Guard",
       "fullHumanIllusion": false,
@@ -29,7 +30,7 @@
     {
       "id": "facility_security",
       "faction": "Security",
-      "class": "SemiHuman",
+      "cognition": "SemiHuman",
       "role": "Administrator",
       "occupation": "Security_Command",
       "fullHumanIllusion": false,
@@ -40,7 +41,7 @@
     {
       "id": "cleaner_b1",
       "faction": "Maintenance",
-      "class": "SemiHuman",
+      "cognition": "SemiHuman",
       "role": "Cleaner",
       "occupation": "Cleaner",
       "fullHumanIllusion": false,
@@ -50,12 +51,24 @@
       ]
     },
     {
+      "id": "maintenance_tech",
+      "faction": "Maintenance",
+      "cognition": "SemiHuman",
+      "role": "Technician",
+      "occupation": "Maintenance_Technician",
+      "fullHumanIllusion": false,
+      "personalityTags": [
+        "practical",
+        "quiet"
+      ]
+    },
+    {
       "id": "npc_doctor",
       "faction": "Medical",
-      "class": "SemiHuman",
+      "cognition": "Full",
       "role": "Doctor",
       "occupation": "Doctor",
-      "fullHumanIllusion": false,
+      "fullHumanIllusion": true,
       "personalityTags": [
         "medical"
       ]
@@ -121,6 +134,10 @@
       "status": "Offered"
     }
   ],
+  "questSeeds": [],
+  "knowledgeSeeds": [],
+  "terminalSeeds": [],
+  "observationSeeds": [],
   "alertDefaults": {
     "level": "Normal"
   },

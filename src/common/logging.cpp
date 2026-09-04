@@ -44,7 +44,14 @@ void Logger::Log(LogLevel level, const char* module, std::string_view msg) {
         if (file) {
             const std::time_t now = std::time(nullptr);
             std::tm tm_buf{};
+            // The C runtime uses different thread-safe names on Windows and
+            // POSIX.  Keep this diagnostic-only timestamp portable without
+            // leaking a platform dependency into the common module.
+#if defined(_WIN32)
             localtime_s(&tm_buf, &now);
+#else
+            localtime_r(&now, &tm_buf);
+#endif
             char stamp[32] = {};
             std::strftime(stamp, sizeof(stamp), "%H:%M:%S", &tm_buf);
             file << "[" << stamp << "][" << LevelName(level) << "][" << module << "] "

@@ -8,7 +8,7 @@
 #include "writeover/common/logging.h"
 
 #include "src/app/composition_root.h"
-#include "src/platform/windows/platform_api.h"
+#include "writeover/platform/platform_api.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -39,6 +39,8 @@ GameConfig ParseArgs(int argc, char** argv) {
             config.frame_dump_path = argv[++i];
         } else if (arg == "--room" && i + 1 < argc) {
             config.room_id = argv[++i];
+        } else if (arg == "--replay" && i + 1 < argc) {
+            config.replay_path = argv[++i];
         }
     }
     return config;

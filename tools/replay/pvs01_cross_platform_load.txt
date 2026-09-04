@@ -1,0 +1,4 @@
+# Cross-platform save evidence: run the Windows save probe first, then load
+# the same saves/pvs_manual.wo07 with the Linux production binary.
+0 F9 down
+1 F9 up

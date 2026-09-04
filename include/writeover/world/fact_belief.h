@@ -39,7 +39,7 @@ public:
     std::vector<WorldFact> Snapshot() const;   // ordered by id (deterministic)
 
     void Save(Serializer& s) const;
-    void Load(Deserializer& d);
+    bool Load(Deserializer& d);
 
 private:
     std::map<FactId, WorldFact> facts_;  // ordered, deterministic

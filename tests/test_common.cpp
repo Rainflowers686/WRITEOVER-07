@@ -4,6 +4,8 @@
 #include "writeover/common/serialize.h"
 #include "writeover/common/world_event.h"
 
+#include <cmath>
+
 namespace writeover {
 
 namespace {

@@ -3,6 +3,10 @@
 #include "writeover/ai/goap.h"
 #include "writeover/ai/memory.h"
 #include "writeover/ai/perception.h"
+#include "writeover/ai/runtime.h"
+#include "writeover/common/rng.h"
+#include "writeover/common/world_event.h"
+#include "writeover/systemic/systemic.h"
 #include "writeover/world/grid.h"
 
 #include <array>
@@ -116,6 +120,65 @@ bool MemoryRecallOrdered() {
     return !recalled.empty() && recalled[0].frame == 10;
 }
 
+bool AutonomousRuntimeRunsFivePhaseLoop() {
+    Grid grid = MakeViewGrid();
+    GridWorldQuery query(&grid);
+    SystemicWorld systemic;
+    ActorRecord actor;
+    actor.id = NpcId::New(7);
+    actor.data_key = ResourceId::New(7007);
+    actor.faction = Faction::Security;
+    actor.cognition = CognitionTier::Full;
+    actor.role = Role::Guard;
+    WO_CHECK(systemic.AddActor(actor));
+
+    EventBus events;
+    DeterministicRNG rng(0x1234);
+    AutonomousNpcSystem runtime;
+    runtime.Attach(&systemic, &events, &rng);
+
+    NPCInstance npc;
+    npc.id = NpcId::New(7);
+    npc.cognition = CognitionTier::Full;
+    npc.faction = Faction::Security;
+    npc.role = Role::Guard;
+    npc.data_key = ResourceId::New(7007);
+    npc.position = Vec3{1.5f, 1.5f, 0.0f};
+    npc.yaw = 0.0f;  // face the player on +x
+    npc.health = 100;
+    WO_CHECK(runtime.AddNpc(npc, RoomId::New(1)));
+    runtime.SetWorldQuery(&query);
+    runtime.SetActiveRoom(RoomId::New(1));
+    runtime.SetPlayerPose(Vec3{4.5f, 1.5f, 0.0f}, kEyeStand);
+
+    // The fixed cadence must not run early, then must run all five phases
+    // against the real perception, systemic memory, and EventBus adapters.
+    runtime.Tick(11);
+    WO_CHECK_EQ(static_cast<int64_t>(runtime.AutonomousLoopCount()), 0);
+    runtime.Tick(12);
+    WO_CHECK_EQ(static_cast<int64_t>(runtime.AutonomousLoopCount()), 1);
+    WO_CHECK(systemic.MemoryCount() == 1);
+    // EventBus defers events posted during this tick into next_pending_; the
+    // first dispatch advances them to the next tick by contract.
+    WO_CHECK(events.PendingCount() == 0);
+    WO_CHECK(runtime.Npcs().size() == 1);
+    WO_CHECK(runtime.Npcs().front().instance.state == NPCState::Alert);
+
+    bool saw[5] = {false, false, false, false, false};
+    for (const auto& receipt : runtime.Receipts()) {
+        if (receipt.npc == NpcId::New(7) && receipt.frame == 12) {
+            saw[static_cast<size_t>(receipt.phase)] = true;
+        }
+    }
+    for (bool phase_seen : saw) WO_CHECK(phase_seen);
+
+    events.Dispatch();
+    WO_CHECK(events.PendingCount() >= 2);  // state change + Full-human speech
+    events.Dispatch();
+    WO_CHECK(events.JournalCount() >= 2);
+    return true;
+}
+
 } // namespace
 
 void RegisterAiTests(TestHarness& test) {
@@ -125,6 +188,8 @@ void RegisterAiTests(TestHarness& test) {
     test.Add("ai.goap_plans_chain", &GoapPlansSimpleChain);
     test.Add("ai.goap_no_plan_impossible", &GoapNoPlanWhenImpossible);
     test.Add("ai.memory_recall_order", &MemoryRecallOrdered);
+    test.Add("ai.autonomous_runtime_five_phase_loop",
+             &AutonomousRuntimeRunsFivePhaseLoop);
 }
 
 } // namespace writeover

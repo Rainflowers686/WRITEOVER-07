@@ -40,6 +40,11 @@ struct HitscanResult {
     float distance = 0.0f;
     bool headshot = false;
     uint16_t damage = 0;
+    // The exact deterministic ray after spread/recoil. Runtime target
+    // adapters use this same direction so NPC hits and static occlusion do
+    // not consume a second random sample.
+    float resolved_yaw = 0.0f;
+    float resolved_pitch = 0.0f;
 };
 
 struct FireRequest {
@@ -47,6 +52,7 @@ struct FireRequest {
     float yaw = 0.0f;
     float pitch = 0.0f;
     WeaponSlot slot = WeaponSlot::Pistol;
+    float spread_factor = 0.0f;
 };
 
 // March RayResult-style through the grid; first full-occlusion boundary at

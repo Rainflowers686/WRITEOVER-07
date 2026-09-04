@@ -93,3 +93,19 @@ All others rejected. Expired is not recorded as Broken.
 `ReportItemStolen` sets reported_stolen without revoking.
 `RevokeCredential` blocks reader.
 `ReturnItem` returns to current legal_holder.
+
+## 12. Gold Runtime Adapter / Portability Boundary
+
+- `AutonomousNpcSystem` is a bounded composition adapter, not a second world.
+  Its observable loop is `Observe -> Remember -> Evaluate -> Choose -> Act`;
+  the adapter writes through the shared perception, memory, relationship,
+  event, and systemic APIs.
+- The production PVS adapter caps the runtime population at 64 NPCs and keeps
+  a bounded receipt history. It does not own M1/M3/M4/M5/M6 state or introduce
+  a planner framework.
+- Replay input is deterministic and uses the same `InputRuntime` seam as the
+  platform backend. The production save path validates Player, World, RNG,
+  Events, AI, Narrative, and Systemic sections before applying a load.
+- Windows uses Win32/Raw Input/WinMM; POSIX uses ANSI/raw-terminal fallbacks
+  and reports subtitles-only audio when a voice device is unavailable. The
+  platform boundary does not change the fixed 120 Hz simulation clock.

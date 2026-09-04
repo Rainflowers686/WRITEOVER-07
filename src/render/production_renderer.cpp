@@ -10,8 +10,6 @@ namespace writeover {
 
 namespace {
 
-constexpr float kMaxPitchRad = 30.0f * 3.14159265f / 180.0f;
-
 uint8_t Clamp8(float v) {
     return static_cast<uint8_t>(std::clamp(v, 0.0f, 255.0f));
 }
@@ -67,28 +65,6 @@ Color MaterialColor(uint8_t material, float distance, int row, int col, uint8_t 
 
     const float l = static_cast<float>(light) / 255.0f;
     return {Clamp8(r * l), Clamp8(g * l), Clamp8(b * l)};
-}
-
-Color FloorColor(int row, int logical_h, float distance) {
-    // Dark, warm, not bright. Gradient with depth and subtle speckle.
-    const float t = static_cast<float>(row) / static_cast<float>(std::max(1, logical_h));
-    const float depth = Saturate(1.0f - distance * 0.02f);
-    const float n = Noise01(row * 7, static_cast<int>(distance * 13.0f)) * 0.08f;
-    const float r = (38.0f + 24.0f * t) * (0.55f + 0.45f * depth) + n * 20.0f;
-    const float g = (32.0f + 18.0f * t) * (0.55f + 0.45f * depth) + n * 16.0f;
-    const float b = (26.0f + 12.0f * t) * (0.55f + 0.45f * depth) + n * 12.0f;
-    return {Clamp8(r), Clamp8(g), Clamp8(b)};
-}
-
-Color CeilingColor(int row, int logical_h, float distance) {
-    // Even darker than floor.
-    const float t = 1.0f - static_cast<float>(row) / static_cast<float>(std::max(1, logical_h));
-    const float depth = Saturate(1.0f - distance * 0.02f);
-    const float n = Noise01(row * 11, static_cast<int>(distance * 17.0f)) * 0.05f;
-    const float r = (18.0f + 12.0f * t) * (0.50f + 0.50f * depth) + n * 10.0f;
-    const float g = (22.0f + 14.0f * t) * (0.50f + 0.50f * depth) + n * 10.0f;
-    const float b = (34.0f + 18.0f * t) * (0.50f + 0.50f * depth) + n * 12.0f;
-    return {Clamp8(r), Clamp8(g), Clamp8(b)};
 }
 
 Color ScaleColor(const Color& color, float scale) {

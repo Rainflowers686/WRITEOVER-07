@@ -11,8 +11,6 @@ namespace writeover {
 
 namespace {
 
-constexpr float kMaxPitchRad = 30.0f * 3.14159265f / 180.0f;
-
 // Per-material base color (shared by renderer + reference palette).
 Color MaterialColor(uint8_t material) {
     switch (material) {

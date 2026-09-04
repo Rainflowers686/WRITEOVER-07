@@ -5,6 +5,7 @@
 #include "writeover/common/world_event.h"
 #include "writeover/core/save.h"
 
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <vector>

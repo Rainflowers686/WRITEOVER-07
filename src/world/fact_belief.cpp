@@ -30,21 +30,31 @@ void SerializeFactValue(Serializer& s, const FactValue& value) {
     }
 }
 
-FactValue DeserializeFactValue(Deserializer& d) {
+bool DeserializeFactValue(Deserializer& d, FactValue& out) {
     const uint8_t index = d.ReadU8();
     switch (index) {
     case 0:
-        return FactValue(d.ReadU8() != 0);
+        {
+            const uint8_t value = d.ReadU8();
+            if (value > 1) { d.MarkError(); return false; }
+            out = FactValue(value != 0);
+            return true;
+        }
     case 1:
-        return FactValue(d.ReadI32());
+        out = FactValue(d.ReadI32());
+        return true;
     case 2:
-        return FactValue(ReadId<EntityId>(d));
+        out = FactValue(ReadId<EntityId>(d));
+        return true;
     case 3:
-        return FactValue(ReadId<RoomId>(d));
+        out = FactValue(ReadId<RoomId>(d));
+        return true;
     case 4:
-        return FactValue(d.ReadU8());
+        out = FactValue(d.ReadU8());
+        return true;
     default:
-        return FactValue(false);
+        d.MarkError();
+        return false;
     }
 }
 } // namespace
@@ -82,17 +92,36 @@ void FactStore::Save(Serializer& s) const {
     }
 }
 
-void FactStore::Load(Deserializer& d) {
-    facts_.clear();
+bool FactStore::Load(Deserializer& d) {
+    constexpr uint32_t kMaxFacts = 4096;
+    std::map<FactId, WorldFact> restored;
     const uint32_t count = d.ReadU32();
+    if (d.HasError() || count > kMaxFacts) {
+        d.MarkError();
+        return false;
+    }
     for (uint32_t i = 0; i < count; ++i) {
         WorldFact f;
         f.id = ReadId<FactId>(d);
         f.subject_entity = ReadId<EntityId>(d);
-        f.predicate = static_cast<PredicateType>(d.ReadU8());
-        f.value = DeserializeFactValue(d);
-        facts_[f.id] = std::move(f);
+        const uint8_t predicate = d.ReadU8();
+        if (predicate > static_cast<uint8_t>(PredicateType::Count)) {
+            d.MarkError();
+            return false;
+        }
+        f.predicate = static_cast<PredicateType>(predicate);
+        if (!DeserializeFactValue(d, f.value) || d.HasError() || !f.id.IsValid()) {
+            d.MarkError();
+            return false;
+        }
+        if (restored.find(f.id) != restored.end()) {
+            d.MarkError();
+            return false;
+        }
+        restored.emplace(f.id, std::move(f));
     }
+    facts_ = std::move(restored);
+    return true;
 }
 
 void BeliefSet::Upsert(NpcId npc, FactId fact, float confidence,

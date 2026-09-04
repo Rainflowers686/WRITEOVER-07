@@ -26,7 +26,9 @@ set(WO_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # ---------------------------------------------------------------------------
 # Libraries (dependency direction: common <- world/player <- ai <- narrative
-#                       core <- all via composition root, render <- snapshots)
+#                       core <- all via composition root, render <- snapshots).
+# Platform backends are selected by the target platform; semantic modules do
+# not include OS headers.
 # ---------------------------------------------------------------------------
 add_library(writeover_common STATIC
     src/common/result.cpp
@@ -79,9 +81,11 @@ add_library(writeover_ai STATIC
     src/ai/perception.cpp
     src/ai/goap.cpp
     src/ai/memory.cpp
+    src/ai/npc_profiles.cpp
+    src/ai/runtime.cpp
 )
 target_include_directories(writeover_ai PUBLIC ${WO_INCLUDE_DIR})
-target_link_libraries(writeover_ai PUBLIC writeover_common writeover_world writeover_player)
+target_link_libraries(writeover_ai PUBLIC writeover_common writeover_world writeover_player writeover_systemic)
 writeover_configure_target(writeover_ai)
 
 add_library(writeover_narrative STATIC
@@ -90,6 +94,7 @@ add_library(writeover_narrative STATIC
     src/narrative/causality.cpp
     src/narrative/judge.cpp
     src/narrative/dialog.cpp
+    src/narrative/ending.cpp
 )
 target_include_directories(writeover_narrative PUBLIC ${WO_INCLUDE_DIR})
 target_link_libraries(writeover_narrative PUBLIC writeover_common writeover_world writeover_player writeover_ai)
@@ -125,17 +130,30 @@ writeover_configure_target(writeover_core)
 
 # Platform implements platform-facing interfaces (input/terminal/atomic-io).
 # It may depend on interface-only headers; semantic modules never include it.
-add_library(writeover_platform STATIC
-    src/platform/windows/win_console.cpp
-    src/platform/windows/win_input.cpp
-    src/platform/windows/win_raw_input.cpp
-    src/platform/windows/win_terminal.cpp
-    src/platform/windows/win_audio.cpp
-    src/platform/windows/win_file_io.cpp
-)
+if(WIN32)
+    set(WO_PLATFORM_SOURCES
+        src/platform/windows/win_console.cpp
+        src/platform/windows/win_input.cpp
+        src/platform/windows/win_raw_input.cpp
+        src/platform/windows/win_terminal.cpp
+        src/platform/windows/win_audio.cpp
+        src/platform/windows/win_file_io.cpp
+    )
+else()
+    set(WO_PLATFORM_SOURCES
+        src/platform/posix/posix_input.cpp
+        src/platform/posix/posix_terminal.cpp
+        src/platform/posix/posix_audio.cpp
+        src/platform/posix/posix_file_io.cpp
+    )
+endif()
+add_library(writeover_platform STATIC ${WO_PLATFORM_SOURCES})
 target_include_directories(writeover_platform PUBLIC ${WO_INCLUDE_DIR})
 target_include_directories(writeover_platform PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(writeover_platform PUBLIC writeover_common writeover_render writeover_player writeover_core)
+if(WIN32)
+    target_link_libraries(writeover_platform PUBLIC winmm)
+endif()
 writeover_configure_target(writeover_platform)
 
 # ---------------------------------------------------------------------------
@@ -164,7 +182,7 @@ target_include_directories(writeover_app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
 # ---------------------------------------------------------------------------
 if(WO_BUILD_TOOLS)
     add_executable(writeover_bench tools/bench/main.cpp)
-    target_link_libraries(writeover_bench PRIVATE writeover_common writeover_systemic writeover_world writeover_player writeover_render)
+    target_link_libraries(writeover_bench PRIVATE writeover_common writeover_systemic writeover_world writeover_player writeover_ai writeover_render)
     writeover_configure_target(writeover_bench)
 
     add_executable(mapc tools/mapc/main.cpp)

@@ -1,5 +1,7 @@
 #include "writeover/world/infrastructure.h"
 
+#include <utility>
+
 namespace writeover {
 
 void InfrastructureSystem::AddDoor(DoorState door) {
@@ -97,25 +99,62 @@ void InfrastructureSystem::Save(Serializer& s) const {
     }
 }
 
-void InfrastructureSystem::Load(Deserializer& d) {
-    doors_.clear();
-    systems_.clear();
+bool InfrastructureSystem::Load(Deserializer& d) {
+    constexpr uint32_t kMaxRecords = 1024;
+    std::vector<DoorState> doors;
+    std::vector<SystemState> systems;
     const uint32_t door_count = d.ReadU32();
+    if (d.HasError() || door_count > kMaxRecords) {
+        d.MarkError();
+        return false;
+    }
+    doors.reserve(door_count);
     for (uint32_t i = 0; i < door_count; ++i) {
         DoorState door;
         door.id = ReadId<DoorId>(d);
-        door.open = d.ReadU8() != 0;
-        door.locked = d.ReadU8() != 0;
-        doors_.push_back(door);
+        const uint8_t open = d.ReadU8();
+        const uint8_t locked = d.ReadU8();
+        if (d.HasError() || !door.id.IsValid() || open > 1 || locked > 1) {
+            d.MarkError();
+            return false;
+        }
+        door.open = open != 0;
+        door.locked = locked != 0;
+        for (const auto& existing : doors) {
+            if (existing.id == door.id) {
+                d.MarkError();
+                return false;
+            }
+        }
+        doors.push_back(door);
     }
     const uint32_t system_count = d.ReadU32();
+    if (d.HasError() || system_count > kMaxRecords) {
+        d.MarkError();
+        return false;
+    }
+    systems.reserve(system_count);
     for (uint32_t i = 0; i < system_count; ++i) {
         SystemState sys;
         sys.id = ReadId<SystemId>(d);
         sys.system_type = d.ReadU8();
-        sys.powered = d.ReadU8() != 0;
-        systems_.push_back(sys);
+        const uint8_t powered = d.ReadU8();
+        if (d.HasError() || !sys.id.IsValid() || sys.system_type > 3 || powered > 1) {
+            d.MarkError();
+            return false;
+        }
+        sys.powered = powered != 0;
+        for (const auto& existing : systems) {
+            if (existing.id == sys.id) {
+                d.MarkError();
+                return false;
+            }
+        }
+        systems.push_back(sys);
     }
+    doors_ = std::move(doors);
+    systems_ = std::move(systems);
+    return true;
 }
 
 } // namespace writeover

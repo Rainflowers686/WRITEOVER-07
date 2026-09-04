@@ -16,24 +16,35 @@ The runtime loads `data/systemic/systemic_seed.bin` via `SystemicWorld::LoadSeed
 
 ## 3. Validator Rules
 
-- required fields
-- closed enums
-- types and ranges
-- finite values
-- unique IDs
-- cross-file refs
-- actor known identities
-- item owner/issuer/legal/current holder
-- promise giver/receiver
-- relationship participants
-- container refs
-- evidence refs
-- narrator source refs
-- quest refs
-- terminal refs
+- The five compiled root arrays (`actors`, `items`, `containers`,
+  `evidenceSeeds`, and `promiseSeeds`) are required and must be lists.
+- Entries must be objects with required IDs, closed enums, valid types/ranges,
+  and finite numeric values.
+- IDs are unique within each record domain. Actor identity references, item
+  holder references, item container references, and promise participants are
+  resolved before the file is accepted.
+- Item location is explicit (`Holder`, `Ground`, or `Container`); a ground
+  item requires a room and a container item requires an existing container.
+- Important items (`Badge`, `Weapon`, `KeyItem`, `Credential`) require an
+  owner and non-empty provenance tags. `reportedStolen` and `revoked` are
+  independent booleans.
+- Evidence requires a closed evidence type, subject, room, and bounded
+  visibility. Containers require a room, positive capacity, bounded
+  concealment/accessibility, and closed routine tags.
+- Promise participants must resolve to an actor or `player`; promise status
+  must use the closed promise enum.
+
+The root also reserves `questSeeds`, `knowledgeSeeds`, `terminalSeeds`, and
+`observationSeeds` for the future data-driven compiler. If present, they must
+be lists and must currently be empty; this prevents a JSON section from being
+silently ignored by the compiler. Their runtime contracts already exist in
+`SYSTEMIC_CONTRACTS_V1_2.md`, but they are not claimed as compiled content in
+this foundation gate.
 
 If `data/systemic` does not exist or has no required seed, the validator fails.
-Negative tests are included in the Python test suite.
+Negative tests are included in the Python test suite, including malformed
+structure, unknown references, duplicate IDs, invalid locations, invalid
+enums, and reserved non-empty sections.
 
 ## 4. Migration
 

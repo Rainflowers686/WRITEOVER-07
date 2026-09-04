@@ -30,7 +30,7 @@ class Result {
 public:
     using Storage = std::variant<T, ErrorInfo>;
 
-    static Result Ok(T value) { return Result(Storage(std::move(value))); }
+    static Result Ok(T value) { return Result(std::move(value)); }
 
     static Result Err(ErrorInfo err) { return Result(Storage(std::move(err))); }
     static Result Err(uint32_t code, std::string message) {
@@ -53,6 +53,7 @@ public:
     }
 
 private:
+    explicit Result(T value) : storage_(std::in_place_type<T>, std::move(value)) {}
     explicit Result(Storage s) : storage_(std::move(s)) {}
     Storage storage_;
 };

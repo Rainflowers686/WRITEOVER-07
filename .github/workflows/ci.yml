@@ -87,3 +87,114 @@ jobs:
       - name: Static audit (deterministic, must be COUNT=0)
         run: python tools/audit/static_audit.py .
         shell: pwsh
+
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Authoring and systemic schema gates
+        run: |
+          python tools/contentc/contentc.py --data-dir data --out-dir data --check
+          python tools/contentc/test_contentc.py
+          python tools/systemic/systemic_schema_check.py --data-dir data
+          python tools/systemic/test_systemic_schema.py
+          python tools/systemic/compile_systemic_seed.py --src data/systemic/systemic_seed.json --out data/systemic/systemic_seed.bin
+
+      - name: Configure Linux x64
+        run: cmake --preset linux-debug
+
+      - name: Build Linux x64
+        run: cmake --build --preset linux-debug --parallel 2
+
+      - name: Run Linux x64 tests
+        run: ctest --preset linux-debug --output-on-failure
+
+      - name: Linux x64 smoke
+        run: ./out/build/linux-debug/writeover_app --smoke --data-dir data --frames 61 --width 80 --height 30
+
+      - name: Configure Linux Release benchmark
+        run: cmake --preset linux-release
+
+      - name: Build Linux Release benchmark
+        run: cmake --build --preset linux-release --parallel 2
+
+      - name: Linux Release benchmark gate
+        run: ./out/build/linux-release/writeover_bench
+
+      - name: Linux static audit
+        run: python tools/audit/static_audit.py .
+
+  macos-arm64:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Authoring and systemic schema gates
+        run: |
+          python tools/contentc/contentc.py --data-dir data --out-dir data --check
+          python tools/contentc/test_contentc.py
+          python tools/systemic/systemic_schema_check.py --data-dir data
+          python tools/systemic/test_systemic_schema.py
+          python tools/systemic/compile_systemic_seed.py --src data/systemic/systemic_seed.json --out data/systemic/systemic_seed.bin
+
+      - name: Configure macOS arm64
+        run: cmake --preset macos-arm64
+
+      - name: Build macOS arm64
+        run: cmake --build --preset macos-arm64 --parallel 2
+
+      - name: Run macOS arm64 tests
+        run: ctest --preset macos-arm64 --output-on-failure
+
+      - name: macOS arm64 smoke
+        run: ./out/build/macos-arm64/writeover_app --smoke --data-dir data --frames 61 --width 80 --height 30
+
+      - name: macOS arm64 benchmark gate
+        run: ./out/build/macos-arm64/writeover_bench
+
+  linux-clang:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure Linux x64 Clang
+        run: cmake --preset linux-clang
+
+      - name: Build Linux x64 Clang
+        run: cmake --build --preset linux-clang --parallel 2
+
+      - name: Run Linux x64 Clang tests
+        run: ctest --preset linux-clang --output-on-failure
+
+      - name: Linux x64 Clang smoke
+        run: ./out/build/linux-clang/writeover_app --smoke --data-dir data --frames 61 --width 80 --height 30
+
+  linux-arm64-link:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ARM64 cross compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-aarch64-linux-gnu
+
+      - name: Configure ARM64 link gate
+        run: cmake --preset linux-arm64-link
+
+      - name: Build ARM64 link gate
+        run: cmake --build --preset linux-arm64-link --parallel 2
+
+      - name: Confirm ARM64 ELF
+        run: file out/build/linux-arm64-link/writeover_app

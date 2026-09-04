@@ -1,0 +1,47 @@
+# PVS-01 aggressive route: loud shots and close-contact input before the same
+# route.  The replay keeps the route deterministic so the event journal can
+# be compared with the normal and stealth traces.
+0 MOUSELEFT down
+1 MOUSELEFT up
+30 MOUSELEFT down
+31 MOUSELEFT up
+60 V down
+61 V up
+100 W down
+500 W up
+501 A down
+900 A up
+910 S down
+950 S up
+960 F down
+961 F up
+980 F down
+981 F up
+1000 W down
+1250 W up
+1251 A down
+1325 A up
+1340 F down
+1341 F up
+1360 W down
+1660 W up
+1680 F down
+1681 F up
+1700 W down
+2150 W up
+2170 F down
+2171 F up
+2190 W down
+2740 W up
+2760 F down
+2761 F up
+2780 W down
+3280 W up
+3290 A down
+3470 A up
+3490 F down
+3491 F up
+3510 F5 down
+3511 F5 up
+3540 F9 down
+3541 F9 up

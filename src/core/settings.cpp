@@ -49,6 +49,8 @@ Settings Settings::Defaults() {
     g[static_cast<size_t>(GameAction::Pause)] = PhysicalKey::Escape;
     g[static_cast<size_t>(GameAction::DevPanel)] = PhysicalKey::F3;
     g[static_cast<size_t>(GameAction::Help)] = PhysicalKey::F1;
+    g[static_cast<size_t>(GameAction::SaveGame)] = PhysicalKey::F5;
+    g[static_cast<size_t>(GameAction::LoadGame)] = PhysicalKey::F9;
 
     auto& dlg = s.key_bindings[static_cast<size_t>(InputContext::Dialogue)];
     dlg[static_cast<size_t>(GameAction::DialogOption1)] = PhysicalKey::Num1;

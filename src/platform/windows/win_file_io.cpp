@@ -1,7 +1,7 @@
 // Installs a real MoveFileExW-based atomic-replace provider so save/profile
 // writes are crash-atomic on Windows (tmp + MoveFileExW REPLACE_EXISTING).
 
-#include "src/platform/windows/platform_api.h"
+#include "writeover/platform/platform_api.h"
 
 #if defined(_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN

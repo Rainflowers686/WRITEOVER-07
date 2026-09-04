@@ -21,6 +21,7 @@ struct GameConfig {
     bool save_after_smoke = true;
     std::string frame_dump_path;
     std::string room_id;
+    std::string replay_path;
 };
 
 // Builds the world/player/ai/narrative modules, the terminal backend, the

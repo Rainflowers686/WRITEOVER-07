@@ -2,7 +2,11 @@
 
 #include "writeover/common/serialize.h"
 
+#include <cmath>
 #include <cstdint>
+#include <set>
+#include <type_traits>
+#include <utility>
 
 namespace writeover {
 
@@ -79,19 +83,25 @@ struct PayloadDeserializer {
         v.source = ReadId<EntityId>(d);
         v.amount = d.ReadU16();
         v.damage_type = d.ReadU8();
-        v.headshot = d.ReadU8() != 0;
+        const uint8_t headshot = d.ReadU8();
+        if (headshot > 1) d.MarkError();
+        v.headshot = headshot != 0;
         return v;
     }
     EventPayload operator()(const EventDoorChange&) {
         EventDoorChange v;
         v.door = ReadId<DoorId>(d);
-        v.open = d.ReadU8() != 0;
+        const uint8_t open = d.ReadU8();
+        if (open > 1) d.MarkError();
+        v.open = open != 0;
         return v;
     }
     EventPayload operator()(const EventPowerToggle&) {
         EventPowerToggle v;
         v.system = ReadId<SystemId>(d);
-        v.powered = d.ReadU8() != 0;
+        const uint8_t powered = d.ReadU8();
+        if (powered > 1) d.MarkError();
+        v.powered = powered != 0;
         return v;
     }
     EventPayload operator()(const EventNpcStateChange&) {
@@ -122,6 +132,7 @@ struct PayloadDeserializer {
     EventPayload operator()(const EventGameOver&) {
         EventGameOver v;
         v.ending_index = d.ReadU8();
+        if (v.ending_index > 3) d.MarkError();
         return v;
     }
     EventPayload operator()(const EventNpcSpeak&) {
@@ -154,13 +165,50 @@ EventPayload DeserializePayload(Deserializer& d) {
     case 8: return PayloadDeserializer{d}(EventGameOver{});
     case 9: return PayloadDeserializer{d}(EventNpcSpeak{});
     default:
-        // Schema drift: force a hard error marker and return a sentinel.
-        while (!d.AtEnd()) {
-            (void)d.ReadU8();
-        }
+        // Schema drift: the containing save section must be rejected.
+        d.MarkError();
         return EventPayload(EventNpcSpeak{});
     }
 }
+
+namespace {
+bool Finite(float value) { return std::isfinite(value); }
+
+bool ValidPayload(const EventPayload& payload) {
+    return std::visit([](const auto& value) {
+        using T = std::decay_t<decltype(value)>;
+        if constexpr (std::is_same_v<T, EventWeaponFire>) {
+            return value.shooter.IsValid() &&
+                   static_cast<uint8_t>(value.slot) < kWeaponSlotCount &&
+                   Finite(value.origin.x) && Finite(value.origin.y) &&
+                   Finite(value.origin.z) && Finite(value.yaw) &&
+                   Finite(value.pitch) && Finite(value.loudness) &&
+                   value.loudness >= 0.0f && value.loudness <= 1.0f;
+        } else if constexpr (std::is_same_v<T, EventDamage>) {
+            return value.target.IsValid() && value.source.IsValid() &&
+                   value.damage_type <= 1;
+        } else if constexpr (std::is_same_v<T, EventDoorChange>) {
+            return value.door.IsValid();
+        } else if constexpr (std::is_same_v<T, EventPowerToggle>) {
+            return value.system.IsValid();
+        } else if constexpr (std::is_same_v<T, EventNpcStateChange>) {
+            return value.npc.IsValid() && value.new_state <= 10;
+        } else if constexpr (std::is_same_v<T, EventStoryletTrigger>) {
+            return value.storylet.IsValid() && value.trigger.IsValid();
+        } else if constexpr (std::is_same_v<T, EventFactLearned>) {
+            return value.fact.IsValid() && value.learner.IsValid();
+        } else if constexpr (std::is_same_v<T, EventPlayerDamage>) {
+            return value.source.IsValid() && value.damage_type <= 1;
+        } else if constexpr (std::is_same_v<T, EventGameOver>) {
+            return value.ending_index <= 3;
+        } else if constexpr (std::is_same_v<T, EventNpcSpeak>) {
+            return value.npc.IsValid() && value.line.IsValid();
+        } else {
+            return false;
+        }
+    }, payload);
+}
+} // namespace
 
 void SerializeWorldEvent(Serializer& s, const WorldEvent& e) {
     WriteId(s, e.id);
@@ -176,11 +224,16 @@ WorldEvent DeserializeWorldEvent(Deserializer& d) {
     WorldEvent e;
     e.id = ReadId<EventId>(d);
     e.sim_frame = d.ReadU64();
-    e.kind = static_cast<EventKind>(d.ReadU8());
+    const uint8_t kind = d.ReadU8();
+    e.kind = static_cast<EventKind>(kind);
     e.parent_event_id = ReadId<EventId>(d);
     e.source_entity = ReadId<EntityId>(d);
     e.target_entity = ReadId<EntityId>(d);
     e.payload = DeserializePayload(d);
+    if (!e.id.IsValid() || kind > static_cast<uint8_t>(EventKind::Notification) ||
+        !ValidPayload(e.payload)) {
+        d.MarkError();
+    }
     return e;
 }
 
@@ -245,22 +298,54 @@ void EventBus::Save(Serializer& s) const {
 }
 
 void EventBus::Load(Deserializer& d) {
-    next_event_id_ = d.ReadU64();
-    pending_.clear();
-    next_pending_.clear();
-    journal_.clear();
+    constexpr uint64_t kMaxQueue = 500;
+    const uint64_t next_event_id = d.ReadU64();
     const uint64_t pending_count = d.ReadU64();
+    if (d.HasError() || next_event_id == 0 || pending_count > kMaxQueue) {
+        d.MarkError();
+        return;
+    }
+    std::vector<WorldEvent> pending;
+    std::vector<WorldEvent> next_pending;
+    std::vector<WorldEvent> journal;
+    pending.reserve(static_cast<size_t>(pending_count));
     for (uint64_t i = 0; i < pending_count; ++i) {
-        pending_.push_back(DeserializeWorldEvent(d));
+        pending.push_back(DeserializeWorldEvent(d));
     }
     const uint64_t next_count = d.ReadU64();
+    if (d.HasError() || next_count > kMaxQueue) {
+        d.MarkError();
+        return;
+    }
+    next_pending.reserve(static_cast<size_t>(next_count));
     for (uint64_t i = 0; i < next_count; ++i) {
-        next_pending_.push_back(DeserializeWorldEvent(d));
+        next_pending.push_back(DeserializeWorldEvent(d));
     }
     const uint64_t journal_count = d.ReadU64();
-    for (uint64_t i = 0; i < journal_count; ++i) {
-        journal_.push_back(DeserializeWorldEvent(d));
+    if (d.HasError() || journal_count > kJournalCapacity) {
+        d.MarkError();
+        return;
     }
+    journal.reserve(static_cast<size_t>(journal_count));
+    for (uint64_t i = 0; i < journal_count; ++i) {
+        journal.push_back(DeserializeWorldEvent(d));
+    }
+    if (d.HasError()) return;
+    std::set<uint64_t> ids;
+    const auto check_ids = [&ids](const std::vector<WorldEvent>& events) {
+        for (const auto& event : events) {
+            if (!ids.insert(event.id.GetValue()).second) return false;
+        }
+        return true;
+    };
+    if (!check_ids(pending) || !check_ids(next_pending) || !check_ids(journal)) {
+        d.MarkError();
+        return;
+    }
+    next_event_id_ = next_event_id;
+    pending_ = std::move(pending);
+    next_pending_ = std::move(next_pending);
+    journal_ = std::move(journal);
 }
 
 } // namespace writeover

@@ -8,12 +8,14 @@
 #include "writeover/core/profile.h"
 #include "writeover/core/save.h"
 #include "writeover/core/settings.h"
+#include "writeover/audio/audio_backend.h"
 #include "writeover/narrative/causality.h"
 #include "writeover/narrative/dialog.h"
 #include "writeover/narrative/judge.h"
 #include "writeover/narrative/narrator.h"
 #include "writeover/narrative/storylet.h"
 #include "writeover/player/combat.h"
+#include "writeover/ai/runtime.h"
 #include "writeover/player/controller.h"
 #include "writeover/player/input.h"
 #include "writeover/player/input_runtime.h"
@@ -30,15 +32,19 @@
 #include "writeover/world/room.h"
 
 #include "src/app/composition_root.h"
-#include "src/platform/windows/platform_api.h"
+#include "writeover/platform/platform_api.h"
 
 #include <cstdint>
 #include <algorithm>
+#include <array>
+#include <cctype>
 #include <cmath>
 #include <functional>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -47,12 +53,53 @@ namespace writeover {
 
 class AiModule final : public IEngineModule {
 public:
-    void Init(const EngineContext&) override {}
+    void Init(const EngineContext& ctx) override {
+        ctx_ = ctx;
+        runtime_.Attach(systemic_, ctx.events, ctx.sim_rng);
+    }
     void Shutdown() override {}
-    // Foundation: AI logic is exercised via unit tests; the integration module
-    // is a legal no-op (declared empty, not a fake).
-    void SimTick(const SimClock&) override {}
+    void SimTick(const SimClock& clock) override {
+        if (player_position_source_) runtime_.SetPlayerPose(
+            player_position_source_(), player_eye_source_ ? player_eye_source_() : kEyeStand);
+        runtime_.Tick(clock.FrameCount());
+    }
+    void AttachSystemic(SystemicWorld* systemic) {
+        systemic_ = systemic;
+        if (ctx_.events != nullptr) runtime_.Attach(systemic_, ctx_.events, ctx_.sim_rng);
+    }
+    void SetWorldQuery(const IWorldQuery* query) { runtime_.SetWorldQuery(query); }
+    void SetActiveRoom(RoomId room) { runtime_.SetActiveRoom(room); }
+    void SetPlayerPositionSource(std::function<Vec3()> source) {
+        player_position_source_ = std::move(source);
+    }
+    void SetPlayerEyeSource(std::function<float()> source) {
+        player_eye_source_ = std::move(source);
+    }
+    bool AddNpc(const NPCInstance& npc, RoomId room) { return runtime_.AddNpc(npc, room); }
+    bool ConfigureBodyDiscovery(NpcId cleaner, EntityId body, ContainerId container,
+                                uint64_t due_frame) {
+        return runtime_.ConfigureBodyDiscovery(cleaner, body, container, due_frame);
+    }
+    void SetShotFeedbackCallback(AutonomousNpcSystem::ShotFeedbackCallback callback) {
+        runtime_.SetShotFeedbackCallback(std::move(callback));
+    }
+    ShotFeedback HandlePlayerShot(const FireRequest& request, const WeaponDef& weapon,
+                                  uint64_t frame) {
+        return runtime_.HandlePlayerShot(request, weapon, frame);
+    }
+    const std::vector<RuntimeNpc>& Npcs() const { return runtime_.Npcs(); }
+    size_t AutonomousLoopCount() const { return runtime_.AutonomousLoopCount(); }
+    size_t DiscoveryResponseCount() const { return runtime_.DiscoveryResponseCount(); }
+    void Save(Serializer& s) const { runtime_.Save(s); }
+    bool Load(Deserializer& d) { return runtime_.Load(d); }
     const char* Name() const override { return "ai"; }
+
+private:
+    EngineContext ctx_{};
+    SystemicWorld* systemic_ = nullptr;
+    AutonomousNpcSystem runtime_;
+    std::function<Vec3()> player_position_source_;
+    std::function<float()> player_eye_source_;
 };
 
 class WorldModule final : public IEngineModule {
@@ -94,6 +141,28 @@ public:
     const IWorldQuery& Query() const { return *query_; }
     FactStore& Facts() { return facts_; }
     InfrastructureSystem& Infra() { return infra_; }
+    void SaveState(Serializer& serializer) const {
+        serializer.WriteU32(1);
+        infra_.Save(serializer);
+        facts_.Save(serializer);
+    }
+    bool LoadState(Deserializer& deserializer) {
+        const uint32_t version = deserializer.ReadU32();
+        if (deserializer.HasError() || version != 1) {
+            deserializer.MarkError();
+            return false;
+        }
+        InfrastructureSystem restored_infra;
+        FactStore restored_facts;
+        if (!restored_infra.Load(deserializer) || !restored_facts.Load(deserializer) ||
+            deserializer.HasError() || !deserializer.AtEnd()) {
+            deserializer.MarkError();
+            return false;
+        }
+        infra_ = std::move(restored_infra);
+        facts_ = std::move(restored_facts);
+        return true;
+    }
     Room& LoadedRoom() { return loaded_room_; }
     bool HasLoadedRoom() const {
         return query_ != nullptr && loaded_room_.grid.Width() > 0 &&
@@ -278,14 +347,21 @@ public:
             input_.action_pressed[static_cast<size_t>(GameAction::Fire)]) {
             const size_t slot = static_cast<size_t>(combat_.slot);
             const WeaponDef& weapon = DefaultWeapons()[slot];
+            FireRequest fire_request;
+            fire_request.origin = locomotion_.EyePosition();
+            fire_request.yaw = locomotion_.yaw;
+            fire_request.pitch = locomotion_.pitch;
+            fire_request.slot = combat_.slot;
+            fire_request.spread_factor = combat_.spread_factor;
             if (ConsumeShot(combat_, weapon, static_cast<uint32_t>(frame))) {
                 ctx_.events->Post(
                     EventWeaponFire{EntityId::New(1), combat_.slot,
                                     locomotion_.EyePosition(),
-                                    locomotion_.yaw, 0.0f,
+                                    locomotion_.yaw, locomotion_.pitch,
                                     weapon.loudness},
                     EventKind::Notification, EntityId::New(1),
                     EntityId::Invalid(), EventId::Invalid(), frame);
+                if (fire_callback_) fire_callback_(fire_request, weapon);
             }
         }
         if (!weapon_restricted &&
@@ -341,6 +417,9 @@ public:
     void SetLoadCallback(std::function<void()> cb) { load_callback_ = std::move(cb); }
     void SetPauseCallback(std::function<void()> cb) { pause_callback_ = std::move(cb); }
     void SetMeleeCallback(std::function<void()> cb) { melee_callback_ = std::move(cb); }
+    void SetFireCallback(std::function<void(const FireRequest&, const WeaponDef&)> cb) {
+        fire_callback_ = std::move(cb);
+    }
 
     const char* Name() const override { return "player"; }
 
@@ -362,6 +441,7 @@ private:
     std::function<void()> load_callback_;
     std::function<void()> pause_callback_;
     std::function<void()> melee_callback_;
+    std::function<void(const FireRequest&, const WeaponDef&)> fire_callback_;
     bool paused_ = false;
     uint64_t current_frame_ = 0;
 };
@@ -439,6 +519,7 @@ public:
     // Per-frame source of truth: the renderer reads the player's live
     // locomotion state instead of a one-time snapshot (F-23 closure).
     void SetCombatSource(const CombatState* combat) { combat_ = combat; }
+    void SetNpcSource(const std::vector<RuntimeNpc>* npcs) { npcs_ = npcs; }
     void SetSettingsSource(const Settings* settings) { settings_ = settings; }
     void SetSceneId(const std::string& id) { scene_id_ = id; }
     void SetDebugOverlay(bool enabled) { debug_overlay_ = enabled; }
@@ -447,10 +528,21 @@ public:
         narrator_intrusion_remaining_ = frames;
         narrator_intrusion_total_ = frames;
     }
+    bool NarratorTypographyActive() const { return narrator_intrusion_remaining_ > 0; }
     bool DebugOverlay() const { return debug_overlay_; }
 
     void SetLocomotionSource(const LocomotionState* locomotion) {
         locomotion_ = locomotion;
+    }
+    void TriggerShotFeedback(const ShotFeedback& feedback) {
+        shot_flash_remaining_ = 4;
+        shake_remaining_ = feedback.target_was_npc ? 7 : 4;
+        if (feedback.target_was_npc) hit_flash_remaining_ = 6;
+        if (feedback.target_died) explosion_remaining_ = 10;
+    }
+    void TriggerExplosion(uint64_t frames = 10) {
+        explosion_remaining_ = std::max(explosion_remaining_, frames);
+        shake_remaining_ = std::max(shake_remaining_, frames);
     }
     const std::vector<Color>& LogicalPixels() const { return logical_pixels_; }
 
@@ -485,11 +577,19 @@ public:
                                   logical_pixels_.data(), width_, logical_h,
                                   focal);
             if (scene_id_ == "room_b1_revival") {
-                DrawProductionSprite(view.origin, view.yaw, view.pitch,
-                                      Vec3{10.5f, 5.5f, 0.0f}, 1.7f,
-                                      ProductionSpriteKind::Npc, Color{126, 154, 170},
-                                      grid_cells_, grid_w_, grid_h_,
-                                      logical_pixels_.data(), width_, logical_h, focal);
+                if (npcs_ != nullptr) {
+                    for (const auto& runtime : *npcs_) {
+                        if (runtime.instance.state == NPCState::Dead) continue;
+                        const Color tint = runtime.instance.cognition == CognitionTier::Full
+                                                ? Color{196, 118, 188}
+                                                : Color{126, 154, 170};
+                        DrawProductionSprite(view.origin, view.yaw, view.pitch,
+                                             runtime.instance.position, 1.7f,
+                                             ProductionSpriteKind::Npc, tint,
+                                             grid_cells_, grid_w_, grid_h_,
+                                             logical_pixels_.data(), width_, logical_h, focal);
+                    }
+                }
                 DrawProductionSprite(view.origin, view.yaw, view.pitch,
                                       Vec3{18.5f, 4.5f, 0.0f}, 1.4f,
                                       ProductionSpriteKind::Terminal, Color{56, 178, 164},
@@ -560,6 +660,7 @@ public:
             }
             if (combat_ != nullptr && combat_->aiming) vm_state = 2;
             DrawWeaponViewmodel(logical_pixels_.data(), width_, logical_h, vm_state, recoil);
+            DrawVisualEffects(frame_index, logical_h);
             ComposeHalfBlockFrame(logical_pixels_.data(), width_, logical_h,
                                   body_.data(), width_, height_);
         }
@@ -616,29 +717,9 @@ public:
                     c.fg_r = 64; c.fg_g = 42; c.fg_b = 66;
                 }
             }
-            const char* intrusion = "YOU THINK YOU CAN SAVE THIS?";
-            const int len = static_cast<int>(std::char_traits<char>::length(intrusion));
             const uint64_t elapsed = narrator_intrusion_total_ > narrator_intrusion_remaining_
                                          ? narrator_intrusion_total_ - narrator_intrusion_remaining_ : 0;
-            const int visible = std::min(len, static_cast<int>((elapsed + 1) * len /
-                                                                std::max<uint64_t>(1, narrator_intrusion_total_)));
-            const int shake = (!reduce_shake && (!reduce_flicker || (elapsed % 7 != 0)))
-                                  ? static_cast<int>((elapsed % 3)) - 1 : 0;
-            for (int i = 0; i < visible; ++i) {
-                const int x = 2 + i * std::max(1, (width_ - 5) / std::max(1, len - 1));
-                const int y = std::clamp(height_ - 6 - (i * (height_ - 12)) /
-                                             std::max(1, len - 1) + shake, 1, height_ - 3);
-                for (int dy = 0; dy < 2; ++dy) {
-                    for (int dx = 0; dx < 2; ++dx) {
-                        if (x + dx >= width_) continue;
-                        CharCell& c = body_[static_cast<size_t>(y + dy) * width_ + x + dx];
-                        c.code_point = static_cast<char32_t>(intrusion[i]);
-                        c.fg_r = 244; c.fg_g = reduce_flicker ? 196 : 224; c.fg_b = 86;
-                        c.bg_r = 18; c.bg_g = 10; c.bg_b = 24;
-                        c.flags = 0x01;
-                    }
-                }
-            }
+            DrawNarratorTypography(elapsed, reduce_flicker, reduce_shake);
             --narrator_intrusion_remaining_;
         }
         backend_->Submit(body_.data(), width_, height_);
@@ -647,6 +728,188 @@ public:
     const char* Name() const override { return "render"; }
 
 private:
+    void DrawNarratorTypography(uint64_t elapsed, bool reduce_flicker,
+                                bool reduce_shake) {
+        // This is a small embedded BlockFontAtlas, rather than enlarged raw
+        // ASCII.  Each 5x7 glyph is composed from block cells, laid on a
+        // bottom-left to top-right diagonal.  The atlas keeps the effect
+        // deterministic and asset-free while leaving a direct replacement
+        // point for authored font art.
+        using Glyph = std::array<const char*, 7>;
+        const auto glyph = [](char ch) -> const Glyph& {
+            static const Glyph blank{{".....", ".....", ".....", ".....",
+                                      ".....", ".....", "....."}};
+            static const Glyph y{{"X...X", "X...X", ".X.X.", "..X..",
+                                  "..X..", "..X..", "..X.."}};
+            static const Glyph o{{".XXX.", "X...X", "X...X", "X...X",
+                                  "X...X", "X...X", ".XXX."}};
+            static const Glyph u{{"X...X", "X...X", "X...X", "X...X",
+                                  "X...X", "X...X", ".XXX."}};
+            static const Glyph t{{"XXXXX", "..X..", "..X..", "..X..",
+                                  "..X..", "..X..", "..X.."}};
+            static const Glyph h{{"X...X", "X...X", "X...X", "XXXXX",
+                                  "X...X", "X...X", "X...X"}};
+            static const Glyph i{{"XXXXX", "..X..", "..X..", "..X..",
+                                  "..X..", "..X..", "XXXXX"}};
+            static const Glyph n{{"X...X", "XX..X", "XX..X", "X.X.X",
+                                  "X..XX", "X..XX", "X...X"}};
+            static const Glyph k{{"X...X", "X..X.", "X.X..", "XX...",
+                                  "X.X..", "X..X.", "X...X"}};
+            static const Glyph c{{".XXX.", "X...X", "X....", "X....",
+                                  "X....", "X...X", ".XXX."}};
+            static const Glyph a{{".XXX.", "X...X", "X...X", "XXXXX",
+                                  "X...X", "X...X", "X...X"}};
+            static const Glyph s{{".XXXX", "X....", "X....", ".XXX.",
+                                  "....X", "....X", "XXXX."}};
+            static const Glyph v{{"X...X", "X...X", "X...X", "X...X",
+                                  "X...X", ".X.X.", "..X.."}};
+            static const Glyph e{{"XXXXX", "X....", "X....", "XXXX.",
+                                  "X....", "X....", "XXXXX"}};
+            static const Glyph q{{".XXX.", "X...X", "....X", "...X.",
+                                  "..X..", ".....", "..X.."}};
+            switch (ch) {
+            case 'Y': return y;
+            case 'O': return o;
+            case 'U': return u;
+            case 'T': return t;
+            case 'H': return h;
+            case 'I': return i;
+            case 'N': return n;
+            case 'K': return k;
+            case 'C': return c;
+            case 'A': return a;
+            case 'S': return s;
+            case 'V': return v;
+            case 'E': return e;
+            case '?': return q;
+            default: return blank;
+            }
+        };
+
+        constexpr const char* kText = "YOU THINK YOU CAN SAVE THIS?";
+        const int length = static_cast<int>(std::char_traits<char>::length(kText));
+        const int scale = width_ >= 220 ? 2 : 1;
+        // At ULTRA, a two-pixel glyph with a condensed eight-cell advance
+        // occupies almost the whole 240-cell canvas while remaining legible.
+        const int advance = scale == 2 ? 8 : 6;
+        const int glyph_width = 5 * scale;
+        const int glyph_height = 7 * scale;
+        const int total_width = (length - 1) * advance + glyph_width;
+        const int start_x = std::max(0, (width_ - total_width) / 2);
+        const int start_y = std::max(0, height_ - glyph_height - 4);
+        const int rise = std::max(0, height_ - glyph_height - 8);
+        const uint64_t units = static_cast<uint64_t>(length) * 35;
+        const uint64_t shown = std::min(units,
+            ((elapsed + 1) * units) /
+                std::max<uint64_t>(1, narrator_intrusion_total_));
+        const int shake = (!reduce_shake && (!reduce_flicker || elapsed % 7 != 0))
+                              ? static_cast<int>(elapsed % 3) - 1 : 0;
+
+        for (int glyph_index = 0; glyph_index < length; ++glyph_index) {
+            const Glyph& rows = glyph(kText[glyph_index]);
+            const int x0 = start_x + glyph_index * advance + shake;
+            const int y0 = start_y - (glyph_index * rise) /
+                                            std::max(1, length - 1);
+            for (int row = 0; row < 7; ++row) {
+                for (int col = 0; col < 5; ++col) {
+                    const uint64_t unit = static_cast<uint64_t>(glyph_index) * 35u +
+                                          static_cast<uint64_t>(row * 5 + col);
+                    if (rows[row][col] != 'X' || unit >= shown) continue;
+                    for (int py = 0; py < scale; ++py) {
+                        for (int px = 0; px < scale; ++px) {
+                            const int x = x0 + col * scale + px;
+                            const int y = y0 + row * scale + py;
+                            if (x < 0 || x >= width_ || y < 0 || y >= height_) continue;
+                            CharCell& cell = body_[static_cast<size_t>(y) * width_ + x];
+                            const bool accent = !reduce_flicker &&
+                                                ((elapsed + unit) % 29u == 0u);
+                            cell.code_point = U'█';
+                            cell.fg_r = accent ? 255 : 244;
+                            cell.fg_g = accent ? 74 : (reduce_flicker ? 196 : 224);
+                            cell.fg_b = accent ? 62 : 86;
+                            cell.bg_r = 18;
+                            cell.bg_g = 10;
+                            cell.bg_b = 24;
+                            cell.flags = 0x01;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    void DrawVisualEffects(uint64_t frame_index, int logical_h) {
+        const bool reduce_flicker = settings_ != nullptr && settings_->reduce_flicker;
+        const bool reduce_shake = settings_ != nullptr && settings_->reduce_camera_shake;
+        if (shot_flash_remaining_ > 0) {
+            const float gain = reduce_flicker ? 0.24f : 0.48f;
+            const int radius = reduce_flicker ? 5 : 10;
+            const int cx = width_ / 2;
+            const int cy = logical_h / 2;
+            for (int y = std::max(0, cy - radius); y < std::min(logical_h, cy + radius); ++y) {
+                for (int x = std::max(0, cx - radius); x < std::min(width_, cx + radius); ++x) {
+                    const float dx = static_cast<float>(x - cx);
+                    const float dy = static_cast<float>(y - cy);
+                    if (dx * dx + dy * dy > static_cast<float>(radius * radius)) continue;
+                    Color& pixel = logical_pixels_[static_cast<size_t>(y) * width_ + x];
+                    pixel.r = static_cast<uint8_t>(std::min(255.0f,
+                        static_cast<float>(pixel.r) + 255.0f * gain));
+                    pixel.g = static_cast<uint8_t>(std::min(255.0f,
+                        static_cast<float>(pixel.g) + 190.0f * gain));
+                    pixel.b = static_cast<uint8_t>(std::min(255.0f,
+                        static_cast<float>(pixel.b) + 70.0f * gain));
+                }
+            }
+            --shot_flash_remaining_;
+        }
+        if (hit_flash_remaining_ > 0) {
+            const int band = reduce_flicker ? 2 : 4;
+            for (int y = 0; y < logical_h; ++y) {
+                for (int x = 0; x < width_; ++x) {
+                    if (x >= band && x < width_ - band && y >= band && y < logical_h - band) continue;
+                    Color& pixel = logical_pixels_[static_cast<size_t>(y) * width_ + x];
+                    pixel.r = static_cast<uint8_t>(std::min(255,
+                        static_cast<int>(pixel.r) + 36));
+                }
+            }
+            --hit_flash_remaining_;
+        }
+        if (explosion_remaining_ > 0) {
+            const int cx = width_ / 2;
+            const int cy = logical_h / 2;
+            const int radius = reduce_flicker ? 12 : 22;
+            for (int i = 0; i < 12; ++i) {
+                const int dx = ((static_cast<int>(frame_index) * 17 + i * 29) %
+                                (radius * 2 + 1)) - radius;
+                const int dy = ((static_cast<int>(frame_index) * 11 + i * 19) %
+                                (radius * 2 + 1)) - radius;
+                const int x = cx + dx;
+                const int y = cy + dy;
+                if (x < 0 || x >= width_ || y < 0 || y >= logical_h) continue;
+                logical_pixels_[static_cast<size_t>(y) * width_ + x] = Color{222, 146, 52};
+            }
+            --explosion_remaining_;
+        }
+        if (shake_remaining_ > 0) {
+            if (!reduce_shake) {
+                const int dx = static_cast<int>((frame_index * 13) % 3) - 1;
+                const int dy = static_cast<int>((frame_index * 7) % 3) - 1;
+                if (dx != 0 || dy != 0) {
+                    const std::vector<Color> shifted = logical_pixels_;
+                    for (int y = 0; y < logical_h; ++y) {
+                        for (int x = 0; x < width_; ++x) {
+                            const int sx = std::clamp(x - dx, 0, width_ - 1);
+                            const int sy = std::clamp(y - dy, 0, logical_h - 1);
+                            logical_pixels_[static_cast<size_t>(y) * width_ + x] =
+                                shifted[static_cast<size_t>(sy) * width_ + sx];
+                        }
+                    }
+                }
+            }
+            --shake_remaining_;
+        }
+    }
+
     std::unique_ptr<ITerminalBackend> backend_;
     const int width_;
     const int height_;
@@ -657,12 +920,17 @@ private:
     float player_yaw_ = 0.0f;
     const LocomotionState* locomotion_ = nullptr;
     const CombatState* combat_ = nullptr;
+    const std::vector<RuntimeNpc>* npcs_ = nullptr;
     const Settings* settings_ = nullptr;
     bool debug_overlay_ = false;
     std::string subtitle_override_;
     uint64_t subtitle_override_remaining_ = 0;
     uint64_t narrator_intrusion_remaining_ = 0;
     uint64_t narrator_intrusion_total_ = 0;
+    uint64_t shot_flash_remaining_ = 0;
+    uint64_t hit_flash_remaining_ = 0;
+    uint64_t explosion_remaining_ = 0;
+    uint64_t shake_remaining_ = 0;
     const GridCell* grid_cells_ = nullptr;
     int grid_w_ = 0;
     int grid_h_ = 0;
@@ -678,22 +946,136 @@ struct GameServices {
     std::unique_ptr<SystemicWorld> systemic;  // M1-owned runtime systemic state
 };
 
+class ReplayKeyboardBackend final : public IInputBackend {
+public:
+    explicit ReplayKeyboardBackend(std::string path) : path_(std::move(path)) {
+        std::ifstream input(path_);
+        if (!input) {
+            error_ = "cannot open replay file";
+            return;
+        }
+        std::string line;
+        size_t line_number = 0;
+        while (std::getline(input, line)) {
+            ++line_number;
+            const size_t first = line.find_first_not_of(" \t\r\n");
+            if (first == std::string::npos || line[first] == '#') continue;
+            std::istringstream fields(line.substr(first));
+            uint64_t frame = 0;
+            std::string key_name;
+            std::string transition;
+            if (!(fields >> frame >> key_name >> transition)) {
+                error_ = "malformed replay line " + std::to_string(line_number);
+                return;
+            }
+            const PhysicalKey key = ParseKey(key_name);
+            if (key == PhysicalKey::Unknown) {
+                error_ = "unknown replay key on line " + std::to_string(line_number);
+                return;
+            }
+            bool pressed = false;
+            if (transition == "down" || transition == "press" || transition == "1") {
+                pressed = true;
+            } else if (transition != "up" && transition != "release" && transition != "0") {
+                error_ = "unknown replay transition on line " +
+                         std::to_string(line_number);
+                return;
+            }
+            events_.push_back({frame, InputEvent{key, pressed, 0.0f}});
+        }
+        std::stable_sort(events_.begin(), events_.end(),
+                         [](const ReplayEvent& a, const ReplayEvent& b) {
+            return a.frame < b.frame;
+        });
+        valid_ = true;
+    }
+
+    bool Init() override { return valid_; }
+    void Shutdown() override {}
+    bool Poll(InputEvent& out_event) override {
+        // The keyboard is sampled once per fixed tick. All records at the
+        // current replay frame are emitted, then one false return advances to
+        // the next tick so InputRuntime's existing drain semantics are used.
+        while (next_ < events_.size() && events_[next_].frame < frame_) ++next_;
+        if (next_ < events_.size() && events_[next_].frame == frame_) {
+            out_event = events_[next_++].event;
+            return true;
+        }
+        ++frame_;
+        return false;
+    }
+    bool HasFocus() const override { return true; }
+    const char* Name() const override { return "replay-keyboard"; }
+    const std::string& Error() const { return error_; }
+
+private:
+    struct ReplayEvent {
+        uint64_t frame = 0;
+        InputEvent event;
+    };
+
+    static PhysicalKey ParseKey(std::string name) {
+        std::transform(name.begin(), name.end(), name.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+        if (name == "W") return PhysicalKey::W;
+        if (name == "A") return PhysicalKey::A;
+        if (name == "S") return PhysicalKey::S;
+        if (name == "D") return PhysicalKey::D;
+        if (name == "Q") return PhysicalKey::Q;
+        if (name == "E") return PhysicalKey::E;
+        if (name == "R") return PhysicalKey::R;
+        if (name == "F") return PhysicalKey::F;
+        if (name == "V") return PhysicalKey::V;
+        if (name == "SHIFT") return PhysicalKey::Shift;
+        if (name == "CTRL" || name == "CONTROL") return PhysicalKey::Ctrl;
+        if (name == "SPACE") return PhysicalKey::Space;
+        if (name == "ESC" || name == "ESCAPE") return PhysicalKey::Escape;
+        if (name == "F1") return PhysicalKey::F1;
+        if (name == "F3") return PhysicalKey::F3;
+        if (name == "F5") return PhysicalKey::F5;
+        if (name == "F9") return PhysicalKey::F9;
+        if (name == "NUM1" || name == "1") return PhysicalKey::Num1;
+        if (name == "NUM2" || name == "2") return PhysicalKey::Num2;
+        if (name == "NUM3" || name == "3") return PhysicalKey::Num3;
+        if (name == "MOUSELEFT" || name == "LMB") return PhysicalKey::MouseLeft;
+        if (name == "MOUSERIGHT" || name == "RMB") return PhysicalKey::MouseRight;
+        return PhysicalKey::Unknown;
+    }
+
+    std::string path_;
+    std::string error_;
+    std::vector<ReplayEvent> events_;
+    size_t next_ = 0;
+    uint64_t frame_ = 0;
+    bool valid_ = false;
+};
+
 // InputModule: private integration class that samples the keyboard and mouse
 // backends through InputRuntime each sim tick. Uses the production runtime
 // backend selection (Raw Input primary, CursorDelta fallback) so the app and
 // the input probe share the same pointer path.
 class InputModule final : public IEngineModule {
 public:
-    InputModule()
+    explicit InputModule(std::unique_ptr<IInputBackend> replay_keyboard = nullptr)
         : selection_(CreateRuntimeBackendSelection(PointerBackendPreference::Auto)),
-          runtime_(std::move(selection_.keyboard), std::move(selection_.pointer)) {}
+          runtime_(nullptr, nullptr) {
+        if (replay_keyboard) {
+            selection_.pointer_name = "replay";
+            selection_.mouse_button_source = "replay";
+            runtime_ = InputRuntime(std::move(replay_keyboard), nullptr);
+        } else {
+            runtime_ = InputRuntime(std::move(selection_.keyboard),
+                                    std::move(selection_.pointer));
+        }
+    }
     ~InputModule() override = default;
 
     // Exposes the backend report for diagnostics / probe parity.
     const PointerBackendSelection& Selection() const { return selection_; }
 
-    void Init(const EngineContext&) override { runtime_.Init(); }
+    void Init(const EngineContext&) override { ready_ = runtime_.Init(); }
     void Shutdown() override { runtime_.Shutdown(); }
+    bool Ready() const { return ready_; }
 
     void SetTarget(InputState* input, const InputMapper* mapper) {
         input_ = input;
@@ -711,6 +1093,7 @@ private:
     InputRuntime runtime_;
     InputState* input_ = nullptr;
     const InputMapper* mapper_ = nullptr;
+    bool ready_ = false;
 };
 
 // Builds the four semantic modules against one shared EngineContext.
@@ -741,6 +1124,7 @@ Result<GameServices> BuildGame(const EngineContext& ctx, const GameConfig& confi
             return Result<GameServices>::Err(seed.Error().code, seed.Error().message);
         }
     }
+    g.ai->AttachSystemic(g.systemic.get());
     return Result<GameServices>::Ok(std::move(g));
 }
 
@@ -770,12 +1154,44 @@ int RunComposition(const GameConfig& config) {
     SystemicEventBridge systemic_bridge(services.systemic.get());
     systemic_bridge.Register(events);
 
+    auto audio = CreateAudioBackend();
+    if (!audio || !audio->Init()) {
+        logger.Warn("audio", "audio backend unavailable; subtitles remain enabled");
+    } else {
+        audio->SetVolume(settings.master_volume / 100.0f,
+                         settings.sfx_volume / 100.0f,
+                         settings.narrator_volume / 100.0f);
+        logger.Info("audio", audio->Name());
+    }
+    const EventBus::ConsumerId audio_consumer = events.Register(
+        [&](const WorldEvent& event) {
+            if (!audio) return;
+            if (std::holds_alternative<EventWeaponFire>(event.payload)) {
+                audio->PlaySfx(AudioId::New(1), 0.9f);
+            } else if (std::holds_alternative<EventDamage>(event.payload)) {
+                audio->PlaySfx(AudioId::New(2), 0.8f);
+            } else if (std::holds_alternative<EventDoorChange>(event.payload)) {
+                audio->PlaySfx(AudioId::New(3), 0.7f);
+            } else if (std::holds_alternative<EventNpcSpeak>(event.payload)) {
+                audio->PlayVo(AudioId::New(4), 0.85f, 0xB10003u);
+            }
+        });
+
     // Runtime input bridge (ISSUE B): polls keyboard + mouse backends every
     // tick and maps them into PlayerModule's InputState.
-    auto input_module = std::make_unique<InputModule>();
+    std::unique_ptr<IInputBackend> replay_keyboard;
+    if (!config.replay_path.empty()) {
+        replay_keyboard = std::make_unique<ReplayKeyboardBackend>(config.replay_path);
+    }
+    auto input_module = std::make_unique<InputModule>(std::move(replay_keyboard));
     input_module->SetTarget(&services.player->Input(),
                             &services.player->Mapper());
     input_module->Init(ctx);
+    if (!input_module->Ready()) {
+        std::fprintf(stderr, "input backend initialization failed%s\n",
+                     config.replay_path.empty() ? "" : " for replay");
+        return 12;
+    }
 
     Engine engine;
     engine.SetContext(ctx);
@@ -825,6 +1241,11 @@ int RunComposition(const GameConfig& config) {
         bool bribe_done = false;
         bool schedule_found = false;
     } slice;
+    std::vector<std::string> replay_route;
+    bool replay_save_attempted = false;
+    bool replay_load_attempted = false;
+    bool replay_save_ok = false;
+    bool replay_load_ok = false;
     if (services.world->HasLoadedRoom()) slice.b1_room = services.world->LoadedRoom().id;
     for (const auto& actor : services.systemic->Actors()) {
         if (actor.role == Role::Guard && !slice.guard_npc.IsValid()) {
@@ -901,6 +1322,67 @@ int RunComposition(const GameConfig& config) {
             services.systemic->TransferItem(slice.badge, slice.body);
         }
     }
+
+    // Bind authored identity records to a small real runtime population. The
+    // incapacitated badge owner remains a body, while the other seed actors
+    // receive their authored binary profile and use the same perception,
+    // memory, decision, and event path as production play.
+    if (slice.b1_room.IsValid()) {
+        const auto profiles = LoadNpcProfiles(ctx.data_dir + "/npcs/npcs.bin");
+        if (profiles.IsError()) {
+            std::fprintf(stderr, "npc profile startup failed: %s\n",
+                         profiles.Error().message.c_str());
+            return 10;
+        }
+        for (const auto& profile : profiles.Value()) {
+            const ActorRecord* actor = services.systemic->GetActor(profile.id);
+            if (actor == nullptr) {
+                std::fprintf(stderr, "npc profile has no systemic actor\n");
+                return 10;
+            }
+            if (profile.spawn_room != slice.b1_room || profile.id == slice.guard_npc) {
+                continue;
+            }
+            NPCInstance npc;
+            npc.id = profile.id;
+            npc.data_key = actor->data_key;
+            npc.cognition = actor->cognition;
+            npc.faction = actor->faction;
+            npc.role = actor->role;
+            npc.position = profile.spawn_position;
+            npc.yaw = profile.spawn_yaw;
+            npc.health = profile.health;
+            npc.state = NPCState::Patrol;
+            npc.is_critical = profile.is_critical;
+            npc.sight_range = profile.sight_range;
+            npc.sight_fov_rad = profile.sight_fov_rad;
+            npc.hearing_range = profile.hearing_range;
+            if (!services.ai->AddNpc(npc, slice.b1_room)) {
+                std::fprintf(stderr, "pvs runtime npc setup rejected\n");
+                return 10;
+            }
+        }
+        services.ai->SetWorldQuery(&services.world->Query());
+        services.ai->SetActiveRoom(slice.b1_room);
+        services.ai->SetPlayerPositionSource([&] {
+            return services.player->Locomotion().position;
+        });
+        services.ai->SetPlayerEyeSource([&] {
+            return services.player->Locomotion().EyePosition().z;
+        });
+        const bool cleaner_present = std::any_of(
+            services.ai->Npcs().begin(), services.ai->Npcs().end(),
+            [&](const RuntimeNpc& runtime) {
+                return runtime.instance.id == slice.cleaner_npc;
+            });
+        if (slice.cleaner_npc.IsValid() && cleaner_present &&
+            !services.ai->ConfigureBodyDiscovery(slice.cleaner_npc, slice.body,
+                                                 slice.cart, 720)) {
+            std::fprintf(stderr, "pvs body-discovery runtime setup rejected\n");
+            return 11;
+        }
+    }
+    render->SetNpcSource(&services.ai->Npcs());
     bool debug_overlay = false;
     services.player->SetDebugToggleCallback([&] {
         debug_overlay = !debug_overlay;
@@ -909,17 +1391,31 @@ int RunComposition(const GameConfig& config) {
     services.player->SetNarratorIntrusionCallback([&] {
         render->TriggerNarratorIntrusion(240);
     });
+    services.ai->SetShotFeedbackCallback([&](const ShotFeedback& feedback) {
+        render->TriggerShotFeedback(feedback);
+    });
+    services.player->SetFireCallback([&](const FireRequest& request,
+                                         const WeaponDef& weapon) {
+        (void)services.ai->HandlePlayerShot(request, weapon,
+                                            services.player->CurrentFrame());
+    });
 
     auto switch_room = [&](const std::string& id, const Vec3& spawn_point) -> bool {
         if (!services.world->LoadRoomById(id)) return false;
         services.player->SetWorldQuery(&services.world->Query());
+        services.ai->SetWorldQuery(&services.world->Query());
         services.player->Locomotion().position = spawn_point;
         services.player->Locomotion().velocity = Vec3{};
         services.player->SetCurrentRoom(id);
+        services.ai->SetActiveRoom(services.world->LoadedRoom().id);
         const Room& room = services.world->LoadedRoom();
         render->SetGridData(room.grid.Data().data(), room.grid.Width(), room.grid.Height());
         render->SetPlayerView(spawn_point, services.player->Locomotion().yaw);
         render->SetSceneId(id);
+        if (!config.replay_path.empty() &&
+            (replay_route.empty() || replay_route.back() != id)) {
+            replay_route.push_back(id);
+        }
         return true;
     };
 
@@ -947,107 +1443,189 @@ int RunComposition(const GameConfig& config) {
     };
 
     services.player->SetSaveCallback([&] {
+        replay_save_attempted = true;
         std::vector<SaveSection> sections;
-        std::vector<uint8_t> rng_b, ev_b, pl_b, w_b, n_b, sy_b;
+        std::vector<uint8_t> rng_b, ev_b, pl_b, w_b, ai_b, n_b, sy_b;
         { Serializer s(rng_b); sim_rng.Save(s); }
         { Serializer s(ev_b); events.Save(s); }
         pl_b = serialize_player();
-        { Serializer s(w_b); services.world->Infra().Save(s); const auto facts = services.world->Facts().Snapshot(); s.WriteU32(static_cast<uint32_t>(facts.size())); for (const auto& f : facts) { WriteId(s, f.id); s.WriteU8(1); } }
+        { Serializer s(w_b); services.world->SaveState(s); }
+        { Serializer s(ai_b); services.ai->Save(s); }
         { Serializer s(n_b); services.narrative->Storylets().Save(s); }
         sy_b = services.systemic->Serialize();
+        if (sy_b.empty()) {
+            render->SetSubtitleOnce("Save failed: systemic state invalid.", 180);
+            return;
+        }
         sections.push_back({SaveSectionId::Player, std::move(pl_b)});
         sections.push_back({SaveSectionId::World, std::move(w_b)});
         sections.push_back({SaveSectionId::Rng, std::move(rng_b)});
         sections.push_back({SaveSectionId::Events, std::move(ev_b)});
+        sections.push_back({SaveSectionId::Ai, std::move(ai_b)});
         sections.push_back({SaveSectionId::Narrative, std::move(n_b)});
         sections.push_back({SaveSectionId::Systemic, std::move(sy_b)});
         std::error_code ec; std::filesystem::create_directories("saves", ec);
         SaveManager save;
         const auto res = save.SaveWorld("saves/pvs_manual", sections);
+        replay_save_ok = res.IsOk();
         render->SetSubtitleOnce(res.IsOk() ? "Saved." : "Save failed.", 120);
     });
     services.player->SetLoadCallback([&] {
+        replay_load_attempted = true;
         SaveManager save;
         const auto loaded = save.LoadWorld("saves/pvs_manual");
         if (loaded.IsError()) { render->SetSubtitleOnce("Load failed.", 120); return; }
-        bool have_player = false;
-        bool have_systemic = false;
+        const SaveSection* player_section = nullptr;
+        const SaveSection* world_section = nullptr;
+        const SaveSection* rng_section = nullptr;
+        const SaveSection* events_section = nullptr;
+        const SaveSection* ai_section = nullptr;
+        const SaveSection* narrative_section = nullptr;
+        const SaveSection* systemic_section = nullptr;
+        for (const auto& sec : loaded.Value()) {
+            switch (sec.id) {
+            case SaveSectionId::Player: player_section = &sec; break;
+            case SaveSectionId::World: world_section = &sec; break;
+            case SaveSectionId::Rng: rng_section = &sec; break;
+            case SaveSectionId::Events: events_section = &sec; break;
+            case SaveSectionId::Ai: ai_section = &sec; break;
+            case SaveSectionId::Narrative: narrative_section = &sec; break;
+            case SaveSectionId::Systemic: systemic_section = &sec; break;
+            default: break;
+            }
+        }
+        if (player_section == nullptr || world_section == nullptr ||
+            rng_section == nullptr || events_section == nullptr || ai_section == nullptr ||
+            narrative_section == nullptr || systemic_section == nullptr) {
+            render->SetSubtitleOnce("Load failed: incomplete save.", 180);
+            return;
+        }
         std::string restored_room;
         LocomotionState restored_loco = services.player->Locomotion();
         CombatState restored_combat = services.player->Combat();
         SystemicWorld restored_systemic;
-        for (const auto& sec : loaded.Value()) {
-            if (sec.id == SaveSectionId::Systemic) {
-                auto restored = SystemicWorld::Deserialize(sec.data.data(), sec.data.size());
-                if (restored.IsError()) {
-                    render->SetSubtitleOnce("Load failed: systemic state rejected.", 180);
-                    return;
-                }
-                restored_systemic = std::move(restored.Value());
-                have_systemic = true;
-            } else if (sec.id == SaveSectionId::Player) {
-                if (sec.data.size() < 4) {
-                    render->SetSubtitleOnce("Load failed: player section truncated.", 180);
-                    return;
-                }
-                Deserializer d(sec.data.data(), sec.data.size());
-                const uint32_t room_len = d.ReadU32();
-                if (d.HasError() || room_len > 128 || room_len > d.Remaining()) {
-                    render->SetSubtitleOnce("Load failed: invalid player room.", 180);
-                    return;
-                }
-                restored_room.resize(room_len);
-                if (room_len > 0) d.ReadBytes(restored_room.data(), room_len);
-                restored_loco.position.x = d.ReadF32();
-                restored_loco.position.y = d.ReadF32();
-                restored_loco.position.z = d.ReadF32();
-                restored_loco.velocity.x = d.ReadF32();
-                restored_loco.velocity.y = d.ReadF32();
-                restored_loco.velocity.z = d.ReadF32();
-                restored_loco.yaw = d.ReadF32();
-                restored_loco.pitch = d.ReadF32();
-                const uint8_t posture = d.ReadU8();
-                const uint8_t traversal = d.ReadU8();
-                const uint8_t lean = d.ReadU8();
-                restored_loco.contact.grounded = d.ReadU8() != 0;
-                restored_loco.contact.on_ladder = d.ReadU8() != 0;
-                restored_loco.contact.on_climbable = d.ReadU8() != 0;
-                DeserializeCombatState(d, restored_combat);
-                if (d.HasError() || !d.AtEnd() || posture > static_cast<uint8_t>(Posture::Prone) ||
-                    traversal > static_cast<uint8_t>(Traversal::Mantle) ||
-                    lean > static_cast<uint8_t>(Lean::Right) ||
-                    static_cast<uint8_t>(restored_combat.slot) >= kWeaponSlotCount ||
-                    !std::isfinite(restored_loco.position.x) ||
-                    !std::isfinite(restored_loco.position.y) ||
-                    !std::isfinite(restored_loco.position.z) ||
-                    !std::isfinite(restored_loco.yaw) ||
-                    !std::isfinite(restored_loco.pitch) ||
-                    !std::isfinite(restored_combat.spread_factor) ||
-                    restored_combat.spread_factor < 0.0f ||
-                    restored_combat.spread_factor > 1.0f) {
-                    render->SetSubtitleOnce("Load failed: invalid player state.", 180);
-                    return;
-                }
-                restored_loco.posture = static_cast<Posture>(posture);
-                restored_loco.traversal = static_cast<Traversal>(traversal);
-                restored_loco.lean = static_cast<Lean>(lean);
-                have_player = true;
+        auto fail_load = [&](const char* text) {
+            render->SetSubtitleOnce(text, 180);
+        };
+        {
+            Deserializer d(player_section->data.data(), player_section->data.size());
+            const uint32_t room_len = d.ReadU32();
+            if (d.HasError() || room_len > 128 || room_len > d.Remaining()) {
+                fail_load("Load failed: invalid player room."); return;
+            }
+            restored_room.resize(room_len);
+            if (room_len > 0) d.ReadBytes(restored_room.data(), room_len);
+            restored_loco.position.x = d.ReadF32();
+            restored_loco.position.y = d.ReadF32();
+            restored_loco.position.z = d.ReadF32();
+            restored_loco.velocity.x = d.ReadF32();
+            restored_loco.velocity.y = d.ReadF32();
+            restored_loco.velocity.z = d.ReadF32();
+            restored_loco.yaw = d.ReadF32();
+            restored_loco.pitch = d.ReadF32();
+            const uint8_t posture = d.ReadU8();
+            const uint8_t traversal = d.ReadU8();
+            const uint8_t lean = d.ReadU8();
+            const uint8_t grounded = d.ReadU8();
+            const uint8_t ladder = d.ReadU8();
+            const uint8_t climbable = d.ReadU8();
+            DeserializeCombatState(d, restored_combat);
+            if (grounded > 1 || ladder > 1 || climbable > 1 || d.HasError() || !d.AtEnd() ||
+                posture > static_cast<uint8_t>(Posture::Prone) ||
+                traversal > static_cast<uint8_t>(Traversal::Mantle) ||
+                lean > static_cast<uint8_t>(Lean::Right) ||
+                static_cast<uint8_t>(restored_combat.slot) >= kWeaponSlotCount ||
+                !std::isfinite(restored_loco.position.x) ||
+                !std::isfinite(restored_loco.position.y) ||
+                !std::isfinite(restored_loco.position.z) ||
+                !std::isfinite(restored_loco.velocity.x) ||
+                !std::isfinite(restored_loco.velocity.y) ||
+                !std::isfinite(restored_loco.velocity.z) ||
+                !std::isfinite(restored_loco.yaw) || !std::isfinite(restored_loco.pitch) ||
+                !std::isfinite(restored_combat.spread_factor) ||
+                restored_combat.spread_factor < 0.0f || restored_combat.spread_factor > 1.0f) {
+                fail_load("Load failed: invalid player state."); return;
+            }
+            restored_loco.posture = static_cast<Posture>(posture);
+            restored_loco.traversal = static_cast<Traversal>(traversal);
+            restored_loco.lean = static_cast<Lean>(lean);
+            restored_loco.contact.grounded = grounded != 0;
+            restored_loco.contact.on_ladder = ladder != 0;
+            restored_loco.contact.on_climbable = climbable != 0;
+        }
+        {
+            const auto restored = SystemicWorld::Deserialize(
+                systemic_section->data.data(), systemic_section->data.size());
+            if (restored.IsError()) {
+                fail_load("Load failed: systemic state rejected."); return;
+            }
+            restored_systemic = std::move(restored.Value());
+        }
+        {
+            WorldModule restored_world;
+            Deserializer d(world_section->data.data(), world_section->data.size());
+            if (!restored_world.LoadState(d) || d.HasError() || !d.AtEnd()) {
+                fail_load("Load failed: world state rejected."); return;
             }
         }
-        if (!have_player || !have_systemic || restored_room.empty()) {
-            render->SetSubtitleOnce("Load failed: incomplete save.", 180);
-            return;
+        {
+            EventBus restored_events;
+            Deserializer d(events_section->data.data(), events_section->data.size());
+            restored_events.Load(d);
+            if (d.HasError() || !d.AtEnd()) {
+                fail_load("Load failed: event state rejected."); return;
+            }
+        }
+        {
+            DeterministicRNG restored_rng;
+            Deserializer d(rng_section->data.data(), rng_section->data.size());
+            restored_rng.Load(d);
+            if (d.HasError() || !d.AtEnd() ||
+                (restored_rng.GetState0() == 0 && restored_rng.GetState1() == 0)) {
+                fail_load("Load failed: RNG state rejected."); return;
+            }
+        }
+        {
+            StoryletEngine restored_narrative;
+            Deserializer d(narrative_section->data.data(), narrative_section->data.size());
+            restored_narrative.Load(d);
+            if (d.HasError() || !d.AtEnd()) {
+                fail_load("Load failed: narrative state rejected."); return;
+            }
+        }
+        if (restored_room.empty()) {
+            fail_load("Load failed: incomplete player room."); return;
         }
         if (!switch_room(restored_room, restored_loco.position)) {
-            render->SetSubtitleOnce("Load failed: saved room unavailable.", 180);
+            fail_load("Load failed: saved room unavailable.");
             return;
         }
+        Deserializer world_d(world_section->data.data(), world_section->data.size());
+        Deserializer events_d(events_section->data.data(), events_section->data.size());
+        Deserializer rng_d(rng_section->data.data(), rng_section->data.size());
+        Deserializer narrative_d(narrative_section->data.data(), narrative_section->data.size());
+        Deserializer ai_d(ai_section->data.data(), ai_section->data.size());
+        if (!services.world->LoadState(world_d) || world_d.HasError() || !world_d.AtEnd()) {
+            fail_load("Load failed: world state commit rejected."); return;
+        }
         *services.systemic = std::move(restored_systemic);
+        events.Load(events_d);
+        sim_rng.Load(rng_d);
+        services.narrative->Storylets().Load(narrative_d);
+        if (!services.ai->Load(ai_d) || ai_d.HasError() || !ai_d.AtEnd() ||
+            events_d.HasError() || !events_d.AtEnd() || rng_d.HasError() || !rng_d.AtEnd() ||
+            narrative_d.HasError() || !narrative_d.AtEnd()) {
+            fail_load("Load failed: runtime state commit rejected."); return;
+        }
         services.player->Locomotion() = restored_loco;
         services.player->Combat() = restored_combat;
+        replay_load_ok = true;
         render->SetSubtitleOnce("Loaded.", 120);
     });
     services.player->SetCurrentRoom(config.room_id.empty() ? std::string("room_b1_revival") : config.room_id);
+    if (!config.replay_path.empty()) {
+        replay_route.push_back(services.player->CurrentRoom());
+    }
     services.player->SetRoomSwitchCallback([&](const std::string& id, const Vec3& spawn) {
         (void)switch_room(id, spawn);
     });
@@ -1322,13 +1900,71 @@ int RunComposition(const GameConfig& config) {
         }
     }
 
+    if (!config.replay_path.empty()) {
+        size_t full_npcs = 0;
+        size_t semi_npcs = 0;
+        for (const auto& runtime : services.ai->Npcs()) {
+            if (runtime.instance.cognition == CognitionTier::Full) {
+                ++full_npcs;
+            } else if (runtime.instance.cognition == CognitionTier::SemiHuman) {
+                ++semi_npcs;
+            }
+        }
+        std::fprintf(stderr, "REPLAY_RESULT=%s\n",
+                     result == 0 ? "PASS" : "FAIL");
+        std::fprintf(stderr, "REPLAY_EXIT_CODE=%d\n", result);
+        std::fprintf(stderr, "REPLAY_ROUTE=");
+        for (size_t i = 0; i < replay_route.size(); ++i) {
+            if (i != 0) std::fputc('>', stderr);
+            std::fputs(replay_route[i].c_str(), stderr);
+        }
+        std::fputc('\n', stderr);
+        std::fprintf(stderr,
+                     "NPC_COUNT=%zu FULL_NPC_COUNT=%zu SEMI_NPC_COUNT=%zu "
+                     "AUTONOMOUS_LOOPS=%zu DISCOVERY_RESPONSES=%zu "
+                     "SAVE_ATTEMPTED=%s SAVE_OK=%s LOAD_ATTEMPTED=%s LOAD_OK=%s "
+                     "EVENT_JOURNAL=%zu SYSTEMIC_EVENTS=%zu MEMORIES=%zu\n",
+                     services.ai->Npcs().size(), full_npcs, semi_npcs,
+                     services.ai->AutonomousLoopCount(),
+                     services.ai->DiscoveryResponseCount(),
+                     replay_save_attempted ? "YES" : "NO",
+                     replay_save_ok ? "YES" : "NO",
+                     replay_load_attempted ? "YES" : "NO",
+                     replay_load_ok ? "YES" : "NO",
+                     events.JournalCount(), services.systemic->EventCount(),
+                     services.systemic->MemoryCount());
+        std::fprintf(stderr, "NARRATOR_TYPOGRAPHY_ACTIVE=%s\n",
+                     render->NarratorTypographyActive() ? "YES" : "NO");
+        const BodyRecord* body = services.systemic->GetBody(slice.body);
+        if (body != nullptr) {
+            const ItemRecord* badge = slice.badge.IsValid()
+                                          ? services.systemic->GetItem(slice.badge)
+                                          : nullptr;
+            std::fprintf(stderr,
+                         "BODY_STATE=disposition_%u drag_%u searched_%s "
+                         "BADGE_HOLDER=%llu TERMINAL_SESSION=%s\n",
+                         static_cast<unsigned>(body->disposition),
+                         static_cast<unsigned>(body->drag_status),
+                         body->searched ? "YES" : "NO",
+                         static_cast<unsigned long long>(
+                         badge != nullptr && badge->current_holder.IsValid()
+                                 ? badge->current_holder.GetValue()
+                                 : 0),
+                         slice.terminal_session ? "YES" : "NO");
+        }
+        const Vec3& player_position = services.player->Locomotion().position;
+        std::fprintf(stderr, "PLAYER_STATE=room_%s pos_%.3f_%.3f_%.3f\n",
+                     services.player->CurrentRoom().c_str(), player_position.x,
+                     player_position.y, player_position.z);
+    }
+
     if (config.smoke && config.save_after_smoke) {
         // Smoke save: real determinism sections through the atomic writer.
         // Includes player locomotion, world facts/infra, narrative storylet
         // runtime, RNG, and event journal (F-15 closure).
         std::vector<SaveSection> sections;
         std::vector<uint8_t> rng_bytes, events_bytes, player_bytes,
-            world_bytes, narrative_bytes, systemic_bytes;
+            world_bytes, ai_bytes, narrative_bytes, systemic_bytes;
         {
             Serializer s(rng_bytes);
             sim_rng.Save(s);
@@ -1342,16 +1978,11 @@ int RunComposition(const GameConfig& config) {
         }
         {
             Serializer s(world_bytes);
-            services.world->Infra().Save(s);
-            const std::vector<WorldFact> facts = services.world->Facts().Snapshot();
-            s.WriteU32(static_cast<uint32_t>(facts.size()));
-            for (const auto& f : facts) {
-                WriteId(s, f.id);
-                s.WriteU8(std::holds_alternative<bool>(f.value) &&
-                                  std::get<bool>(f.value)
-                              ? 1
-                              : 0);
-            }
+            services.world->SaveState(s);
+        }
+        {
+            Serializer s(ai_bytes);
+            services.ai->Save(s);
         }
         {
             Serializer s(narrative_bytes);
@@ -1361,6 +1992,7 @@ int RunComposition(const GameConfig& config) {
         sections.push_back({SaveSectionId::World, std::move(world_bytes)});
         sections.push_back({SaveSectionId::Rng, std::move(rng_bytes)});
         sections.push_back({SaveSectionId::Events, std::move(events_bytes)});
+        sections.push_back({SaveSectionId::Ai, std::move(ai_bytes)});
         sections.push_back({SaveSectionId::Narrative, std::move(narrative_bytes)});
         systemic_bytes = services.systemic->Serialize();
         sections.push_back({SaveSectionId::Systemic, std::move(systemic_bytes)});
@@ -1385,8 +2017,71 @@ int RunComposition(const GameConfig& config) {
                          loaded_save.Error().message.c_str());
             return 4;
         }
+        bool found_player = false;
+        bool found_world = false;
+        bool found_rng = false;
+        bool found_events = false;
+        bool found_ai = false;
+        bool found_narrative = false;
         bool found_systemic = false;
         for (const auto& sec : loaded_save.Value()) {
+            if (sec.id == SaveSectionId::Player) found_player = true;
+            if (sec.id == SaveSectionId::World) {
+                found_world = true;
+                Deserializer d(sec.data.data(), sec.data.size());
+                WorldModule restored_world;
+                if (!restored_world.LoadState(d) || d.HasError() || !d.AtEnd()) {
+                    std::fprintf(stderr, "world section restore failed\n");
+                    return 5;
+                }
+            }
+            if (sec.id == SaveSectionId::Rng) {
+                found_rng = true;
+                Deserializer d(sec.data.data(), sec.data.size());
+                DeterministicRNG restored_rng;
+                restored_rng.Load(d);
+                if (d.HasError() || !d.AtEnd() ||
+                    (restored_rng.GetState0() == 0 && restored_rng.GetState1() == 0)) {
+                    std::fprintf(stderr, "rng section restore failed\n");
+                    return 5;
+                }
+            }
+            if (sec.id == SaveSectionId::Events) {
+                found_events = true;
+                Deserializer d(sec.data.data(), sec.data.size());
+                EventBus restored_events;
+                restored_events.Load(d);
+                if (d.HasError() || !d.AtEnd()) {
+                    std::fprintf(stderr, "event section restore failed\n");
+                    return 5;
+                }
+            }
+            if (sec.id == SaveSectionId::Ai) {
+                found_ai = true;
+                Deserializer d(sec.data.data(), sec.data.size());
+                AutonomousNpcSystem restored_ai;
+                restored_ai.Attach(services.systemic.get(), &events, &sim_rng);
+                for (const auto& runtime : services.ai->Npcs()) {
+                    if (!restored_ai.AddNpc(runtime.instance, runtime.room)) {
+                        std::fprintf(stderr, "ai section setup failed\n");
+                        return 5;
+                    }
+                }
+                if (!restored_ai.Load(d) || d.HasError() || !d.AtEnd()) {
+                    std::fprintf(stderr, "ai section restore failed\n");
+                    return 5;
+                }
+            }
+            if (sec.id == SaveSectionId::Narrative) {
+                found_narrative = true;
+                Deserializer d(sec.data.data(), sec.data.size());
+                StoryletEngine restored_narrative;
+                restored_narrative.Load(d);
+                if (d.HasError() || !d.AtEnd()) {
+                    std::fprintf(stderr, "narrative section restore failed\n");
+                    return 5;
+                }
+            }
             if (sec.id == SaveSectionId::Systemic) {
                 found_systemic = true;
                 const auto restored = SystemicWorld::Deserialize(
@@ -1400,14 +2095,16 @@ int RunComposition(const GameConfig& config) {
                     std::fprintf(stderr, "systemic save/load byte mismatch\n");
                     return 6;
                 }
-                break;
             }
         }
-        if (!found_systemic) {
-            std::fprintf(stderr, "systemic save section missing\n");
+        if (!found_player || !found_world || !found_rng || !found_events ||
+            !found_ai || !found_narrative || !found_systemic) {
+            std::fprintf(stderr, "smoke save section missing\n");
             return 7;
         }
     }
+    events.Unregister(audio_consumer);
+    if (audio) audio->Shutdown();
     return result;
 }
 

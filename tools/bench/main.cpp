@@ -2,10 +2,12 @@
 #include "writeover/render/frame_encoder.h"
 #include "writeover/render/production_renderer.h"
 #include "writeover/render/raycaster.h"
+#include "writeover/ai/runtime.h"
 #include "writeover/systemic/systemic.h"
 #include "writeover/world/grid.h"
 
 #include <algorithm>
+#include <cmath>
 #include <chrono>
 #include <cstdio>
 #include <string>
@@ -412,6 +414,113 @@ double SystemicUpdateBenchmark() {
     PrintCsv("systemic_update_workload", sampler.Compute());
     return sampler.Compute().worst_1pct_avg_ms;
 }
+
+// Integrated PVS frame proxy. This deliberately stays a benchmark seam rather
+// than becoming a second game loop: it runs the real bounded NPC adapter,
+// event dispatch, production raster, half-block composition, and ANSI encode
+// for one representative 240x67 frame. It is the measured upper-level proxy
+// for the <=6 ms total CPU budget; platform device writes are excluded.
+double ProductionRuntimeFrameBenchmark() {
+    using Clock = std::chrono::steady_clock;
+
+    Grid grid(24, 18);
+    for (int r = 0; r < 18; ++r) {
+        for (int c = 0; c < 24; ++c) {
+            GridCell cell;
+            if (c == 0 || c == 23 || r == 0 || r == 17 ||
+                (c == 8 && r >= 2 && r <= 6)) {
+                cell.flags = CellFlag_Solid;
+            }
+            grid.SetCell(c, r, cell);
+        }
+    }
+
+    GridWorldQuery query(&grid);
+    SystemicWorld systemic;
+    EventBus events;
+    DeterministicRNG rng(0x51A7BEEF);
+    AutonomousNpcSystem ai;
+    ai.Attach(&systemic, &events, &rng);
+    ai.SetWorldQuery(&query);
+    ai.SetActiveRoom(RoomId::New(1));
+    ai.SetPlayerPose(Vec3{4.5f, 9.0f, 1.6f}, 1.6f);
+
+    for (int i = 0; i < 25; ++i) {
+        const NpcId id = NpcId::New(static_cast<uint64_t>(i + 1));
+        ActorRecord actor;
+        actor.id = id;
+        actor.data_key = ResourceId::New(0xC000 + static_cast<uint64_t>(i));
+        actor.cognition = i < 5 ? CognitionTier::Full : CognitionTier::SemiHuman;
+        actor.faction = i < 5 ? Faction::Security : Faction::GeneralStaff;
+        actor.role = Role::Guard;
+        if (!systemic.AddActor(actor)) return 1000.0;
+
+        NPCInstance npc;
+        npc.id = id;
+        npc.data_key = actor.data_key;
+        npc.cognition = actor.cognition;
+        npc.faction = actor.faction;
+        npc.role = actor.role;
+        npc.position = Vec3{5.0f + static_cast<float>(i % 5) * 1.5f,
+                            5.0f + static_cast<float>(i / 5) * 1.3f, 0.0f};
+        npc.yaw = 0.0f;
+        npc.health = 100;
+        if (!ai.AddNpc(npc, RoomId::New(1))) return 1000.0;
+    }
+
+    constexpr int cell_w = 240;
+    constexpr int cell_h = 67;
+    constexpr int logical_w = cell_w;
+    constexpr int logical_h = cell_h * 2;
+    constexpr int kFrames = 1200;
+    std::vector<Color> pixels(static_cast<size_t>(logical_w) * logical_h);
+    std::vector<CharCell> cells(static_cast<size_t>(cell_w) * cell_h);
+    std::string scratch;
+    AnsiFrameEncoder encoder;
+    FrameTimeSampler sampler;
+
+    for (int frame = 0; frame < kFrames; ++frame) {
+        const auto t0 = Clock::now();
+        ai.SetPlayerPose(Vec3{4.5f + 0.002f * static_cast<float>(frame % 20),
+                              9.0f, 1.6f}, 1.6f);
+        ai.Tick(static_cast<uint64_t>(frame));
+        events.Dispatch();
+
+        ProductionView view;
+        view.origin = Vec3{1.5f, 15.5f, 1.6f};
+        view.yaw = 0.15f + static_cast<float>(frame) * 0.002f;
+        view.pitch = 0.0f;
+        const float focal = 0.5f * static_cast<float>(logical_h) /
+                            std::tan(60.0f * 3.14159265f / 360.0f);
+        RenderProductionFrame(grid.Data().data(), grid.Width(), grid.Height(),
+                              view, pixels.data(), logical_w, logical_h, focal);
+        for (int i = 0; i < 25; ++i) {
+            DrawProductionSprite(view.origin, view.yaw, view.pitch,
+                                 Vec3{5.0f + static_cast<float>(i % 5) * 1.5f,
+                                      5.0f + static_cast<float>(i / 5) * 1.3f,
+                                      0.0f},
+                                 1.7f, ProductionSpriteKind::Npc,
+                                 i < 5 ? Color{148, 96, 220} : Color{90, 140, 190},
+                                 grid.Data().data(), grid.Width(), grid.Height(),
+                                 pixels.data(), logical_w, logical_h, focal);
+        }
+        DrawWeaponViewmodel(pixels.data(), logical_w, logical_h, frame % 3,
+                            static_cast<float>(frame % 8) * 0.02f);
+        ComposeHalfBlockFrame(pixels.data(), logical_w, logical_h,
+                              cells.data(), cell_w, cell_h);
+        scratch.clear();
+        encoder.Encode(cells.data(), cell_w, cell_h, scratch,
+                       frame == 0 ? EncodeMode::ForceFull : EncodeMode::Auto);
+
+        const auto t1 = Clock::now();
+        sampler.AddSample(
+            std::chrono::duration<double, std::milli>(t1 - t0).count());
+    }
+
+    PrintCsv("pvs_total_runtime_frame_240x67", sampler.Compute());
+    return sampler.Compute().worst_1pct_avg_ms;
+}
+
 double ProductionRendererBenchmark() {
     using Clock = std::chrono::steady_clock;
     Grid grid(24, 18);
@@ -737,8 +846,16 @@ int main() {
     std::printf("PVS_RENDER_BUDGET=%s\n", render_pass ? "PASS" : "FAIL");
     std::printf("PVS_RENDER_TIME_MS=%.3f (worst1_avg)\n", render_ms);
 
+    const double total_frame_ms = writeover::ProductionRuntimeFrameBenchmark();
+    const bool total_frame_pass = total_frame_ms <= 6.0;
+    std::printf("PVS_TOTAL_FRAME_BUDGET=%s\n",
+                total_frame_pass ? "PASS" : "FAIL");
+    std::printf("PVS_TOTAL_FRAME_TIME_MS=%.3f (worst1_avg; platform writes excluded)\n",
+                total_frame_ms);
+
     const bool overall_pass = ray_pass && full_pass && delta_pass &&
-                              unchanged_pass && worstcase_pass && lookup_pass && update_pass && render_pass;
+                              unchanged_pass && worstcase_pass && lookup_pass &&
+                              update_pass && render_pass && total_frame_pass;
     std::printf("RAYCAST_BUDGET=%s\n", ray_pass ? "PASS" : "FAIL");
     std::printf("OVERALL_BUDGET=%s\n", overall_pass ? "PASS" : "FAIL");
     return overall_pass ? 0 : 1;

@@ -1,226 +1,219 @@
-# PVS-01 GOAL LEDGER — WRITEOVER-07
+# PVS-01 GOLD GOAL LEDGER — WRITEOVER-07
 
-## Mission State
+## Mission state
 
-- MISSION_START_TIME: 2026-09-03 23:51:42
-- START_HEAD: 5dadd5f822e4668161bdf92fae8c5f057690995f
-- LAST_CLEAN_HEAD_BEFORE_PVS: 667b7399850e8a6ed718f4e73c17cb5e1549f7eb
-- CURRENT_HEAD: final remote-verification receipt commit (exact SHA in task handoff)
-- LAST_REMOTE_VERIFIED_HEAD: 1e45349636463493159692a5bffd0a2522f805de
-- CURRENT_PHASE: final three red teams complete; Silver release candidate
-- MISSION_STATUS: READY_FOR_HUMAN_PLAYTEST_WITH_SCOPE_LIMITS
+- Mission: `PRODUCT v1.2 / SYSTEMIC GAMEPLAY FOUNDATION / PVS-01 GOLD`
+- Mission start head: `33e5e73c3f8845ed7236f749d0392fa9d53f59918`
+- Current closure head: the final Gold receipt commit printed by `git rev-parse HEAD`
+- Branch: `main` only
+- Current phase: Gold closure evidence and cross-platform gates
+- Local status at the time of this ledger update: all scoped changes are being
+  validated before the final commit and push
 
-## Grand Objective
+The ledger records the actual Gold closure work. It supersedes the earlier
+Silver receipt; the old Silver reports remain in Git history, but are not the
+current release verdict.
 
-Deliver one coherent vertical slice:
+## Grand objective
 
-`B1 Wake -> Calibration / Logistics -> Service / Medical -> 1F Lobby -> Security Checkpoint -> Restroom / Staff route -> Elevator Lobby`
+Deliver a small, coherent, production-wired PVS route:
 
-The route is intentionally small. It proves one readable authored path and
-shared systemic consequences instead of pretending that the full building or
-full NPC population is already implemented.
+`B1 Wake -> Calibration / Logistics -> Service / Medical -> 1F Lobby -> Security Checkpoint -> Restroom / Staff -> Elevator Lobby`
 
-## Victory Ladder
+The route is deliberately bounded. It proves one playable systemic slice and a
+real production input/replay path; it does not claim that the full 41-floor
+building, all future M1-M6 content, or a complete AI planner has been shipped.
 
-- GOLD: complete, polished, stable and ready for human playtest with final art,
-  effects, audio and full route recovery evidence.
-- SILVER: the intended authored path and interactions work with known,
-  non-fatal production-polish gaps. **Current level.**
-- BRONZE: a reproducible production renderer and B1 micro-space only.
+## Gold closures in this pass
 
-## Implemented Route
+- The active world path is the production Half-block TrueColor framebuffer:
+  `240x67` terminal cells and `240x134` logical pixels. The frame is rendered
+  from dark material bands with local cyan/amber/purple accents, depth-aware
+  sprite occlusion, a weapon viewmodel and bounded effects.
+- Pistol fire is live hitscan gameplay with spread, resolved aim, recoil,
+  muzzle flash, hit feedback and deterministic systemic firearm events. A
+  non-lethal weapon path produces a stunned NPC rather than silently killing
+  it. Movement includes sprint speed and bounded head motion; reduced-shake and
+  reduced-flicker settings preserve information.
+- Windows has a procedural in-memory WinMM PCM backend for SFX/VO cues. POSIX
+  builds use an honest `posix-subtitles-only` fallback because this repository
+  does not assume a platform audio middleware dependency.
+- Six authored NPC profiles are validated and compiled to
+  `data/npcs/npcs.bin`. The active B1 runtime contains five NPCs: one
+  `Full` cognition NPC and four `SemiHuman` cognition NPCs. `Guard` is a role
+  and faction occupation, not a third cognitive tier.
+- The autonomous adapter runs a bounded deterministic
+  `Observe -> Remember -> Evaluate -> Choose -> Act` loop. Perception reads
+  geometry, memories are added to the single systemic world, typed NPC events
+  reach the EventBus, and the cleaner body route performs observation followed
+  by an explicit response decision.
+- The PVS route performs real search, badge reveal, theft, directed memory and
+  relationship reaction, drag start/update/end, concealment, delayed body
+  discovery, response, terminal session/audit, camera outage, credential /
+  bribe / knowledge seams and the normal room route. These are small
+  composition-root adapters; they do not replace module ownership with a new
+  gameplay framework.
+- F5/F9 uses the existing fail-closed SaveManager and includes Player, World,
+  RNG, Events, AI, Narrative and Systemic sections. The final cross-platform
+  check writes a save with Windows Release and loads that exact file with Linux
+  Release.
+- Four deterministic production replay scripts cover normal, aggressive,
+  stealth and systemic behavior. They all reach 1F, exercise the body path,
+  show real NPC loop counters, and complete Save/Load. The replay backend is a
+  deterministic production input backend, not a test-only direct state mutator.
+- Linux x64 GCC, Linux x64 Clang, macOS arm64 CI configuration, and Linux
+  aarch64 cross-compilation/linking are in the CMake/CI matrix. Platform seams
+  are limited to input, terminal, audio and atomic file replacement.
+- The systemic schema gate now validates structure, closed enums, ranges,
+  uniqueness, cross-references, locations, capacities, provenance fields and
+  reserved future arrays. The content compiler emits bounded binary NPC
+  profiles and rejects invalid authoring instead of silently dropping fields.
 
-- B1 Revival: production half-block raster, opening subtitle, maintenance NPC
-  line, incapacitated body, body search, badge theft, memory/relationship
-  reaction, body drag, concealment cart, camera outage and terminal session.
-- Calibration / Logistics: the existing `room_01_calibration` is now part of
-  the normal route rather than an unreachable fallback-only room.
-- Service / Medical: authored room, medical prop, route feedback and transition
-  to the lobby.
-- 1F Security: authored checkpoint, credential access, bribe exchange and
-  maintenance/staff route knowledge.
-- Restroom / Staff and Elevator Lobby: authored side route, door/elevator props,
-  deterministic transitions and readable terminal subtitles.
-- F5/F9 uses the real SaveManager path and serializes player, world, RNG,
-  events, narrative and SystemicWorld sections. Systemic state is restored only
-  after fail-closed parsing and room validation.
+## Replay evidence
 
-The runtime keeps one SystemicWorld. The authored callbacks are deliberately
-small PVS wiring; they are not a second gameplay framework and do not replace
-M3/M4/M5/M6 ownership.
+The exact scripts and concise receipts are also recorded in
+`docs/production/PVS01_REAL_PLAY_MATRIX.md`.
 
-## Final Validation Evidence
+| Route | Production command | Result |
+|---|---|---|
+| Normal | `writeover_app.exe --data-dir data --width 120 --height 40 --frames 3500 --replay tools/replay/pvs01_normal.txt` | PASS; route reaches 1F; 5 NPCs = 1 Full + 4 Semi; autonomous loops 221; discovery responses 1; Save/Load YES |
+| Aggressive | `writeover_app.exe --data-dir data --width 120 --height 40 --frames 3600 --replay tools/replay/pvs01_aggressive.txt` | PASS; route reaches 1F; 5 NPCs = 1 Full + 4 Semi; autonomous loops 247; discovery responses 1; Save/Load YES |
+| Stealth | `writeover_app.exe --data-dir data --width 120 --height 40 --frames 4500 --replay tools/replay/pvs01_stealth.txt` | PASS; route reaches 1F; 5 NPCs = 1 Full + 4 Semi; autonomous loops 394; discovery responses 1; Save/Load YES |
+| Systemic | `writeover_app.exe --data-dir data --width 120 --height 40 --frames 3500 --replay tools/replay/pvs01_systemic.txt` | PASS; route reaches 1F; 5 NPCs = 1 Full + 4 Semi; autonomous loops 221; discovery responses 1; Save/Load YES; narrator typography active |
 
-All commands below were run against the local PVS-01 working tree after the
-last code change. `PASS` means the command returned success; no status is
-derived from an earlier report.
+The Windows Release replay process reported `winmm-procedural`; the Linux
+Release systemic replay reported `posix-subtitles-only`. Representative event
+journals were non-empty (`30` normal/systemic, `42` aggressive, `50` stealth),
+systemic events were non-empty (`37`, `49`, `57` respectively), and memories
+were non-empty (`223`, `249`, `396` respectively). The body was searched and
+the final player room was `room_1f_security` in each run.
 
-- `cmake --preset debug`: PASS
-- `cmake --build --preset debug --config Debug --parallel 4`: PASS
-- `cmake --preset release`: PASS
-- `cmake --build --preset release --config Release --parallel 4`: PASS
-- `cmake --preset ci`: PASS
-- `cmake --build --preset ci --config Debug --parallel 4`: PASS
-- `ctest --preset debug --output-on-failure`: PASS
-- `ctest --preset ci --output-on-failure`: PASS
-- `out/build/release/Release/writeover_tests.exe`: PASS, 158 tests, 0 failed
-  (the two printed assertion lines are intentional test-harness self-checks)
-- `powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1 -Preset debug`:
-  PASS; unit test, six `mapc` room checks and bounded app exit all passed
-- `powershell -ExecutionPolicy Bypass -File scripts/bench.ps1 -Preset release`:
-  PASS; all declared budgets passed
-- `powershell -ExecutionPolicy Bypass -File scripts/contract_check.ps1`: PASS
-- `python tools/audit/static_audit.py .`: PASS, `COUNT=0`
-- `python tools/contentc/contentc.py --data-dir data --out-dir data --check`:
-  PASS; six rooms, four facts and two storylets deterministically recompiled
-- `python tools/contentc/test_contentc.py`: PASS, 5/5
-- `python tools/systemic/systemic_schema_check.py --data-dir data`: PASS
-- `python tools/systemic/test_systemic_schema.py`: PASS, 5/5
-- `python tools/systemic/test_runtime_invalid_seed.py`: PASS; invalid seed
-  prevented startup
-- seed compiler explicit-cognition migration probe: PASS; explicit v1.2
-  `cognition` is honored and legacy `class` remains compatible
+## Validation gates
 
-## Benchmarks
+These are the final local gate classes. The exact final values belong in the
+Gold report and final task receipt; a gate is not marked PASS unless the command
+actually ran on the final source state.
 
-Release benchmark output:
+- C++ Debug and Release configure/build: PASS locally.
+- CTest and direct release test executable: PASS locally; the final direct
+  executable reports 161 tests and 0 failed (the two `ASSERT FAILED` lines are
+  intentional self-checks of the test harness).
+- Smoke: PASS locally through the production application path.
+- Bench: PASS locally. The bench includes the real systemic lookup/update
+  workload, production raster, terminal encoding and a combined bounded
+  production frame proxy with 25 runtime NPCs, EventBus dispatch, production
+  raster, 25 sprite draws, weapon viewmodel, half-block composition and ANSI
+  encoding. Platform device writes are excluded from the measured CPU proxy.
+- Contract check: PASS locally; forbidden patterns, dependency direction and
+  public-header baseline all pass.
+- Static audit: PASS locally, `COUNT=0`.
+- Content compiler and schema tests: PASS locally; current content compiler
+  tests are 7/7 and systemic schema tests are 10/10.
+- Invalid-seed startup gate: PASS locally; malformed systemic seed prevents
+  startup.
+- Cross-platform save: PASS locally for Windows Release save -> Linux Release
+  load using the same `saves/pvs_manual.wo07` bytes.
+- GitHub Actions: required remote result is recorded after the final push. The
+  macOS arm64 job is intentionally a real CI build/test/smoke/benchmark gate;
+  no macOS physical host is assumed locally.
 
-- raycast column sweep worst1% average: 0.098 ms
-- terminal full worst1% average: 0.263 ms; budget result PASS
-- terminal delta worst1% average: 0.055 ms; budget result PASS
-- terminal unchanged worst1% average: 0.035 ms; budget result PASS
-- terminal worst-case safety: 0.234 ms worst1% average, 50,659 bytes; PASS
-- systemic lookup worst1% average: 0.012 ms; PASS
-- systemic update workload worst1% average: 0.185 ms; PASS
-- PVS render workload `240x67` worst1% average: 0.981 ms; PASS
-- overall declared benchmark budget: PASS
+## Local performance evidence
 
-The systemic benchmark is a representative foundation workload covering current
-relationship, memory, evidence, body drag/discovery, item, promise, quest,
-search, exchange, terminal, observability and event-bridge records. It does not
-claim to be a full future M5 AI decision benchmark.
+The final Windows Release run after the integrated-frame benchmark was added reported:
 
-## Visual / Input Evidence
+- `PVS_RENDER_TIME_MS=1.007` worst-1%-average ms; budget PASS.
+- `SYSTEMIC_LOOKUP_TIME_MS=0.013` worst-1%-average ms; budget PASS.
+- `SYSTEMIC_UPDATE_TIME_MS=0.178` worst-1%-average ms; budget PASS.
+- `PVS_TOTAL_FRAME_TIME_MS=1.311` worst-1%-average ms; budget PASS against
+  `<= 6.0 ms`, with platform device writes excluded.
+- terminal full `0.252 ms` / `38,448` bytes; delta `0.041 ms` / `2,375`
+  bytes; unchanged `0.111 ms` / `0` bytes; worst-case safety `50,659` bytes;
+  all declared encoder budgets PASS.
 
-- Six release frame dumps (`B1`, `Calibration`, `Service`, `1F`, `Restroom`,
-  `Elevator`) exited 0 and each produced a `240x134` logical-pixel PPM of
-  96,495 bytes.
-- Visual review found dark industrial floor/ceiling bands, mid-dark walls,
-  distinct cyan/amber authored props, occluded scene sprites and a bottom-right
-  weapon viewmodel within the declared safe area. No large-area light-gray or
-  white floor was observed.
-- `writeover_input_probe.exe --backend auto --context gameplay --seconds 2`:
-  PASS for `keyboard-console`, `raw-input`, `raw-input` mouse buttons,
-  gameplay context and focus. The probe run did not inject a complete route;
-  automated end-to-end key replay remains UNVERIFIED and is intentionally left
-  for human playtest.
-- Existing tracked golden samples remain in `evidence/pvs01/`. The temporary
-  six-scene visual captures used for this review are cleanup artifacts, not
-  product assets.
+The final Linux Release rerun reported `PVS_RENDER_TIME_MS=1.165`, systemic
+lookup `0.014`, systemic update `0.078`, and
+`PVS_TOTAL_FRAME_TIME_MS=1.391`; all passed the same declared budgets. Linux
+terminal full/delta/unchanged/worst-case times were `0.173`/`0.037`/`0.028`/
+`0.266 ms` with the same bounded byte results. These numbers are evidence, not
+a promise to future hardware.
 
-## Code Red Team
+The proxy is intentionally described narrowly. It is not a claim that every
+future M5 planner or every future fully populated M1-M6 scene has been
+benchmarked. It proves the bounded foundation workload and the current PVS
+frame composition stay inside the declared CPU envelope on the measured host.
 
-PASS with no Fatal or Major finding open.
+## Three final red teams
 
-- `HideBody` now exposes the missing semantic transition and emits typed
-  `BodyHidden`; the body concealment test follows physical search -> revealed
-  badge -> theft -> drag -> hide -> discovery observation -> explicit response.
-- `DiscoverBody` records observation/evidence/memory only. Security escalation
-  occurs only through `ApplyDiscoveryResponse`, so medical call, cover-up,
-  ignore and report remain distinct outcomes.
-- Duplicate IDs, vector/string bounds, enum/range validation, canonical
-  observability-source mirroring, item provenance and fail-closed systemic seed
-  loading are covered by code/tests.
-- The seed compiler now honors explicit `cognition` and retains legacy class
-  migration behavior.
-- Public header drift was recorded in ADR-0007 and the contract baseline; the
-  contract checker is green.
-- No second gameplay world, broad framework, new branch, hook, PR or unrelated
-  architecture change was introduced.
+### Code review
 
-## Real-Play / Effects Red Team
+PASS with no open Fatal or Major finding. The review checked ownership,
+fail-closed parsing, duplicate IDs, bounded vectors/strings, authored profile
+loading, save section validation, deterministic replay input, event dispatch,
+NPC state transitions, body response separation and platform boundaries. No
+second gameplay world, ECS, plugin layer, hook, branch or PR was introduced.
 
-PASS for deterministic bounded runtime scene generation; CONDITIONAL for full
-human route play because this environment cannot provide a complete automated
-keyboard/mouse playthrough.
+### Real-play / visual-effects review
 
-- The production executable generated all six canonical scene frames.
-- The route now follows the execution contract ordering and uses authored room
-  files for every scene in the slice.
-- The real input backend reports the production keyboard and Raw Input pointer
-  path; unit tests cover pointer deltas, buttons, focus loss/regain and context
-  switching.
-- F1 narrator intrusion, F3 overlay, fire/recoil/muzzle feedback, pause and
-  melee feedback are wired in the production composition root. Audio playback
-  is not implemented in this slice.
+PASS for the four deterministic production routes and cross-platform save/load.
+The route reaches the authored 1F destination, and the runtime receipts prove
+real autonomous phases, systemic events, body response and Save/Load. The
+visual frame is a dark industrial Half-block production frame rather than the
+reference renderer: floor and ceiling stay in dark luminance bands, props and
+NPCs have localized accents, and the weapon/effect path is visible. Narrator
+authority uses a large staged block-glyph composition with diagonal placement,
+shake/glitch/accent behavior and reduced-flicker/reduced-shake fallbacks that
+retain the text.
 
-## Perfection Red Team
+### Perfection review
 
-SILVER, not GOLD. The first-time-player complaint list is explicit:
+PASS for this bounded Gold target, with controlled quality limits explicitly
+listed below. The renderer uses deterministic procedural materials and an
+embedded block glyph atlas rather than a large hand-authored external asset
+pack. Windows audio is procedural WinMM and POSIX is subtitles-only. These are
+known product decisions and platform limitations, not hidden claims of a
+finished middleware/art pipeline.
 
-1. The renderer is a deterministic procedural production path, not final art
-   atlas content; the scene prop set is intentionally sparse.
-2. Audio playback, full particle/debris/smoke authoring and damage/explosion
-   presentation are not yet implemented.
-3. `AiModule` remains a legal no-op in the PVS executable; the cleaner and
-   social outcomes are foundation contracts plus authored route callbacks, not
-   a complete M5 autonomous schedule.
-4. There is no automated end-to-end input replay for the route; the bounded
-   human playtest is the next evidence step.
+## Controlled defers and quality limits
 
-These are medium, scope-bounded issues. None is a current Fatal or Major
-blocker for a Silver human-playtest candidate.
+- Direct human-like mouse/keyboard completion of the route is not reproducibly
+  available in this execution environment. Deterministic production replay is
+  PASS; direct control remains `PARTIAL` and is the next human playtest
+  observation, not a code failure.
+- A physical macOS arm64 runtime session is not available locally. macOS
+  arm64 build/test/smoke/benchmark is delegated to the configured GitHub Actions
+  runner; runtime receipt is `UNVERIFIED` locally until that job completes.
+- ARM64 cross-compilation/linking is PASS and the ELF architecture is verified;
+  execution on a Kunpeng/ARM64 host remains `UNVERIFIED`.
+- The full 41-floor building directory, complete M5 planner, complete M6
+  content population and formal large-scale art/audio asset production remain
+  intentionally outside PVS-01 Gold. The current route uses authored B1,
+  calibration, service, 1F and side-route data only.
 
-## Top Quality Gaps / Controlled Defers
+None of these controlled limits is an open Fatal or Major blocker for the
+bounded PVS-01 Gold target. They must remain visible in the final report.
 
-- PVS-M01 — Owner: M2. Replace procedural silhouettes with the formal material
-  atlas and finish audio/particle/effect assets. Reason: Visual Bible fidelity
-  and premium feel. Evidence: six scenes are readable and within the render
-  budget, but no final atlas/audio asset exists. Revisit when the first formal
-  production art/audio batch is available; required before GOLD.
-- PVS-M02 — Owner: M5. Replace the PVS no-op AI wiring with the approved small
-  autonomous NPC routine and cleaner decision loop. Reason: the current route
-  proves systemic records but not independent behavior. Evidence: foundation
-  transitions/tests pass; the composition root intentionally contains authored
-  callbacks. Revisit at M5 implementation start; do not expand the PVS kernel
-  now.
-- PVS-M03 — Owner: PVS QA. Perform a human keyboard/mouse run through the six
-  scenes and record interaction recovery, pacing and effect readability.
-  Reason: the input probe proves backend selection and focus, not player intent.
-  Evidence: six bounded app runs and input probe pass; route replay is
-  UNVERIFIED. Revisit at the first human playtest session.
-- PVS-M04 — Owner: M6/content pipeline. Extend seed authoring/compiler coverage
-  for the currently documented quest, knowledge, terminal, observation and
-  relationship authoring records. Reason: the current authoring validator and
-  compiler intentionally cover the foundation seed subset; runtime contracts
-  already exist. Evidence: current seed/schema/invalid-seed gates pass and the
-  explicit cognition migration is fixed. Revisit before those records move from
-  runtime-authored PVS wiring into data-driven content.
+## Open counts
 
-No issue is deferred with an ownerless “later” condition.
+- Open Fatal: `0`
+- Open Major: `0`
+- Open Medium: `0` for the scoped Gold gates; controlled limits above are
+  disclosed quality/availability conditions, not silently closed findings
+- Open Low: `0`
+- Open P0: `0`
+- Open P1: `0`
 
-## Open Counts
+## Commit / remote receipt
 
-- Open Fatal: 0
-- Open Major: 0
-- Open Medium: 4
-- Open Low: 0
-- Open P0/P1: 0
+- Final Gold closure commit: the SHA printed in the final task receipt.
+- Remote: `https://github.com/Rainflowers686/WRITEOVER-07`
+- Branch: `main` only; no PR and no additional branch.
+- Remote visibility: pre-existing `PUBLIC`; no visibility mutation is authorized
+  or required by this PVS task.
+- Required final check: remote `refs/heads/main` SHA equals local `HEAD`, and
+  every required GitHub Actions job is green for that exact head.
 
-## Commits / Remote
+## Stop rule
 
-- PVS-01 code, route, validation records and final report commit:
-  a36904eb2161eb8127e711ae871b662100c024d8
-- PVS-01 documentation receipt commit:
-  1e45349636463493159692a5bffd0a2522f805de
-- Remote `main` verification: `1e45349636463493159692a5bffd0a2522f805de`
-- GitHub Actions CI run `33833247931`: SUCCESS
-- Remote repository visibility: PUBLIC (pre-existing; unchanged)
-- Final remote-verification receipt commit: this docs-only commit
-- Only `main` is in scope; no branch or PR is to be created.
-
-## Next Action
-
-After the scoped commits and remote verification, stop implementation and hand
-the Silver candidate to a human for the six-scene playtest. Do not start M5 AI,
-formal art production or broader game development in this task.
+After the final report, remote verification and cleanup are complete, stop this
+mission. Do not start M5/M6 implementation, broad art production, framework
+expansion, or unrelated refactoring from this ledger.

@@ -1,4 +1,71 @@
 {
   "schemaVersion": 1,
-  "npcs": []
+  "npcs": [
+    {
+      "id": "guard_7",
+      "name": "Guard 07",
+      "cognition": "SemiHuman",
+      "faction": "Security",
+      "role": "Guard",
+      "spawn": {"room": "room_b1_revival", "x": 8.5, "y": 5.5, "yaw": 2.11},
+      "health": 100,
+      "isCritical": false,
+      "perception": {"sightRange": 12.0, "sightFovRad": 2.09, "hearingRange": 8.0}
+    },
+    {
+      "id": "officer_davis",
+      "name": "Officer Davis",
+      "cognition": "SemiHuman",
+      "faction": "Security",
+      "role": "Guard",
+      "spawn": {"room": "room_b1_revival", "x": 19.5, "y": 5.5, "yaw": 2.61},
+      "health": 100,
+      "isCritical": false,
+      "perception": {"sightRange": 12.0, "sightFovRad": 2.09, "hearingRange": 8.0}
+    },
+    {
+      "id": "facility_security",
+      "name": "Facility Security",
+      "cognition": "SemiHuman",
+      "faction": "Security",
+      "role": "Administrator",
+      "spawn": {"room": "room_b1_revival", "x": 19.5, "y": 5.5, "yaw": 2.61},
+      "health": 100,
+      "isCritical": false,
+      "perception": {"sightRange": 12.0, "sightFovRad": 2.09, "hearingRange": 8.0}
+    },
+    {
+      "id": "cleaner_b1",
+      "name": "B1 Cleaner",
+      "cognition": "SemiHuman",
+      "faction": "Maintenance",
+      "role": "Cleaner",
+      "spawn": {"room": "room_b1_revival", "x": 15.5, "y": 4.0, "yaw": 2.42},
+      "health": 100,
+      "isCritical": false,
+      "perception": {"sightRange": 12.0, "sightFovRad": 2.09, "hearingRange": 8.0}
+    },
+    {
+      "id": "maintenance_tech",
+      "name": "Maintenance Technician",
+      "cognition": "SemiHuman",
+      "faction": "Maintenance",
+      "role": "Technician",
+      "spawn": {"room": "room_b1_revival", "x": 4.5, "y": 4.5, "yaw": 1.75},
+      "health": 100,
+      "isCritical": false,
+      "perception": {"sightRange": 12.0, "sightFovRad": 2.09, "hearingRange": 8.0}
+    },
+    {
+      "id": "npc_doctor",
+      "name": "Dr. Vale",
+      "cognition": "Full",
+      "faction": "Medical",
+      "role": "Doctor",
+      "spawn": {"room": "room_b1_revival", "x": 6.5, "y": 10.5, "yaw": 2.25},
+      "health": 100,
+      "isCritical": true,
+      "perception": {"sightRange": 15.0, "sightFovRad": 2.09, "hearingRange": 8.0}
+    }
+  ]
 }

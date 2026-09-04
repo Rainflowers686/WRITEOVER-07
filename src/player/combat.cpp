@@ -91,7 +91,9 @@ HitscanResult ResolveHitscan(const FireRequest& request,
     HitscanResult result;
     float yaw = request.yaw;
     float pitch = request.pitch;
-    ApplyShotJitter(weapon, 0.0f, yaw, pitch, sim_rng);  // spread_factor=0 for stub
+    ApplyShotJitter(weapon, request.spread_factor, yaw, pitch, sim_rng);
+    result.resolved_yaw = yaw;
+    result.resolved_pitch = pitch;
 
     const float dx = std::cos(yaw);
     const float dy = std::sin(yaw);

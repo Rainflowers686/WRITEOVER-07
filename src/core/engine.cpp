@@ -52,7 +52,11 @@ int Engine::Run(uint64_t max_frames) {
             stepped = true;
         }
 
-        if (!stepped && max_frames == 0) {
+        // Finite smoke/replay runs still need the fixed-tick wall-time pacing.
+        // Without this sleep the loop can render millions of duplicate frames
+        // between two sim ticks, consuming effect durations before gameplay
+        // can observe them and needlessly inflating CPU usage.
+        if (!stepped) {
             const double ahead_ms = fixed_dt_ms - accumulator.count();
             if (ahead_ms > 0.1) {
                 const auto wake = WallClock::now() + Duration(ahead_ms);

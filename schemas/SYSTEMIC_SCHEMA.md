@@ -115,6 +115,10 @@ Legacy `"class": "Guard"` migrates to `cognition=SemiHuman`, `role=Guard`.
 
 ## Validation
 
-The Python validator enforces closed enums, required fields, ranges, finite
-values, unique IDs, and cross-file references. It fails when no systemic seed
-exists.
+The Python validator enforces the five compiled root arrays, required entry
+fields, closed enums, ranges, finite values, unique IDs, and cross-file
+references. It also checks item location requirements and evidence/container
+capacity semantics. `questSeeds`, `knowledgeSeeds`, `terminalSeeds`, and
+`observationSeeds` are reserved lists: if present they must be empty until the
+corresponding compiler support exists, so authoring data cannot be silently
+dropped. The validator fails when no systemic seed exists.

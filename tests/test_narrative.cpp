@@ -2,6 +2,7 @@
 
 #include "writeover/narrative/causality.h"
 #include "writeover/narrative/dialog.h"
+#include "writeover/narrative/ending.h"
 #include "writeover/narrative/judge.h"
 #include "writeover/narrative/narrator.h"
 #include "writeover/narrative/storylet.h"
@@ -179,6 +180,27 @@ bool WorldCommandActionRoundTrip() {
     return !p1.powered;
 }
 
+bool EndingQuadrantsAndHiddenLoop() {
+    GlobalPlayerState state;
+    state.truth_exposure = 0.2f;
+    state.narrator_dominance = 0.8f;
+    WO_CHECK(ResolveEnding(state, false, false).macro == MacroEnding::Compliance);
+    state.truth_exposure = 0.8f;
+    WO_CHECK(ResolveEnding(state, false, false).macro == MacroEnding::Curator);
+    state.narrator_dominance = 0.2f;
+    WO_CHECK(ResolveEnding(state, false, false).macro == MacroEnding::Overwrite);
+    state.truth_exposure = 0.2f;
+    WO_CHECK(ResolveEnding(state, false, false).macro == MacroEnding::Escape);
+    state.truth_exposure = 0.8f;
+    state.self_knowledge = 0.8f;
+    state.timeline_instability = 0.7f;
+    state.residual_memory_pressure = 0.6f;
+    state.operator_room_found = true;
+    state.previous_cycle_evidence_count = 3;
+    WO_CHECK(!ResolveEnding(state, true, false).hidden_loop);
+    return ResolveEnding(state, true, true).hidden_loop;
+}
+
 } // namespace
 
 void RegisterNarrativeTests(TestHarness& test) {
@@ -191,6 +213,7 @@ void RegisterNarrativeTests(TestHarness& test) {
     test.Add("dialog.queue_expiry", &DialogQueueExpiry);
     test.Add("judge.checkpoint_basics", &JudgeCheckpointBasics);
     test.Add("storylet.world_command_round_trip", &WorldCommandActionRoundTrip);
+    test.Add("ending.quadrants_and_hidden_loop", &EndingQuadrantsAndHiddenLoop);
 }
 
 } // namespace writeover

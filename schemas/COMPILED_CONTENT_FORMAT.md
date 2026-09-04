@@ -10,6 +10,7 @@
 room:    magic=0x574F4331 ("WOC1") version=1
 facts:   magic=0x574F4331 version=1
 storylets: magic=0x574F4331 version=1
+npcs:     magic=0x574E5043 ("WNPC") version=1
 ```
 
 ## room .woc（与 world/room.cpp DeserializeRoom 对齐）
@@ -54,10 +55,25 @@ per storylet:
 <II> <I count> per fact: <utf8 id> <B predicate> <B initial> <I subject>
 ```
 
+## npcs/npcs.bin（与 ai/npc_profiles.cpp 对齐）
+
+```
+<II> <I profileCount>
+per profile:
+   <Q npcId> <Q dataKey> <Q spawnRoom>
+   <BBB cognition, faction, role>
+   <ffff spawn.x, spawn.y, spawn.z, spawn.yaw>
+   <H health> <B isCritical>
+   <fff sightRange, sightFovRad, hearingRange>
+```
+
+The profile binary contains only bounded runtime data. Persistent identity is
+still loaded from the systemic seed and must match the profile ID.
+
 ## 确定性
 
-- 文件扫描排序（rooms/*.json 等按文件名）。
-- 稳定 id：文件内按 id 排序分配 1..N（storylet/fact/room 各自命名空间）。
+- 文件扫描排序（rooms/*.json 等按文件名）；NPC profiles are sorted by id.
+- 稳定 id：FNV-1a64 over the canonical string id, per domain.
 - 同一输入集 → 字节级相同产物（CI `--check` 校验）。
 
 ## 管线命令
@@ -70,4 +86,4 @@ mapc.exe data/rooms/room_01_calibration.woc                        # 产物校�
 
 ## 已提交产物（repo_seed/data/）
 
-rooms/room_01_calibration.woc（2180B）· storylets/storylets.bin · facts/facts.bin
+rooms/*.woc · storylets/storylets.bin · facts/facts.bin · npcs/npcs.bin

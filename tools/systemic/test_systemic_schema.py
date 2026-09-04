@@ -75,11 +75,53 @@ def test_bad_range():
     check("bad_range_rejected", not ok)
 
 
+def test_required_array():
+    data = base()
+    del data["evidenceSeeds"]
+    ok, _ = validate_obj(data)
+    check("required_array_rejected", not ok)
+
+
+def test_unknown_known_identity():
+    data = base()
+    data["actors"][0]["knownIdentities"] = ["missing_actor"]
+    ok, _ = validate_obj(data)
+    check("unknown_known_identity_rejected", not ok)
+
+
+def test_bad_item_location():
+    data = base()
+    data["items"] = [{"id": "i1", "type": "Tool", "location": "Container",
+                      "provenanceTags": ["tool"], "container": "missing_container"}]
+    ok, _ = validate_obj(data)
+    check("bad_item_location_rejected", not ok)
+
+
+def test_bad_evidence_type():
+    data = base()
+    data["evidenceSeeds"] = [{"id": "e1", "type": "NotEvidence",
+                               "subject": "thing", "room": "room"}]
+    ok, _ = validate_obj(data)
+    check("bad_evidence_type_rejected", not ok)
+
+
+def test_reserved_uncompiled_section():
+    data = base()
+    data["questSeeds"] = [{"id": "q1"}]
+    ok, _ = validate_obj(data)
+    check("reserved_uncompiled_section_rejected", not ok)
+
+
 if __name__ == "__main__":
     test_positive()
     test_duplicate_actor()
     test_invalid_enum()
     test_bad_cross_ref()
     test_bad_range()
-    print(f"{5 - len(FAILURES)}/5 systemic schema tests passed")
+    test_required_array()
+    test_unknown_known_identity()
+    test_bad_item_location()
+    test_bad_evidence_type()
+    test_reserved_uncompiled_section()
+    print(f"{10 - len(FAILURES)}/10 systemic schema tests passed")
     sys.exit(1 if FAILURES else 0)

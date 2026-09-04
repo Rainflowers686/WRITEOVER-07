@@ -2,7 +2,8 @@
 """WRITEOVER-07 content compiler (authoring JSON -> compiled binary).
 
 Runtime C++ reads ONLY the compiled binaries; JSON is never parsed at runtime
-(closure of M-015). The compiler is stdlib-only (json + struct) and
+(closure of M-015). NPC profiles are emitted as `npcs/npcs.bin` and loaded by
+the production adapter. The compiler is stdlib-only (json + struct) and
 deterministic: stable numeric IDs use FNV-1a64 over the canonical string id,
 so identical inputs always produce identical binaries independent of insertion
 order. Collision-checked per run.
@@ -19,14 +20,34 @@ Usage:
 """
 import argparse
 import json
+import math
 import struct
 import sys
 from pathlib import Path
 
 WOC_MAGIC = 0x574F4331  # "WOC1"
 WOC_VERSION = 1
+NPC_MAGIC = 0x574E5043  # "WNPC"
+NPC_VERSION = 1
 
 ERRORS = []
+
+NPC_COGNITION = {"Full", "SemiHuman"}
+NPC_FACTIONS = {"GeneralStaff", "Security", "Medical", "Research",
+                 "Maintenance", "Executive", "Detained", "Civilian"}
+NPC_ROLES = {"Guard", "Cleaner", "Doctor", "Researcher", "Technician",
+             "Administrator", "Executive", "Detained", "Civilian", "Other"}
+NPC_LEGACY_CLASSES = {"Full", "SemiHuman", "Guard"}
+NPC_FACTION_IDS = {
+    "GeneralStaff": 0, "Security": 1, "Medical": 2, "Research": 3,
+    "Maintenance": 4, "Executive": 5, "Detained": 6, "Civilian": 7,
+}
+NPC_ROLE_IDS = {
+    "Guard": 0, "Cleaner": 1, "Doctor": 2, "Researcher": 3,
+    "Technician": 4, "Administrator": 5, "Executive": 6, "Detained": 7,
+    "Civilian": 8, "Other": 9,
+}
+NPC_COGNITION_IDS = {"Full": 0, "SemiHuman": 1}
 
 
 def fail(path, message):
@@ -85,11 +106,154 @@ def load_id_registry(domain: str, paths, id_key="id"):
             fail(path.name, f"invalid JSON: {exc}")
             continue
         entries = data.get("npcs", data.get("storylets", data.get("facts", [])))
-        for entry in sorted(entries, key=lambda k: k.get(id_key, "")):
+        if not isinstance(entries, list):
+            fail(path.name, f"{domain} entries must be a list")
+            continue
+        for entry in sorted(entries, key=lambda k: k.get(id_key, "")
+                             if isinstance(k, dict) else ""):
+            if not isinstance(entry, dict):
+                continue
             eid = entry.get(id_key, "")
             if eid and eid not in registry:
                 registry[eid] = stable_id64(eid)
     return registry
+
+
+def validate_npc_file(path: Path, seen_ids, room_ids=None):
+    """Validate the runtime-facing NPC registry without compiling a second
+    NPC binary. Identity is loaded from the systemic seed; this file owns the
+    authored spawn/profile seam used by rooms and the PVS runtime adapter."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        fail(path.name, f"invalid JSON: {exc}")
+        return
+    if data.get("schemaVersion") != 1:
+        fail(path.name, "expected schemaVersion 1")
+    entries = data.get("npcs", [])
+    if not isinstance(entries, list):
+        fail(path.name, "npcs must be a list")
+        return
+    for index, npc in enumerate(entries):
+        item_path = f"{path.name}:npcs[{index}]"
+        if not isinstance(npc, dict):
+            fail(item_path, "entry must be an object")
+            continue
+        npc_id = npc.get("id")
+        if not isinstance(npc_id, str) or not npc_id:
+            fail(item_path, "id is required")
+            continue
+        if npc_id in seen_ids:
+            fail(item_path, f"duplicate npc id {npc_id}")
+        seen_ids.add(npc_id)
+        legacy = npc.get("class")
+        if legacy is not None and legacy not in NPC_LEGACY_CLASSES:
+            fail(item_path, f"bad legacy class {legacy}")
+        cognition = npc.get("cognition")
+        if cognition not in NPC_COGNITION:
+            fail(item_path, "cognition must be Full or SemiHuman")
+        if npc.get("faction") not in NPC_FACTIONS:
+            fail(item_path, "bad faction")
+        if npc.get("role") not in NPC_ROLES:
+            fail(item_path, "bad role")
+        spawn = npc.get("spawn")
+        if not isinstance(spawn, dict) or not isinstance(spawn.get("room"), str) or not spawn["room"]:
+            fail(item_path, "spawn.room is required")
+        else:
+            if room_ids is not None and spawn["room"] not in room_ids:
+                fail(item_path, f"unknown spawn.room '{spawn['room']}'")
+            for field in ("x", "y", "yaw"):
+                value = spawn.get(field, 0.0)
+                if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
+                    fail(item_path, f"spawn.{field} must be finite")
+        health = npc.get("health", 100)
+        if not isinstance(health, int) or isinstance(health, bool) or not 1 <= health <= 1000:
+            fail(item_path, "health must be an integer in 1..1000")
+        if not isinstance(npc.get("isCritical", False), bool):
+            fail(item_path, "isCritical must be bool")
+        perception = npc.get("perception", {})
+        if not isinstance(perception, dict):
+            fail(item_path, "perception must be an object")
+        else:
+            ranges = (("sightRange", 0.0, 64.0),
+                      ("sightFovRad", 0.0, 6.2832),
+                      ("hearingRange", 0.0, 64.0))
+            for field, lower, upper in ranges:
+                value = perception.get(field, 0.0)
+                if (not isinstance(value, (int, float)) or
+                        not math.isfinite(float(value)) or
+                        not lower <= float(value) <= upper):
+                    fail(item_path, f"perception.{field} must be finite in {lower}..{upper}")
+
+
+def validate_npc_seed_parity(data_dir: Path, npc_ids):
+    """Keep the authored spawn/profile registry and systemic identity seed
+    from silently describing different NPC populations."""
+    seed_path = data_dir / "systemic" / "systemic_seed.json"
+    if not seed_path.exists():
+        return
+    try:
+        seed = json.loads(seed_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        fail(seed_path.name, f"invalid JSON: {exc}")
+        return
+    actors = seed.get("actors", [])
+    if not isinstance(actors, list):
+        fail(seed_path.name, "actors must be a list")
+        return
+    actor_map = {actor.get("id"): actor for actor in actors
+                 if isinstance(actor, dict) and isinstance(actor.get("id"), str)}
+    for npc_id in sorted(npc_ids):
+        if npc_id not in actor_map:
+            fail("npcs/systemic parity", f"NPC '{npc_id}' has no systemic actor")
+    for actor_id in sorted(actor_map):
+        if actor_id not in npc_ids:
+            fail("npcs/systemic parity", f"systemic actor '{actor_id}' has no NPC profile")
+
+
+def compile_npc_profiles(npc_paths, out_dir: Path):
+    """Compile validated NPC spawn/profile data for the production runtime.
+
+    The runtime consumes this bounded binary, never the authoring JSON. The
+    stable string IDs match the systemic actor seed and room file IDs.
+    """
+    entries = []
+    for path in sorted(npc_paths):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        for npc in data.get("npcs", []):
+            if isinstance(npc, dict) and isinstance(npc.get("id"), str):
+                entries.append(npc)
+    entries.sort(key=lambda npc: npc["id"])
+    body = bytearray(struct.pack("<II", NPC_MAGIC, NPC_VERSION))
+    body += struct.pack("<I", len(entries))
+    for npc in entries:
+        spawn = npc["spawn"]
+        perception = npc.get("perception", {})
+        body += struct.pack(
+            "<QQQBBBffffHBfff",
+            stable_id64(npc["id"]),
+            stable_id64(npc["id"]),
+            stable_id64(spawn["room"]),
+            NPC_COGNITION_IDS[npc["cognition"]],
+            NPC_FACTION_IDS[npc["faction"]],
+            NPC_ROLE_IDS[npc["role"]],
+            float(spawn.get("x", 0.0)),
+            float(spawn.get("y", 0.0)),
+            float(spawn.get("z", 0.0)),
+            float(spawn.get("yaw", 0.0)),
+            int(npc.get("health", 100)),
+            1 if npc.get("isCritical", False) else 0,
+            float(perception.get("sightRange", 0.0)),
+            float(perception.get("sightFovRad", 0.0)),
+            float(perception.get("hearingRange", 0.0)),
+        )
+    out = out_dir / "npcs" / "npcs.bin"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(body)
+    print(f"npcs: {len(entries)} -> {out.name} ({len(body)} bytes)")
 
 
 def compile_room(json_path: Path, out_dir: Path, npc_registry, storylet_registry):
@@ -354,6 +518,12 @@ def _compile_all(data_dir: Path, out_dir: Path):
     fact_files = sorted(data_dir.glob("facts/*.json"))
     storylet_files = sorted(data_dir.glob("storylets/*.json"))
     npc_files = sorted(data_dir.glob("npcs/*.json"))
+    room_ids = {path.stem for path in room_files}
+
+    npc_ids = set()
+    for path in npc_files:
+        validate_npc_file(path, npc_ids, room_ids)
+    validate_npc_seed_parity(data_dir, npc_ids)
 
     # Deterministic stable id registries per domain (FNV-1a64 over string id),
     # then collision-checked per domain (Issue E.2).
@@ -373,6 +543,8 @@ def _compile_all(data_dir: Path, out_dir: Path):
         compile_facts(path, out_dir)
     for path in storylet_files:
         compile_storylets(path, out_dir, fact_registry)
+    if not ERRORS:
+        compile_npc_profiles(npc_files, out_dir)
 
 
 if __name__ == "__main__":

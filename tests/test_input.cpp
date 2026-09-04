@@ -170,11 +170,12 @@ private:
 bool RuntimeUsesRawPointerDelta() {
     auto kb = std::make_unique<FakeKeyboardBackend>();
     auto ms = std::make_unique<RawLikeMouseBackend>();
+    RawLikeMouseBackend* mouse = ms.get();
     InputRuntime rt(std::move(kb), std::move(ms));
     rt.Init();
     InputState state;
     InputMapper mapper;
-    ms->FeedMovement(40.0f, -12.0f);
+    mouse->FeedMovement(40.0f, -12.0f);
     rt.SampleTick(state, mapper);
     WO_CHECK_NEAR(state.mouse_delta.x, 40.0f, 0.001f);
     WO_CHECK_NEAR(state.mouse_delta.y, -12.0f, 0.001f);
@@ -495,6 +496,8 @@ bool FocusRegainNoHugeFirstDelta() {
 } // namespace
 
 void RegisterInputTests(TestHarness& test) {
+    test.Add("input.runtime_uses_raw_pointer_delta",
+             &RuntimeUsesRawPointerDelta);
     test.Add("input.mouse_backend_delta_reaches_input_state",
              &MouseBackendDeltaReachesInputState);
     test.Add("input.mouse_backend_delta_reaches_player_look",

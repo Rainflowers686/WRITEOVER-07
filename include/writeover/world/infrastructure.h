@@ -40,7 +40,9 @@ public:
     size_t SystemCount() const { return systems_.size(); }
 
     void Save(Serializer& s) const;
-    void Load(Deserializer& d);
+    // Fail-closed bounded restore. Existing callers may ignore the bool, but
+    // world save loading must reject malformed inner records before commit.
+    bool Load(Deserializer& d);
 
 private:
     std::vector<DoorState> doors_;

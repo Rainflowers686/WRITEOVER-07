@@ -179,7 +179,6 @@ bool IsObservationSourceType(uint8_t v) { return v <= static_cast<uint8_t>(Obser
 bool IsSystemicEventType(uint8_t v) { return v <= static_cast<uint8_t>(SystemicEventType::SocialExchange); }
 bool IsLegality(uint8_t v) { return v <= static_cast<uint8_t>(LegalityClass::JustifiedOrUnclear); }
 bool IsOutcome(uint8_t v) { return v <= static_cast<uint8_t>(OutcomeType::Undetected); }
-bool IsIdentityReaction(uint8_t v) { return v <= static_cast<uint8_t>(IdentityReaction::HelpCoverUp); }
 
 bool WriteActor(Serializer& s, const ActorRecord& a) {
     WriteId(s, a.id);
@@ -735,98 +734,6 @@ bool ReadSystemicEvent(Deserializer& d, SystemicEvent& e) {
     e.legality = static_cast<LegalityClass>(leg);
     e.outcome = static_cast<OutcomeType>(out);
     return true;
-}
-
-bool HasDuplicateIds(const std::vector<NpcId>& ids) {
-    std::set<uint64_t> seen;
-    for (const auto& id : ids) {
-        if (id.GetValue() == 0 || !seen.insert(id.GetValue()).second) return true;
-    }
-    return false;
-}
-bool HasDuplicateIds(const std::vector<ItemId>& ids) {
-    std::set<uint64_t> seen;
-    for (const auto& id : ids) {
-        if (id.GetValue() == 0 || !seen.insert(id.GetValue()).second) return true;
-    }
-    return false;
-}
-bool HasDuplicateIds(const std::vector<EntityId>& ids) {
-    std::set<uint64_t> seen;
-    for (const auto& id : ids) {
-        if (id.GetValue() == 0 || !seen.insert(id.GetValue()).second) return true;
-    }
-    return false;
-}
-bool HasDuplicateIds(const std::vector<ContainerId>& ids) {
-    std::set<uint64_t> seen;
-    for (const auto& id : ids) {
-        if (id.GetValue() == 0 || !seen.insert(id.GetValue()).second) return true;
-    }
-    return false;
-}
-bool HasDuplicateIds(const std::vector<EvidenceId>& ids) {
-    std::set<uint64_t> seen;
-    for (const auto& id : ids) {
-        if (id.GetValue() == 0 || !seen.insert(id.GetValue()).second) return true;
-    }
-    return false;
-}
-bool HasDuplicateIds(const std::vector<MemoryId>& ids) {
-    std::set<uint64_t> seen;
-    for (const auto& id : ids) {
-        if (id.GetValue() == 0 || !seen.insert(id.GetValue()).second) return true;
-    }
-    return false;
-}
-bool HasDuplicateIds(const std::vector<PromiseId>& ids) {
-    std::set<uint64_t> seen;
-    for (const auto& id : ids) {
-        if (id.GetValue() == 0 || !seen.insert(id.GetValue()).second) return true;
-    }
-    return false;
-}
-bool HasDuplicateIds(const std::vector<QuestId>& ids) {
-    std::set<uint64_t> seen;
-    for (const auto& id : ids) {
-        if (id.GetValue() == 0 || !seen.insert(id.GetValue()).second) return true;
-    }
-    return false;
-}
-bool HasDuplicateIds(const std::vector<KnowledgeAssetId>& ids) {
-    std::set<uint64_t> seen;
-    for (const auto& id : ids) {
-        if (id.GetValue() == 0 || !seen.insert(id.GetValue()).second) return true;
-    }
-    return false;
-}
-bool HasDuplicateIds(const std::vector<SocialExchangeId>& ids) {
-    std::set<uint64_t> seen;
-    for (const auto& id : ids) {
-        if (id.GetValue() == 0 || !seen.insert(id.GetValue()).second) return true;
-    }
-    return false;
-}
-bool HasDuplicateIds(const std::vector<TerminalId>& ids) {
-    std::set<uint64_t> seen;
-    for (const auto& id : ids) {
-        if (id.GetValue() == 0 || !seen.insert(id.GetValue()).second) return true;
-    }
-    return false;
-}
-bool HasDuplicateIds(const std::vector<ObservationSourceId>& ids) {
-    std::set<uint64_t> seen;
-    for (const auto& id : ids) {
-        if (id.GetValue() == 0 || !seen.insert(id.GetValue()).second) return true;
-    }
-    return false;
-}
-bool HasDuplicateIds(const std::vector<EventId>& ids) {
-    std::set<uint64_t> seen;
-    for (const auto& id : ids) {
-        if (id.GetValue() == 0 || !seen.insert(id.GetValue()).second) return true;
-    }
-    return false;
 }
 
 template <typename T>

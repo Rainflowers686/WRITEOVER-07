@@ -179,11 +179,52 @@ def test_hash_collision_detected():
     cc.ERRORS = []
 
 
+def test_invalid_npc_profile_rejected():
+    room = {"schemaVersion": 1, "gridWidth": 1, "gridHeight": 1}
+    npcs = {
+        "schemaVersion": 1,
+        "npcs": [{
+            "id": "guard_bad", "cognition": "Light", "faction": "Security",
+            "role": "Guard", "spawn": {"room": "r1", "x": 0.0, "y": 0.0, "yaw": 0.0},
+            "health": 50, "isCritical": False,
+            "perception": {"sightRange": 12.0, "sightFovRad": 2.09, "hearingRange": 8.0},
+        }],
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        ok, errs = compile_to(Path(tmp), room, npcs_json=npcs)
+        check("invalid_npc_profile_rejected",
+              not ok and any("cognition must be Full or SemiHuman" in e for e in errs))
+
+
+def test_npc_profile_binary_emitted():
+    room = {"schemaVersion": 1, "gridWidth": 1, "gridHeight": 1}
+    npcs = {
+        "schemaVersion": 1,
+        "npcs": [{
+            "id": "guard_01", "cognition": "SemiHuman", "faction": "Security",
+            "role": "Guard",
+            "spawn": {"room": "r1", "x": 1.0, "y": 2.0, "yaw": 0.5},
+            "health": 100, "isCritical": False,
+            "perception": {"sightRange": 12.0, "sightFovRad": 2.09,
+                            "hearingRange": 8.0},
+        }],
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        ok, _ = compile_to(Path(tmp), room, npcs_json=npcs)
+        output = Path(tmp) / "npcs" / "npcs.bin"
+        header = output.read_bytes() if output.exists() else b""
+        parsed = struct.unpack_from("<III", header, 0) if len(header) >= 12 else ()
+        check("npc_profile_binary_emitted",
+              ok and parsed == (cc.NPC_MAGIC, cc.NPC_VERSION, 1))
+
+
 if __name__ == "__main__":
     test_light_zero_preserved()
     test_stable_ids_survive_insertion()
     test_unknown_npc_ref_rejected()
     test_unknown_storylet_ref_rejected()
     test_hash_collision_detected()
-    print(f"{5 - len(FAILURES)}/5 content tests passed")
+    test_invalid_npc_profile_rejected()
+    test_npc_profile_binary_emitted()
+    print(f"{7 - len(FAILURES)}/7 content tests passed")
     sys.exit(1 if FAILURES else 0)
