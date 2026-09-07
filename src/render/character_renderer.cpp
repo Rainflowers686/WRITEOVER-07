@@ -42,16 +42,6 @@ Color ScaleColor(const Color& value, float scale, uint8_t max_value = 255) {
                                                   value.b * scale))};
 }
 
-Color AddColor(const Color& left, const Color& right, float amount,
-               uint8_t max_value = 255) {
-    return {static_cast<uint8_t>(std::min<float>(max_value,
-                                                  left.r + right.r * amount)),
-            static_cast<uint8_t>(std::min<float>(max_value,
-                                                  left.g + right.g * amount)),
-            static_cast<uint8_t>(std::min<float>(max_value,
-                                                  left.b + right.b * amount))};
-}
-
 CharCell MakeCell(char32_t glyph, const Color& fg, const Color& bg,
                   uint8_t flags = 0) {
     CharCell cell;
@@ -402,12 +392,6 @@ float FovPerColumn(int cell_w, float focal_cells_per_unit) {
     return 2.0f * std::atan(0.5f * effective_width /
                              focal_cells_per_unit) /
            static_cast<float>(cell_w);
-}
-
-int LuminanceBand(float distance) {
-    if (distance < 5.0f) return 0;
-    if (distance < 12.0f) return 1;
-    return 2;
 }
 
 Color SpriteForeground(const CharacterArtAsset& asset, char32_t glyph,
