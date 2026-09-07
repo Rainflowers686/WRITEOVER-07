@@ -259,6 +259,62 @@ bool SystemicDiscoveryObservationOnly() {
     return true;
 }
 
+bool SystemicCredentialPossessionCounterfactuals() {
+    SystemicWorld w;
+    const EntityId body = EntityId::New(20);
+    const EntityId other = EntityId::New(21);
+    const EntityId player = EntityId::New(1);
+    WO_CHECK(w.AddActor(MakeGuard(NpcId::New(20))));
+    WO_CHECK(w.AddActor(MakeGuard(NpcId::New(21))));
+    ItemRecord badge = MakeBadge(ItemId::New(2), body);
+    WO_CHECK(w.AddItem(badge));
+
+    // ReaderAcceptsItem is credential-only.  The possession seam prevents a
+    // caller from treating a valid badge still on a body as the player's.
+    WO_CHECK(w.ReaderAcceptsItem(ItemId::New(2), 2));
+    WO_CHECK(!w.ItemHeldBy(ItemId::New(2), player));
+
+    WO_CHECK(w.TransferItem(ItemId::New(2), other));
+    WO_CHECK(!w.ItemHeldBy(ItemId::New(2), player));
+    WO_CHECK(w.TransferItem(ItemId::New(2), player));
+    WO_CHECK(w.ItemHeldBy(ItemId::New(2), player));
+
+    WO_CHECK(w.DropItem(ItemId::New(2), Vec3{2, 2, 0}, RoomId::New(1), 30));
+    WO_CHECK(!w.ItemHeldBy(ItemId::New(2), player));
+    WO_CHECK(!w.ReaderAcceptsItem(ItemId::New(999), 2));
+
+    ItemRecord revoked = MakeBadge(ItemId::New(3), player);
+    revoked.revoked = true;
+    WO_CHECK(w.AddItem(revoked));
+    WO_CHECK(w.ItemHeldBy(ItemId::New(3), player));
+    WO_CHECK(!w.ReaderAcceptsItem(ItemId::New(3), 2));
+    return true;
+}
+
+bool SystemicMemoryRefreshDoesNotDuplicate() {
+    SystemicWorld w;
+    MemoryRecord memory;
+    memory.id = MemoryId::New(50);
+    memory.npc = EntityId::New(10);
+    memory.subject = EntityId::New(1);
+    memory.target = EntityId::New(1);
+    memory.room = RoomId::New(1);
+    memory.source = KnowledgeSource::DirectWitness;
+    memory.tags.push_back("player_observed");
+    WO_CHECK(w.AddMemory(memory));
+    WO_CHECK(w.RefreshMemory(memory.id, 120, 0.9f, 0.95f));
+    WO_CHECK(w.MemoryCount() == 1);
+    const MemoryRecord* refreshed = w.GetMemory(memory.id);
+    WO_CHECK(refreshed != nullptr);
+    if (!refreshed) return false;
+    WO_CHECK(refreshed->frame == 120);
+    WO_CHECK(refreshed->confidence == 0.9f);
+    WO_CHECK(refreshed->salience == 0.95f);
+    WO_CHECK(!w.RefreshMemory(memory.id, 119, 0.5f, 0.5f));
+    WO_CHECK(!w.RefreshMemory(MemoryId::New(51), 121, 0.5f, 0.5f));
+    return true;
+}
+
 bool SystemicDiscoveryMedicalDoesNotEscalateSecurity() {
     SystemicWorld w;
     WO_CHECK(w.AddContainer(MakeCart(ContainerId::New(1), 0.6f)));
@@ -645,6 +701,8 @@ bool SystemicRuntimeSeedLoadsFile();
 void RegisterSystemicTests(TestHarness& test) {
     test.Add("systemic.body_concealment_chain", &SystemicBodyConcealmentChain);
     test.Add("systemic.stolen_identity_chain", &SystemicStolenIdentityChain);
+    test.Add("systemic.credential_possession_counterfactuals", &SystemicCredentialPossessionCounterfactuals);
+    test.Add("systemic.memory_refresh_no_duplicate", &SystemicMemoryRefreshDoesNotDuplicate);
     test.Add("systemic.promise_chain", &SystemicPromiseChain);
     test.Add("systemic.body_drag_lifecycle", &SystemicBodyDragLifecycle);
     test.Add("systemic.body_hide_rejects_alive", &SystemicBodyHideRejectsAlive);

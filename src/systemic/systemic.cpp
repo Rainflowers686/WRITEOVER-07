@@ -1605,6 +1605,21 @@ std::vector<MemoryRecord> SystemicWorld::MemoriesOf(EntityId actor) const {
     return out;
 }
 
+bool SystemicWorld::RefreshMemory(MemoryId id, uint64_t frame,
+                                   float confidence, float salience) {
+    if (!id.IsValid() || !IsUnit(confidence) || !IsUnit(salience)) return false;
+    for (auto& memory : memories_) {
+        if (memory.id == id) {
+            if (frame < memory.frame) return false;
+            memory.frame = frame;
+            memory.confidence = confidence;
+            memory.salience = salience;
+            return true;
+        }
+    }
+    return false;
+}
+
 bool SystemicWorld::SetRelationship(const RelationshipRecord& rel) {
     if (!rel.a.IsValid() || !rel.b.IsValid() || rel.a == rel.b) return false;
     if (!IsUnit(rel.trust) || !IsUnit(rel.fear) || !IsUnit(rel.respect) ||
@@ -1974,6 +1989,13 @@ bool SystemicWorld::ReaderAcceptsItem(ItemId id, uint8_t required_clearance) con
     const ItemRecord* item = GetItem(id);
     if (!item || item->revoked) return false;
     return item->credential_level >= required_clearance;
+}
+
+bool SystemicWorld::ItemHeldBy(ItemId id, EntityId holder) const {
+    if (!id.IsValid() || !holder.IsValid()) return false;
+    const ItemRecord* item = GetItem(id);
+    return item != nullptr && item->location == ItemLocationKind::Holder &&
+           item->current_holder == holder;
 }
 
 bool SystemicWorld::NpcAcceptsPresentedIdentity(NpcId observer, EntityId expected_owner,

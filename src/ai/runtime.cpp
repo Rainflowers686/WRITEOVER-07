@@ -14,6 +14,8 @@ constexpr size_t kMaxReceipts = 1024;
 constexpr size_t kMaxNoises = 64;
 constexpr uint64_t kDecisionPeriodFrames = 12; // 10 Hz at 120 Hz sim
 constexpr uint64_t kMemoryIdBase = 0xA100000000000000ull;
+constexpr uint64_t kMemoryRefreshWindowFrames = 600; // five seconds at 120 Hz
+constexpr uint64_t kDiscoveryInspectionFrames = 60; // 0.5 seconds at 120 Hz
 constexpr float kNpcRadius = 0.42f;
 
 bool IsNpcState(uint8_t value) {
@@ -87,6 +89,18 @@ bool AutonomousNpcSystem::ConfigureBodyDiscovery(NpcId cleaner, EntityId body,
     discovery_body_ = body;
     discovery_container_ = container;
     discovery_due_frame_ = due_frame;
+    discovery_inspect_until_frame_ = 0;
+    discovery_complete_ = false;
+    return true;
+}
+
+bool AutonomousNpcSystem::ArmBodyDiscovery(uint64_t due_frame) {
+    if (!cleaner_npc_.IsValid() || !discovery_body_.IsValid() ||
+        !discovery_container_.IsValid() || FindRuntimeNpc(cleaner_npc_) == nullptr) {
+        return false;
+    }
+    discovery_due_frame_ = due_frame;
+    discovery_inspect_until_frame_ = 0;
     discovery_complete_ = false;
     return true;
 }
@@ -115,23 +129,48 @@ bool AutonomousNpcSystem::AddObservationMemory(const RuntimeNpc& runtime,
                                                 const PerceptionResult& perception,
                                                 uint64_t frame) {
     if (systemic_ == nullptr || !runtime.instance.id.IsValid()) return false;
+    const bool sees_player = perception.sees_player;
+    const MemoryKind kind = sees_player ? MemoryKind::Observation
+                                        : MemoryKind::EventRecall;
+    const KnowledgeSource source = sees_player ? KnowledgeSource::DirectWitness
+                                               : KnowledgeSource::HeardSound;
+    const char* semantic_tag = sees_player ? "player_observed" : "gunshot_heard";
+    const float salience = sees_player ? 0.85f : 0.55f;
+    const float confidence = sees_player ? perception.sight_confidence
+                                        : std::clamp(perception.noise_loudness, 0.0f, 1.0f);
+    const EntityId npc = EntityId::New(runtime.instance.id.GetValue());
+    const EntityId player = EntityId::New(1);
+
+    // Perception runs at 10 Hz, but a continuous sight/noise stimulus is one
+    // semantic fact. Refresh the existing record for a bounded window instead
+    // of manufacturing a new durable memory on every decision interval.
+    const std::vector<MemoryRecord> prior = systemic_->MemoriesOf(npc);
+    for (auto it = prior.rbegin(); it != prior.rend(); ++it) {
+        const bool same_tag = std::find(it->tags.begin(), it->tags.end(), semantic_tag) !=
+                              it->tags.end();
+        if (it->kind == kind && it->source == source && it->subject == player &&
+            it->target == player && it->room == runtime.room && same_tag &&
+            frame >= it->frame && frame - it->frame <= kMemoryRefreshWindowFrames) {
+            return systemic_->RefreshMemory(it->id, frame,
+                                             std::max(it->confidence, confidence),
+                                             std::max(it->salience, salience));
+        }
+    }
+
     MemoryRecord memory;
     memory.id = MemoryId::New(NextMemoryId(*systemic_));
-    memory.npc = EntityId::New(runtime.instance.id.GetValue());
-    memory.kind = perception.sees_player ? MemoryKind::Observation
-                                         : MemoryKind::EventRecall;
+    memory.npc = npc;
+    memory.kind = kind;
     memory.subject = EntityId::New(1);
     memory.target = EntityId::New(1);
     memory.room = runtime.room;
     memory.frame = frame;
-    memory.salience = perception.sees_player ? 0.85f : 0.55f;
-    memory.confidence = perception.sees_player ? perception.sight_confidence :
-                        std::clamp(perception.noise_loudness, 0.0f, 1.0f);
-    memory.source = perception.sees_player ? KnowledgeSource::DirectWitness
-                                           : KnowledgeSource::HeardSound;
-    memory.text_key = perception.sees_player ? ResourceId::New(0xB1001)
-                                             : ResourceId::New(0xB1002);
-    memory.tags.push_back(perception.sees_player ? "player_observed" : "gunshot_heard");
+    memory.salience = salience;
+    memory.confidence = confidence;
+    memory.source = source;
+    memory.text_key = sees_player ? ResourceId::New(0xB1001)
+                                  : ResourceId::New(0xB1002);
+    memory.tags.push_back(semantic_tag);
     return systemic_->AddMemory(memory);
 }
 
@@ -184,8 +223,18 @@ void AutonomousNpcSystem::Tick(uint64_t frame) {
                 events_->Post(EventNpcStateChange{runtime.instance.id,
                                                    static_cast<uint8_t>(chosen)},
                                EventKind::Mutation,
-                               EntityId::New(runtime.instance.id.GetValue()),
-                               EntityId::New(1), EventId::Invalid(), frame);
+                                EntityId::New(runtime.instance.id.GetValue()),
+                                EntityId::New(1), EventId::Invalid(), frame);
+                // A guard with newly acquired line of sight creates a real,
+                // bounded NPC->player consequence.  PlayerModule applies the
+                // authoritative health mutation when this event is dispatched.
+                if (chosen == NPCState::Alert && runtime.instance.role == Role::Guard) {
+                    events_->Post(EventPlayerDamage{8, 0,
+                                                    EntityId::New(runtime.instance.id.GetValue())},
+                                  EventKind::Mutation,
+                                  EntityId::New(runtime.instance.id.GetValue()),
+                                  EntityId::New(1), EventId::Invalid(), frame);
+                }
             }
             if (runtime.instance.cognition == CognitionTier::Full &&
                 perception.sees_player && events_ != nullptr) {
@@ -205,10 +254,76 @@ void AutonomousNpcSystem::Tick(uint64_t frame) {
 bool AutonomousNpcSystem::TryBodyDiscovery(uint64_t frame) {
     if (discovery_complete_ || systemic_ == nullptr || !cleaner_npc_.IsValid() ||
         frame < discovery_due_frame_) return false;
-    const RuntimeNpc* cleaner = FindRuntimeNpc(cleaner_npc_);
-    if (cleaner == nullptr || cleaner->room != active_room_) return false;
+    RuntimeNpc* cleaner = FindRuntimeNpc(cleaner_npc_);
+    if (cleaner == nullptr || cleaner->room != active_room_ ||
+        cleaner->instance.state == NPCState::Stunned ||
+        cleaner->instance.state == NPCState::Dead) {
+        // Incapacitated actors cannot open a cart or become a DirectWitness.
+        // The observation and response records must come from an executing
+        // runtime actor, not merely from a configured due frame.
+        return false;
+    }
     const BodyRecord* body = systemic_->GetBody(discovery_body_);
     if (body == nullptr || body->disposition != BodyDisposition::HiddenInContainer) {
+        return false;
+    }
+    const HideableContainer* container = systemic_->GetContainer(discovery_container_);
+    if (container == nullptr || container->room != active_room_ ||
+        body->room != active_room_ || container->accessibility == 0 ||
+        std::find(container->routine_tags.begin(), container->routine_tags.end(),
+                  RoutineTag::Cleaner) == container->routine_tags.end()) {
+        return false;
+    }
+
+    const float dx = container->position.x - cleaner->instance.position.x;
+    const float dy = container->position.y - cleaner->instance.position.y;
+    const float distance = std::sqrt(dx * dx + dy * dy);
+    constexpr float kArrivalRadius = 0.80f;
+    if (distance > kArrivalRadius) {
+        const float step = std::min(0.10f, distance);
+        const Vec3 candidate{
+            cleaner->instance.position.x + dx / distance * step,
+            cleaner->instance.position.y + dy / distance * step,
+            cleaner->instance.position.z};
+        if (world_query_ != nullptr) {
+            const AABB box{{candidate.x - kNpcRadius, candidate.y - kNpcRadius,
+                            candidate.z},
+                           {candidate.x + kNpcRadius, candidate.y + kNpcRadius,
+                            candidate.z + 1.8f}};
+            if (world_query_->AabbBlocked(box)) {
+                Receipt(cleaner_npc_, AutonomousPhase::Act,
+                        cleaner->instance.state, frame, false);
+                return false;
+            }
+        }
+        cleaner->instance.position = candidate;
+        cleaner->instance.yaw = std::atan2(dy, dx);
+        cleaner->instance.state = NPCState::Investigate;
+        cleaner->instance.state_timer_frames =
+            static_cast<uint32_t>(kDecisionPeriodFrames);
+        discovery_inspect_until_frame_ = 0;
+        Receipt(cleaner_npc_, AutonomousPhase::Act,
+                cleaner->instance.state, frame, true);
+        return false;
+    }
+
+    // Arrival is not discovery. The cleaner holds position for a bounded
+    // inspection interval before opening the container.
+    if (discovery_inspect_until_frame_ == 0) {
+        discovery_inspect_until_frame_ = frame + kDiscoveryInspectionFrames;
+        cleaner->instance.state = NPCState::Investigate;
+        cleaner->instance.state_timer_frames =
+            static_cast<uint32_t>(kDiscoveryInspectionFrames);
+        Receipt(cleaner_npc_, AutonomousPhase::Act,
+                cleaner->instance.state, frame, true);
+        return false;
+    }
+    if (frame < discovery_inspect_until_frame_) {
+        cleaner->instance.state = NPCState::Investigate;
+        cleaner->instance.state_timer_frames = static_cast<uint32_t>(
+            discovery_inspect_until_frame_ - frame);
+        Receipt(cleaner_npc_, AutonomousPhase::Act,
+                cleaner->instance.state, frame, false);
         return false;
     }
     if (!systemic_->DiscoverBody(cleaner_npc_, discovery_container_, frame)) return false;
@@ -235,6 +350,7 @@ bool AutonomousNpcSystem::TryBodyDiscovery(uint64_t frame) {
     const bool applied = systemic_->ApplyDiscoveryResponse(
         cleaner_entity, discovery_event, response, frame);
     discovery_complete_ = applied;
+    discovery_inspect_until_frame_ = 0;
     if (applied) {
         ++discovery_response_count_;
         Receipt(cleaner_npc_, AutonomousPhase::Act, cleaner->instance.state,
@@ -339,7 +455,7 @@ const RuntimeNpc* AutonomousNpcSystem::FindRuntimeNpc(NpcId id) const {
 }
 
 void AutonomousNpcSystem::Save(Serializer& serializer) const {
-    serializer.WriteU32(1);
+    serializer.WriteU32(2);
     serializer.WriteU32(static_cast<uint32_t>(npcs_.size()));
     for (const auto& runtime : npcs_) {
         WriteId(serializer, runtime.instance.id);
@@ -360,12 +476,14 @@ void AutonomousNpcSystem::Save(Serializer& serializer) const {
     WriteId(serializer, discovery_container_);
     serializer.WriteU64(discovery_due_frame_);
     serializer.WriteU8(discovery_complete_ ? 1 : 0);
+    serializer.WriteU64(discovery_inspect_until_frame_);
 }
 
 bool AutonomousNpcSystem::Load(Deserializer& deserializer) {
     const uint32_t version = deserializer.ReadU32();
     const uint32_t count = deserializer.ReadU32();
-    if (deserializer.HasError() || version != 1 || count > kMaxRuntimeNpcs) {
+    if (deserializer.HasError() || (version != 1 && version != 2) ||
+        count > kMaxRuntimeNpcs) {
         deserializer.MarkError();
         return false;
     }
@@ -417,6 +535,7 @@ bool AutonomousNpcSystem::Load(Deserializer& deserializer) {
     const ContainerId container = ReadId<ContainerId>(deserializer);
     const uint64_t due = deserializer.ReadU64();
     const bool complete = deserializer.ReadU8() != 0;
+    const uint64_t inspect_until = version >= 2 ? deserializer.ReadU64() : 0;
     if (deserializer.HasError() || !deserializer.AtEnd()) {
         deserializer.MarkError();
         return false;
@@ -441,6 +560,7 @@ bool AutonomousNpcSystem::Load(Deserializer& deserializer) {
     discovery_body_ = body;
     discovery_container_ = container;
     discovery_due_frame_ = due;
+    discovery_inspect_until_frame_ = inspect_until;
     discovery_complete_ = complete;
     return true;
 }

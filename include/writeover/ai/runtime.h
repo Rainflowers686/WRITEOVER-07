@@ -62,6 +62,9 @@ public:
     bool AddNpc(const NPCInstance& npc, RoomId room);
     bool ConfigureBodyDiscovery(NpcId cleaner, EntityId body,
                                 ContainerId container, uint64_t due_frame);
+    // Arm the configured discovery chain from a scene-relative frame.  The
+    // caller invokes this when the body is actually hidden.
+    bool ArmBodyDiscovery(uint64_t due_frame);
     void SetShotFeedbackCallback(ShotFeedbackCallback callback) {
         shot_feedback_callback_ = std::move(callback);
     }
@@ -110,6 +113,7 @@ private:
     EntityId discovery_body_;
     ContainerId discovery_container_;
     uint64_t discovery_due_frame_ = 0;
+    uint64_t discovery_inspect_until_frame_ = 0;
     bool discovery_complete_ = false;
     ShotFeedbackCallback shot_feedback_callback_;
 };

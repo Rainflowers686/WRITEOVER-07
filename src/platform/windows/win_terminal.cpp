@@ -76,6 +76,21 @@ int Nearest16Color(uint8_t r, uint8_t g, uint8_t b) {
 class AnsiTrueColorBackend final : public ITerminalBackend {
 public:
     bool Init(int width, int height) override {
+#if defined(_WIN32)
+        // Windows Terminal owns a pseudoconsole, but the child process still
+        // inherits the console mode and output code page.  Explicitly enable
+        // VT processing and UTF-8 here so CSI cursor controls are interpreted
+        // by the terminal and box-drawing/Unicode character art is not
+        // decoded through the user's legacy OEM code page.
+        const HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
+        DWORD mode = 0;
+        if (output != nullptr && output != INVALID_HANDLE_VALUE &&
+            GetConsoleMode(output, &mode)) {
+            (void)SetConsoleMode(output, mode | ENABLE_PROCESSED_OUTPUT |
+                                           ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+        }
+        (void)SetConsoleOutputCP(CP_UTF8);
+#endif
         width_ = width;
         height_ = height;
         caps_.ansi_escape = true;

@@ -676,6 +676,11 @@ public:
     bool AddMemory(const MemoryRecord& memory);
     const MemoryRecord* GetMemory(MemoryId id) const;
     std::vector<MemoryRecord> MemoriesOf(EntityId actor) const;
+    // Refresh an existing semantic observation without creating a duplicate
+    // memory.  The caller owns the semantic-key/cooldown policy; this method
+    // only validates and updates the durable record.
+    bool RefreshMemory(MemoryId id, uint64_t frame, float confidence,
+                       float salience);
     size_t MemoryCount() const { return memories_.size(); }
 
     // Relationships (directed)
@@ -752,6 +757,9 @@ public:
 
     // Identity helper
     bool ReaderAcceptsItem(ItemId id, uint8_t required_clearance) const;
+    // ReaderAcceptsItem deliberately validates only the credential.  Callers
+    // must use this possession seam before presenting it as the player.
+    bool ItemHeldBy(ItemId id, EntityId holder) const;
     bool NpcAcceptsPresentedIdentity(NpcId observer, EntityId expected_owner,
                                      EntityId presenter) const;
     IdentityReaction ReactionToIdentityMismatch(NpcId observer,
