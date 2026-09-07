@@ -1948,7 +1948,7 @@ int RunComposition(const GameConfig& config) {
             slice.gate_unlocked = !gate->locked;
             slice.gate_open = gate->open && !gate->locked;
         }
-        if (const BodyRecord* body = services.systemic->GetBody(slice.body)) {
+        if (services.systemic->GetBody(slice.body) != nullptr) {
             slice.body_created = true;
         }
         // These are milestone facts, not current-state mirrors.  A successful
