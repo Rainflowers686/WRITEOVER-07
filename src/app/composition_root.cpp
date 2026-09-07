@@ -52,6 +52,20 @@
 
 namespace writeover {
 
+namespace {
+
+const char* QualityPresetName(QualityPreset preset) {
+    switch (preset) {
+    case QualityPreset::Ultra120: return "ULTRA120";
+    case QualityPreset::HighRefresh: return "HIGH_REFRESH";
+    case QualityPreset::Presentation60: return "PRESENTATION60";
+    case QualityPreset::Compatibility: return "COMPATIBILITY";
+    }
+    return "UNKNOWN";
+}
+
+} // namespace
+
 class AiModule final : public IEngineModule {
 public:
     void Init(const EngineContext& ctx) override {
@@ -80,6 +94,9 @@ public:
     bool ConfigureBodyDiscovery(NpcId cleaner, EntityId body, ContainerId container,
                                 uint64_t due_frame) {
         return runtime_.ConfigureBodyDiscovery(cleaner, body, container, due_frame);
+    }
+    bool ArmBodyDiscovery(uint64_t due_frame) {
+        return runtime_.ArmBodyDiscovery(due_frame);
     }
     void SetShotFeedbackCallback(AutonomousNpcSystem::ShotFeedbackCallback callback) {
         runtime_.SetShotFeedbackCallback(std::move(callback));
@@ -113,6 +130,8 @@ public:
         loaded_room_ = room.Value();
         query_ = std::make_unique<GridWorldQuery>(&loaded_room_.grid);
         room_override_ = id;
+        loaded_room_key_ = id;
+        EnsureB1Gate();
         return true;
     }
     void Init(const EngineContext& ctx) override {
@@ -125,16 +144,22 @@ public:
             if (room.IsError()) {
                 const std::string fallback = ctx_.data_dir + "/rooms/room_01_calibration.woc";
                 room = LoadRoomFile(fallback);
+                if (room.IsOk()) loaded_room_key_ = "room_01_calibration";
             }
             if (room.IsOk()) {
                 loaded_room_ = room.Value();
                 query_ = std::make_unique<GridWorldQuery>(&loaded_room_.grid);
+                if (loaded_room_key_.empty()) {
+                    loaded_room_key_ = !room_override_.empty()
+                        ? room_override_ : "room_b1_revival";
+                }
             }
         }
         if (query_ == nullptr) {
             synthetic_grid_ = Grid(16, 12);
             query_ = std::make_unique<GridWorldQuery>(&synthetic_grid_);
         }
+        EnsureB1Gate();
     }
 
     void Shutdown() override {}
@@ -162,6 +187,7 @@ public:
         }
         infra_ = std::move(restored_infra);
         facts_ = std::move(restored_facts);
+        EnsureB1Gate();
         return true;
     }
     Room& LoadedRoom() { return loaded_room_; }
@@ -182,6 +208,22 @@ public:
 
     void PushCommand(WorldCommand cmd) { commands_.push_back(std::move(cmd)); }
 
+    DoorId B1GateId() const { return DoorId::New(9101); }
+    bool IsB1Loaded() const { return loaded_room_key_ == "room_b1_revival"; }
+    bool B1GateOpen() const {
+        const DoorState* door = infra_.GetDoor(B1GateId());
+        return door != nullptr && door->open && !door->locked;
+    }
+    bool UnlockB1Gate() {
+        if (!IsB1Loaded() || infra_.GetDoor(B1GateId()) == nullptr) return false;
+        return infra_.SetDoorLocked(B1GateId(), false);
+    }
+    bool OpenB1Gate() {
+        if (!IsB1Loaded() || !infra_.SetDoorOpen(B1GateId(), true)) return false;
+        ApplyB1GateGeometry();
+        return true;
+    }
+
     void SimTick(const SimClock& clock) override {
         const uint64_t frame = clock.FrameCount();
         for (auto& cmd : commands_) {
@@ -193,6 +235,31 @@ public:
     const char* Name() const override { return "world"; }
 
 private:
+    void EnsureB1Gate() {
+        if (!IsB1Loaded() || !HasLoadedRoom()) return;
+        if (infra_.GetDoor(B1GateId()) == nullptr) {
+            infra_.AddDoor(DoorState{B1GateId(), false, true});
+        }
+        ApplyB1GateGeometry();
+    }
+
+    void ApplyB1GateGeometry() {
+        if (!IsB1Loaded() || !HasLoadedRoom()) return;
+        const bool open = B1GateOpen();
+        constexpr int32_t kGateCol = 21;
+        constexpr int32_t kGateRow = 8;
+        for (int32_t row = 1; row + 1 < loaded_room_.grid.Height(); ++row) {
+            GridCell cell = loaded_room_.grid.GetCell(kGateCol, row);
+            cell.flags = static_cast<uint8_t>(cell.flags | CellFlag_Door);
+            if (row == kGateRow && open) {
+                cell.flags = static_cast<uint8_t>(cell.flags & ~CellFlag_Solid);
+            } else {
+                cell.flags = static_cast<uint8_t>(cell.flags | CellFlag_Solid);
+            }
+            loaded_room_.grid.SetCell(kGateCol, row, cell);
+        }
+    }
+
     void ApplyCommand(const WorldCommand& cmd, uint64_t frame) {
         if (std::holds_alternative<CommandSetDoor>(cmd)) {
             const auto& c = std::get<CommandSetDoor>(cmd);
@@ -217,6 +284,7 @@ private:
 
     EngineContext ctx_{};
     std::string room_override_;
+    std::string loaded_room_key_;
     Room loaded_room_;
     Grid synthetic_grid_{16, 12};
     std::unique_ptr<GridWorldQuery> query_;
@@ -242,6 +310,22 @@ public:
     CombatState& Combat() { return combat_; }
     InputMapper& Mapper() { return mapper_; }
     bool Paused() const { return paused_; }
+    const uint16_t& Health() const { return health_; }
+    bool Dead() const { return dead_; }
+    bool ApplyDamage(uint16_t amount) {
+        if (dead_ || amount == 0) return false;
+        if (amount >= health_) {
+            health_ = 0;
+            dead_ = true;
+        } else {
+            health_ = static_cast<uint16_t>(health_ - amount);
+        }
+        return true;
+    }
+    void SetHealthState(uint16_t health, bool dead) {
+        health_ = health;
+        dead_ = dead || health == 0;
+    }
     uint64_t CurrentFrame() const { return current_frame_; }
 
     void ApplySettingsBindings(const Settings& st) {
@@ -263,6 +347,16 @@ public:
             if (pause_callback_) pause_callback_();
         }
         if (paused_) return;
+        if (dead_) {
+            // A dead player has no movement or interaction authority.  Load is
+            // the only gameplay action accepted until the checkpoint restores
+            // a live authoritative state.
+            if (input_.action_pressed[static_cast<size_t>(GameAction::LoadGame)] &&
+                load_callback_) {
+                load_callback_();
+            }
+            return;
+        }
 
         bool dragging = false;
         float drag_modifier = 1.0f;
@@ -444,6 +538,8 @@ private:
     std::function<void()> melee_callback_;
     std::function<void(const FireRequest&, const WeaponDef&)> fire_callback_;
     bool paused_ = false;
+    uint16_t health_ = 100;
+    bool dead_ = false;
     uint64_t current_frame_ = 0;
 };
 
@@ -519,9 +615,13 @@ public:
     // Per-frame source of truth: the renderer reads the player's live
     // locomotion state instead of a one-time snapshot (F-23 closure).
     void SetCombatSource(const CombatState* combat) { combat_ = combat; }
+    void SetHealthSource(const uint16_t* health) { health_ = health; }
     void SetNpcSource(const std::vector<RuntimeNpc>* npcs) { npcs_ = npcs; }
     void SetSettingsSource(const Settings* settings) { settings_ = settings; }
-    void SetSceneId(const std::string& id) { scene_id_ = id; }
+    void SetSceneId(const std::string& id, uint64_t frame = 0) {
+        scene_id_ = id;
+        scene_enter_frame_ = frame;
+    }
     bool LoadCharacterArt(const std::string& path) {
         return character_art_.Load(path);
     }
@@ -626,8 +726,8 @@ public:
                                    CharacterSpriteKind::Door});
                 sprites.push_back({Vec3{14.0f, 3.0f, 2.2f}, 0.55f,
                                    CharacterSpriteKind::Camera});
-                sprites.push_back({Vec3{15.5f, 4.0f, 0.0f}, 1.0f,
-                                   CharacterSpriteKind::Crate});
+                 sprites.push_back({Vec3{15.5f, 7.5f, 0.0f}, 1.0f,
+                                    CharacterSpriteKind::Crate});
             } else if (scene_id_ == "room_01_calibration") {
                 sprites.push_back({Vec3{7.5f, 5.5f, 0.0f}, 1.4f,
                                    CharacterSpriteKind::Terminal});
@@ -668,15 +768,17 @@ public:
                                 weapon_frame, recoil, render_options);
             DrawVisualEffects(frame_index);
         }
-        if (frame_index < 300 && scene_id_ == "room_b1_revival") {
+        const uint64_t scene_frame = frame_index >= scene_enter_frame_
+                                         ? frame_index - scene_enter_frame_ : 0;
+        if (scene_frame < 300 && scene_id_ == "room_b1_revival") {
             subtitle_ = "SYS/07: Wake cycle verified. B1 anomaly detected. Proceed to calibration.";
-        } else if (frame_index < 180 && scene_id_ == "room_01_calibration") {
+        } else if (scene_frame < 180 && scene_id_ == "room_01_calibration") {
             subtitle_ = "CALIBRATION / LOGISTICS: Verify the route. Keep the service door clear.";
-        } else if (frame_index < 180 && scene_id_ == "room_1f_security") {
+        } else if (scene_frame < 180 && scene_id_ == "room_1f_security") {
             subtitle_ = "1F SECURITY: Present identity. Watch the cameras.";
-        } else if (frame_index < 180 && scene_id_ == "room_service_medical") {
+        } else if (scene_frame < 180 && scene_id_ == "room_service_medical") {
             subtitle_ = "SERVICE / MEDICAL: The building still remembers its staff.";
-        } else if (frame_index < 180 && scene_id_ == "room_elevator_lobby") {
+        } else if (scene_frame < 180 && scene_id_ == "room_elevator_lobby") {
             subtitle_ = "ELEVATOR LOBBY: Restricted floors remain listening.";
         } else {
             subtitle_ = "";
@@ -696,7 +798,7 @@ public:
                         std::to_string(player_pos_.y) + " yaw " + std::to_string(player_yaw_);
         }
         HudFrame hud;
-        hud.health = 100;
+        hud.health = health_ != nullptr ? *health_ : 100;
         if (combat_ != nullptr) {
             const size_t slot = static_cast<size_t>(combat_->slot);
             hud.ammo_mag = combat_->ammo_in_mag[slot];
@@ -880,6 +982,7 @@ private:
     float override_pitch_ = 0.0f;
     const LocomotionState* locomotion_ = nullptr;
     const CombatState* combat_ = nullptr;
+    const uint16_t* health_ = nullptr;
     const std::vector<RuntimeNpc>* npcs_ = nullptr;
     const Settings* settings_ = nullptr;
     bool debug_overlay_ = false;
@@ -896,6 +999,7 @@ private:
     int grid_h_ = 0;
     std::string subtitle_;
     std::string scene_id_ = "room_b1_revival";
+    uint64_t scene_enter_frame_ = 0;
 };
 
 struct GameServices {
@@ -928,6 +1032,16 @@ public:
                 error_ = "malformed replay line " + std::to_string(line_number);
                 return;
             }
+            std::string normalized_key = key_name;
+            std::transform(normalized_key.begin(), normalized_key.end(),
+                           normalized_key.begin(), [](unsigned char c) {
+                return static_cast<char>(std::toupper(c));
+            });
+            if (normalized_key == "MOUSEMOVE" || normalized_key == "MOUSEDELTA") {
+                // Mouse deltas are consumed by ReplayMouseBackend.  The
+                // keyboard parser must tolerate the shared replay file.
+                continue;
+            }
             const PhysicalKey key = ParseKey(key_name);
             if (key == PhysicalKey::Unknown) {
                 error_ = "unknown replay key on line " + std::to_string(line_number);
@@ -959,6 +1073,7 @@ public:
         while (next_ < events_.size() && events_[next_].frame < frame_) ++next_;
         if (next_ < events_.size() && events_[next_].frame == frame_) {
             out_event = events_[next_++].event;
+            ++consumed_events_;
             return true;
         }
         ++frame_;
@@ -967,6 +1082,7 @@ public:
     bool HasFocus() const override { return true; }
     const char* Name() const override { return "replay-keyboard"; }
     const std::string& Error() const { return error_; }
+    size_t ConsumedEventCount() const { return consumed_events_; }
 
 private:
     struct ReplayEvent {
@@ -1008,6 +1124,87 @@ private:
     size_t next_ = 0;
     uint64_t frame_ = 0;
     bool valid_ = false;
+    size_t consumed_events_ = 0;
+};
+
+class ReplayMouseBackend final : public IInputBackend {
+public:
+    explicit ReplayMouseBackend(std::string path) : path_(std::move(path)) {
+        std::ifstream input(path_);
+        if (!input) {
+            error_ = "cannot open replay file";
+            return;
+        }
+        std::string line;
+        size_t line_number = 0;
+        while (std::getline(input, line)) {
+            ++line_number;
+            const size_t first = line.find_first_not_of(" \t\r\n");
+            if (first == std::string::npos || line[first] == '#') continue;
+            std::istringstream fields(line.substr(first));
+            uint64_t frame = 0;
+            std::string kind;
+            if (!(fields >> frame >> kind)) {
+                error_ = "malformed replay line " + std::to_string(line_number);
+                return;
+            }
+            std::transform(kind.begin(), kind.end(), kind.begin(),
+                           [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+            if (kind != "MOUSEMOVE" && kind != "MOUSEDELTA") continue;
+            float dx = 0.0f;
+            float dy = 0.0f;
+            if (!(fields >> dx >> dy) || !std::isfinite(dx) || !std::isfinite(dy)) {
+                error_ = "malformed mouse replay line " + std::to_string(line_number);
+                return;
+            }
+            events_.push_back({frame, Vec2{dx, dy}});
+        }
+        std::stable_sort(events_.begin(), events_.end(),
+                         [](const ReplayEvent& a, const ReplayEvent& b) {
+            return a.frame < b.frame;
+        });
+        valid_ = true;
+    }
+
+    bool Init() override { return valid_; }
+    void Shutdown() override {}
+    bool Poll(InputEvent& out_event) override {
+        while (next_ < events_.size() && events_[next_].frame < frame_) ++next_;
+        if (next_ < events_.size() && events_[next_].frame == frame_) {
+            delta_.x += events_[next_].delta.x;
+            delta_.y += events_[next_].delta.y;
+            ++next_;
+            ++consumed_events_;
+            out_event = InputEvent{}; // sample-only event; delta is consumed below
+            return true;
+        }
+        ++frame_;
+        return false;
+    }
+    bool HasFocus() const override { return true; }
+    const char* Name() const override { return "replay-mouse"; }
+    size_t ConsumedEventCount() const { return consumed_events_; }
+    bool ConsumeMouseDelta(Vec2& out) override {
+        out = delta_;
+        delta_ = Vec2{};
+        return out.x != 0.0f || out.y != 0.0f;
+    }
+    const std::string& Error() const { return error_; }
+
+private:
+    struct ReplayEvent {
+        uint64_t frame = 0;
+        Vec2 delta;
+    };
+
+    std::string path_;
+    std::string error_;
+    std::vector<ReplayEvent> events_;
+    size_t next_ = 0;
+    uint64_t frame_ = 0;
+    Vec2 delta_;
+    bool valid_ = false;
+    size_t consumed_events_ = 0;
 };
 
 // InputModule: private integration class that samples the keyboard and mouse
@@ -1016,13 +1213,15 @@ private:
 // the input probe share the same pointer path.
 class InputModule final : public IEngineModule {
 public:
-    explicit InputModule(std::unique_ptr<IInputBackend> replay_keyboard = nullptr)
+    explicit InputModule(std::unique_ptr<IInputBackend> replay_keyboard = nullptr,
+                         std::unique_ptr<IInputBackend> replay_mouse = nullptr)
         : selection_(CreateRuntimeBackendSelection(PointerBackendPreference::Auto)),
           runtime_(nullptr, nullptr) {
         if (replay_keyboard) {
             selection_.pointer_name = "replay";
             selection_.mouse_button_source = "replay";
-            runtime_ = InputRuntime(std::move(replay_keyboard), nullptr);
+            runtime_ = InputRuntime(std::move(replay_keyboard),
+                                    std::move(replay_mouse));
         } else {
             runtime_ = InputRuntime(std::move(selection_.keyboard),
                                     std::move(selection_.pointer));
@@ -1045,6 +1244,14 @@ public:
     void SimTick(const SimClock&) override {
         if (!input_ || !mapper_) return;
         runtime_.SampleTick(*input_, *mapper_);
+    }
+    size_t ReplayKeyboardEventCount() const {
+        const auto* backend = dynamic_cast<const ReplayKeyboardBackend*>(runtime_.Keyboard());
+        return backend != nullptr ? backend->ConsumedEventCount() : 0;
+    }
+    size_t ReplayMouseEventCount() const {
+        const auto* backend = dynamic_cast<const ReplayMouseBackend*>(runtime_.Mouse());
+        return backend != nullptr ? backend->ConsumedEventCount() : 0;
     }
     const char* Name() const override { return "input"; }
 
@@ -1176,10 +1383,13 @@ int RunComposition(const GameConfig& config) {
     // Runtime input bridge (ISSUE B): polls keyboard + mouse backends every
     // tick and maps them into PlayerModule's InputState.
     std::unique_ptr<IInputBackend> replay_keyboard;
+    std::unique_ptr<IInputBackend> replay_mouse;
     if (!config.replay_path.empty()) {
         replay_keyboard = std::make_unique<ReplayKeyboardBackend>(config.replay_path);
+        replay_mouse = std::make_unique<ReplayMouseBackend>(config.replay_path);
     }
-    auto input_module = std::make_unique<InputModule>(std::move(replay_keyboard));
+    auto input_module = std::make_unique<InputModule>(std::move(replay_keyboard),
+                                                     std::move(replay_mouse));
     input_module->SetTarget(&services.player->Input(),
                             &services.player->Mapper());
     input_module->Init(ctx);
@@ -1213,6 +1423,17 @@ int RunComposition(const GameConfig& config) {
         std::fprintf(stderr, "fatal: no terminal backend available\n");
         return 2;
     }
+    const TerminalCaps terminal_caps = backend->GetCaps();
+    std::fprintf(stderr,
+                 "TERMINAL_BACKEND=%s TERMINAL_DIMENSIONS=%dx%d "
+                 "TERMINAL_QUALITY_PRESET=%s TERMINAL_COLOR_CAPABILITY=%s "
+                 "TERMINAL_PROBE=%s\n",
+                 backend->Name(), config.terminal_w, config.terminal_h,
+                 QualityPresetName(settings.preset),
+                 terminal_caps.true_color ? "TRUECOLOR"
+                                          : terminal_caps.win32_native ? "ANSI16"
+                                                                       : "UNKNOWN",
+                 TerminalKindName(probe));
     auto render = std::make_unique<RenderModule>(std::move(backend),
                                                  config.terminal_w,
                                                  config.terminal_h);
@@ -1233,6 +1454,7 @@ int RunComposition(const GameConfig& config) {
     render->SetPlayerView(spawn, 0.0f);
     render->SetLocomotionSource(&services.player->Locomotion());
     render->SetCombatSource(&services.player->Combat());
+    render->SetHealthSource(&services.player->Health());
 
     // PVS-01 owns a deliberately small authored interaction set. These are
     // real systemic records shared by the callbacks below; they are not a
@@ -1252,12 +1474,40 @@ int RunComposition(const GameConfig& config) {
         bool terminal_session = false;
         bool bribe_done = false;
         bool schedule_found = false;
+        bool body_created = false;
+        bool body_hidden = false;
+        bool body_discovered = false;
+        bool cleaner_response = false;
+        bool shot_hit = false;
+        bool nonlethal_hit = false;
+        bool terminal_attempted = false;
+        bool terminal_denied = false;
+        bool player_died = false;
+        bool player_recovered = false;
+        bool access_attempted = false;
+        bool access_denied = false;
+        bool gate_unlocked = false;
+        bool gate_open = false;
+        bool gate_crossed = false;
     } slice;
     std::vector<std::string> replay_route;
     bool replay_save_attempted = false;
     bool replay_load_attempted = false;
     bool replay_save_ok = false;
     bool replay_load_ok = false;
+    const EventBus::ConsumerId player_damage_consumer = events.Register(
+        [&](const WorldEvent& event) {
+            const auto* damage = std::get_if<EventPlayerDamage>(&event.payload);
+            if (damage == nullptr || event.target_entity != EntityId::New(1)) return;
+            if (!services.player->ApplyDamage(damage->amount)) return;
+            if (services.player->Dead()) {
+                slice.player_died = true;
+            }
+            render->SetSubtitleOnce(services.player->Dead()
+                                        ? "YOU ARE DOWN. F9 loads the last checkpoint."
+                                        : "IMPACT. Health is now authoritative.",
+                                    services.player->Dead() ? 240 : 90);
+        });
     if (services.world->HasLoadedRoom()) slice.b1_room = services.world->LoadedRoom().id;
     for (const auto& actor : services.systemic->Actors()) {
         if (actor.role == Role::Guard && !slice.guard_npc.IsValid()) {
@@ -1286,17 +1536,10 @@ int RunComposition(const GameConfig& config) {
         }
     }
     if (slice.b1_room.IsValid() && slice.guard_npc.IsValid()) {
-        BodyRecord body;
-        body.id = slice.body;
-        body.npc = slice.guard_npc;
-        body.status = BodyStatus::Unconscious;
-        body.disposition = BodyDisposition::Exposed;
-        body.position = Vec3{10.5f, 5.5f, 0.0f};
-        body.room = slice.b1_room;
         HideableContainer cart;
         cart.id = slice.cart;
         cart.kind = ContainerKind::CleaningCart;
-        cart.position = Vec3{15.5f, 4.0f, 0.0f};
+        cart.position = Vec3{15.5f, 7.5f, 0.0f};
         cart.room = slice.b1_room;
         cart.capacity_volume = 0.6f;
         cart.concealment = 95;
@@ -1319,19 +1562,13 @@ int RunComposition(const GameConfig& config) {
         opening.title = "Calibration route";
         opening.presentation_objective = "Reach the security checkpoint";
         opening.status = QuestStatus::Offered;
-        const bool setup_ok = services.systemic->AddBody(body) &&
-                              services.systemic->AddContainer(cart) &&
+        const bool setup_ok = services.systemic->AddContainer(cart) &&
                               services.systemic->AddTerminal(terminal) &&
                               services.systemic->AddObservationSource(camera) &&
                               services.systemic->AddQuest(opening);
         if (!setup_ok) {
             std::fprintf(stderr, "pvs slice systemic setup rejected\n");
             return 9;
-        }
-        if (slice.badge.IsValid()) {
-            // The badge starts on the incapacitated guard. Search reveals it;
-            // only the later Theft transition moves physical custody.
-            services.systemic->TransferItem(slice.badge, slice.body);
         }
     }
 
@@ -1352,7 +1589,16 @@ int RunComposition(const GameConfig& config) {
                 std::fprintf(stderr, "npc profile has no systemic actor\n");
                 return 10;
             }
-            if (profile.spawn_room != slice.b1_room || profile.id == slice.guard_npc) {
+            if (profile.spawn_room != slice.b1_room) {
+                continue;
+            }
+            // The authored B1 profile places the background administrator on
+            // the same cell as officer_davis.  Keeping both runtime collision
+            // targets makes a deterministic hitscan choose the wrong person
+            // for the badge/body slice.  The administrator remains a systemic
+            // actor; this bounded recovery scene does not instantiate that
+            // overlapping background target.
+            if (actor->role == Role::Administrator && profile.id != slice.guard_npc) {
                 continue;
             }
             NPCInstance npc;
@@ -1389,7 +1635,7 @@ int RunComposition(const GameConfig& config) {
             });
         if (slice.cleaner_npc.IsValid() && cleaner_present &&
             !services.ai->ConfigureBodyDiscovery(slice.cleaner_npc, slice.body,
-                                                 slice.cart, 720)) {
+                                                 slice.cart, 0)) {
             std::fprintf(stderr, "pvs body-discovery runtime setup rejected\n");
             return 11;
         }
@@ -1403,13 +1649,51 @@ int RunComposition(const GameConfig& config) {
     services.player->SetNarratorIntrusionCallback([&] {
         render->TriggerNarratorIntrusion(240);
     });
+    auto sync_body_from_feedback = [&](const ShotFeedback& feedback) {
+        if (!feedback.target_was_npc ||
+            (!feedback.target_stunned && !feedback.target_died) ||
+            feedback.npc != slice.guard_npc ||
+            services.systemic->GetBody(slice.body) != nullptr) {
+            return;
+        }
+        const RuntimeNpc* target = nullptr;
+        for (const auto& runtime : services.ai->Npcs()) {
+            if (runtime.instance.id == feedback.npc) {
+                target = &runtime;
+                break;
+            }
+        }
+        if (target == nullptr || target->room != slice.b1_room) return;
+        BodyRecord body;
+        body.id = slice.body;
+        body.npc = feedback.npc;
+        body.status = feedback.target_died ? BodyStatus::Dead : BodyStatus::Unconscious;
+        body.disposition = BodyDisposition::Exposed;
+        body.position = target->instance.position;
+        body.room = target->room;
+        if (!services.systemic->AddBody(body)) return;
+        const EntityId target_entity = EntityId::New(feedback.npc.GetValue());
+        if (slice.badge.IsValid() &&
+            services.systemic->ItemHeldBy(slice.badge, target_entity)) {
+            (void)services.systemic->TransferItem(slice.badge, slice.body);
+        }
+        slice.body_created = true;
+        slice.nonlethal_hit = feedback.target_stunned;
+        render->SetSubtitleOnce(feedback.target_stunned
+                                    ? "Target down. Search the body before moving on."
+                                    : "Target dead. The scene is now evidence.",
+                                180);
+    };
     services.ai->SetShotFeedbackCallback([&](const ShotFeedback& feedback) {
         render->TriggerShotFeedback(feedback);
+        sync_body_from_feedback(feedback);
     });
     services.player->SetFireCallback([&](const FireRequest& request,
-                                         const WeaponDef& weapon) {
-        (void)services.ai->HandlePlayerShot(request, weapon,
-                                            services.player->CurrentFrame());
+                                          const WeaponDef& weapon) {
+        const ShotFeedback feedback = services.ai->HandlePlayerShot(
+            request, weapon, services.player->CurrentFrame());
+        slice.shot_hit = slice.shot_hit || feedback.target_was_npc;
+        slice.nonlethal_hit = slice.nonlethal_hit || feedback.target_stunned;
     });
 
     auto switch_room = [&](const std::string& id, const Vec3& spawn_point) -> bool {
@@ -1423,7 +1707,7 @@ int RunComposition(const GameConfig& config) {
         const Room& room = services.world->LoadedRoom();
         render->SetGridData(room.grid.Data().data(), room.grid.Width(), room.grid.Height());
         render->SetPlayerView(spawn_point, services.player->Locomotion().yaw);
-        render->SetSceneId(id);
+        render->SetSceneId(id, services.player->CurrentFrame());
         if (!config.replay_path.empty() &&
             (replay_route.empty() || replay_route.back() != id)) {
             replay_route.push_back(id);
@@ -1451,6 +1735,8 @@ int RunComposition(const GameConfig& config) {
         s.WriteU8(loco.contact.on_ladder ? 1 : 0);
         s.WriteU8(loco.contact.on_climbable ? 1 : 0);
         SerializeCombatState(s, services.player->Combat());
+        s.WriteU16(services.player->Health());
+        s.WriteU8(services.player->Dead() ? 1 : 0);
         return bytes;
     };
 
@@ -1523,6 +1809,8 @@ int RunComposition(const GameConfig& config) {
         std::string restored_room;
         LocomotionState restored_loco = services.player->Locomotion();
         CombatState restored_combat = services.player->Combat();
+        uint16_t restored_health = 100;
+        bool restored_dead = false;
         SystemicWorld restored_systemic;
         auto fail_load = [&](const char* text) {
             render->SetSubtitleOnce(text, 180);
@@ -1550,6 +1838,17 @@ int RunComposition(const GameConfig& config) {
             const uint8_t ladder = d.ReadU8();
             const uint8_t climbable = d.ReadU8();
             DeserializeCombatState(d, restored_combat);
+            // Older local saves did not carry player health.  Treat their
+            // absent field as a live full-health checkpoint while validating
+            // the new fields whenever present.
+            if (!d.AtEnd()) {
+                restored_health = d.ReadU16();
+                const uint8_t dead = d.ReadU8();
+                if (dead > 1) {
+                    fail_load("Load failed: invalid player health state."); return;
+                }
+                restored_dead = dead != 0;
+            }
             if (grounded > 1 || ladder > 1 || climbable > 1 || d.HasError() || !d.AtEnd() ||
                 posture > static_cast<uint8_t>(Posture::Prone) ||
                 traversal > static_cast<uint8_t>(Traversal::Mantle) ||
@@ -1561,9 +1860,11 @@ int RunComposition(const GameConfig& config) {
                 !std::isfinite(restored_loco.velocity.x) ||
                 !std::isfinite(restored_loco.velocity.y) ||
                 !std::isfinite(restored_loco.velocity.z) ||
-                !std::isfinite(restored_loco.yaw) || !std::isfinite(restored_loco.pitch) ||
-                !std::isfinite(restored_combat.spread_factor) ||
-                restored_combat.spread_factor < 0.0f || restored_combat.spread_factor > 1.0f) {
+                 !std::isfinite(restored_loco.yaw) || !std::isfinite(restored_loco.pitch) ||
+                 !std::isfinite(restored_combat.spread_factor) ||
+                 restored_combat.spread_factor < 0.0f || restored_combat.spread_factor > 1.0f ||
+                 restored_health > 100 ||
+                 (restored_dead && restored_health != 0)) {
                 fail_load("Load failed: invalid player state."); return;
             }
             restored_loco.posture = static_cast<Posture>(posture);
@@ -1639,6 +1940,45 @@ int RunComposition(const GameConfig& config) {
         }
         services.player->Locomotion() = restored_loco;
         services.player->Combat() = restored_combat;
+        services.player->SetHealthState(restored_health, restored_dead);
+        if (slice.player_died && !services.player->Dead()) {
+            slice.player_recovered = true;
+        }
+        if (const DoorState* gate = services.world->Infra().GetDoor(services.world->B1GateId())) {
+            slice.gate_unlocked = !gate->locked;
+            slice.gate_open = gate->open && !gate->locked;
+        }
+        if (const BodyRecord* body = services.systemic->GetBody(slice.body)) {
+            slice.body_created = true;
+        }
+        // These are milestone facts, not current-state mirrors.  A successful
+        // cleaner discovery intentionally changes the body disposition back to
+        // Exposed, so reconstruct them from the durable systemic event ledger
+        // instead of erasing the earlier hidden/discovered/response facts on
+        // load.
+        for (const auto& event : services.systemic->SystemEvents()) {
+            if (event.type == SystemicEventType::BodyHidden &&
+                event.target == slice.body) {
+                slice.body_hidden = true;
+            }
+            if (event.type == SystemicEventType::BodyDiscovered &&
+                event.target == EntityId::New(slice.guard_npc.GetValue())) {
+                slice.body_discovered = true;
+            }
+            if ((event.type == SystemicEventType::Report ||
+                 event.type == SystemicEventType::MedicalCall ||
+                 event.type == SystemicEventType::HelpCoverUp) &&
+                event.actor == EntityId::New(slice.cleaner_npc.GetValue())) {
+                slice.cleaner_response = true;
+            }
+        }
+        slice.terminal_session = false;
+        for (const auto& session : services.systemic->TerminalSessions()) {
+            if (session.terminal == slice.terminal && session.user == slice.player && session.active) {
+                slice.terminal_session = true;
+                break;
+            }
+        }
         replay_load_ok = true;
         render->SetSubtitleOnce("Loaded.", 120);
     });
@@ -1654,20 +1994,94 @@ int RunComposition(const GameConfig& config) {
         const uint64_t frame = services.player->CurrentFrame();
         const EntityId player = slice.player;
         const EntityId guard = EntityId::New(slice.guard_npc.GetValue());
-        const auto near = [&](float x, float y, float radius) {
-            const float dx = p.x - x;
-            const float dy = p.y - y;
-            return dx * dx + dy * dy <= radius * radius;
-        };
 
         if (services.player->CurrentRoom() == "room_b1_revival") {
-            if (p.x > 21.0f) {
-                if (!switch_room("room_01_calibration", Vec3{1.5f, 9.5f, 0.0f})) {
-                    render->SetSubtitleOnce("Calibration room unavailable.", 120);
+            enum class B1TargetKind : uint8_t {
+                None, Body, Cart, Camera, Terminal, Gate, Npc
+            };
+            struct B1Target {
+                B1TargetKind kind = B1TargetKind::None;
+                Vec3 position;
+                float radius = 0.0f;
+                NpcId npc;
+            };
+            B1Target focused;
+            float focused_distance = 1000000.0f;
+            const Vec3 eye = services.player->Locomotion().EyePosition();
+            const float forward_x = std::cos(services.player->Locomotion().yaw);
+            const float forward_y = std::sin(services.player->Locomotion().yaw);
+            const auto consider = [&](B1Target candidate, bool requires_sight) {
+                const float dx = candidate.position.x - p.x;
+                const float dy = candidate.position.y - p.y;
+                const float distance = std::sqrt(dx * dx + dy * dy);
+                if (distance > candidate.radius || distance >= focused_distance) return;
+                if (distance > 0.05f &&
+                    (dx * forward_x + dy * forward_y) / distance < 0.15f) return;
+                if (requires_sight &&
+                    !services.world->Query().LineOfSight(
+                        eye, Vec3{candidate.position.x, candidate.position.y, 1.0f},
+                        eye.z)) return;
+                focused = candidate;
+                focused_distance = distance;
+            };
+            if (services.systemic->GetDrag(slice.body) == nullptr) {
+                if (const BodyRecord* body = services.systemic->GetBody(slice.body)) {
+                    if (body->room == slice.b1_room &&
+                        body->disposition == BodyDisposition::Exposed) {
+                        consider(B1Target{B1TargetKind::Body, body->position, 1.5f, {}}, true);
+                    }
+                }
+            }
+            consider(B1Target{B1TargetKind::Cart, Vec3{15.5f, 7.5f, 0.0f}, 1.15f, {}}, true);
+            consider(B1Target{B1TargetKind::Camera, Vec3{14.0f, 3.0f, 2.2f}, 1.45f, {}}, true);
+            consider(B1Target{B1TargetKind::Terminal, Vec3{10.0f, 7.0f, 0.0f}, 1.55f, {}}, true);
+            consider(B1Target{B1TargetKind::Gate, Vec3{21.2f, 8.5f, 0.0f}, 1.15f, {}}, false);
+            for (const auto& runtime : services.ai->Npcs()) {
+                if (runtime.room == slice.b1_room && runtime.instance.state != NPCState::Dead) {
+                    consider(B1Target{B1TargetKind::Npc, runtime.instance.position, 1.25f,
+                                      runtime.instance.id}, true);
+                }
+            }
+
+            const auto player_holds_valid_badge = [&] {
+                return slice.badge.IsValid() &&
+                       services.systemic->ItemHeldBy(slice.badge, player) &&
+                       services.systemic->ReaderAcceptsItem(slice.badge, 2);
+            };
+            const auto terminal_session_is_active = [&] {
+                for (const auto& session : services.systemic->TerminalSessions()) {
+                    if (session.terminal == slice.terminal && session.user == player &&
+                        session.active) return true;
+                }
+                return false;
+            };
+
+            if (focused.kind == B1TargetKind::Gate) {
+                slice.access_attempted = true;
+                if (!player_holds_valid_badge()) {
+                    slice.access_denied = true;
+                    render->SetSubtitleOnce("ACCESS DENIED. The reader needs your held badge.", 180);
+                } else if (!services.world->B1GateOpen()) {
+                    (void)services.world->UnlockB1Gate();
+                    if (services.world->OpenB1Gate() || services.world->B1GateOpen()) {
+                        slice.gate_unlocked = true;
+                        slice.gate_open = true;
+                        events.Post(EventDoorChange{services.world->B1GateId(), true},
+                                    EventKind::Mutation, player, EntityId::Invalid(),
+                                    EventId::Invalid(), frame);
+                        render->SetSubtitleOnce("ACCESS GRANTED. B1 service door unlocked.", 180);
+                    }
+                } else if (p.x > 21.4f) {
+                    slice.gate_crossed = true;
+                    if (!switch_room("room_01_calibration", Vec3{1.5f, 9.5f, 0.0f})) {
+                        render->SetSubtitleOnce("Calibration room unavailable.", 120);
+                    }
+                } else {
+                    render->SetSubtitleOnce("B1 service door is open. Move through the reader.", 140);
                 }
                 return;
             }
-            if (near(10.5f, 5.5f, 2.0f)) {
+            if (focused.kind == B1TargetKind::Body) {
                 const BodyRecord* body = services.systemic->GetBody(slice.body);
                 if (body != nullptr && body->disposition == BodyDisposition::Exposed) {
                     if (!body->searched) {
@@ -1684,27 +2098,9 @@ int RunComposition(const GameConfig& config) {
                             if (item_id == slice.badge &&
                                 services.systemic->TheftItem(item_id, player, frame)) {
                                 took_badge = true;
-                                MemoryRecord memory;
-                                memory.id = MemoryId::New(services.systemic->MemoryCount() + 1);
-                                memory.npc = guard;
-                                memory.kind = MemoryKind::Fear;
-                                memory.subject = player;
-                                memory.target = guard;
-                                memory.room = slice.b1_room;
-                                memory.frame = frame;
-                                memory.salience = 0.9f;
-                                memory.confidence = 0.8f;
-                                memory.source = KnowledgeSource::DirectWitness;
-                                services.systemic->AddMemory(memory);
-                                RelationshipRecord relationship;
-                                relationship.a = guard;
-                                relationship.b = player;
-                                relationship.trust = 0.15f;
-                                relationship.fear = 0.60f;
-                                relationship.suspicion = 0.70f;
-                                services.systemic->SetRelationship(relationship);
                             }
                         }
+                        slice.access_attempted = slice.access_attempted || took_badge;
                         render->SetSubtitleOnce(took_badge ? "Search complete. Badge taken." :
                                                    "Search complete. Nothing useful found.", 150);
                     } else if (services.systemic->BeginDrag(player, slice.body, frame)) {
@@ -1713,10 +2109,12 @@ int RunComposition(const GameConfig& config) {
                 }
                 return;
             }
-            if (near(15.5f, 4.0f, 1.8f)) {
+            if (focused.kind == B1TargetKind::Cart) {
                 if (services.systemic->GetDrag(slice.body) != nullptr) {
                     services.systemic->EndDrag(slice.body, frame);
                     if (services.systemic->HideBody(slice.body, slice.cart, frame)) {
+                        slice.body_hidden = true;
+                        (void)services.ai->ArmBodyDiscovery(frame + 240);
                         render->SetSubtitleOnce("Cart latched. The corridor is quiet again.", 180);
                     }
                 } else {
@@ -1724,25 +2122,31 @@ int RunComposition(const GameConfig& config) {
                 }
                 return;
             }
-            if (near(14.0f, 3.0f, 1.4f)) {
-                services.systemic->SetObservationSourceOnline(slice.camera, false);
-                SystemicEvent outage;
-                outage.id = EventId::New(10000 + services.systemic->EventCount());
-                outage.type = SystemicEventType::Vandalism;
-                outage.actor = player;
-                outage.location = slice.b1_room;
-                outage.frame = frame;
-                outage.legality = LegalityClass::Illegal;
-                outage.outcome = OutcomeType::Success;
-                outage.method = "camera_disable";
-                outage.tags.push_back("camera_outage");
-                services.systemic->AddSystemicEvent(outage);
-                render->SetSubtitleOnce("Camera offline. The blind spot is temporary.", 150);
+            if (focused.kind == B1TargetKind::Camera) {
+                const ObservationSource* camera = services.systemic->GetObservationSource(slice.camera);
+                if (camera != nullptr && camera->online) {
+                    services.systemic->SetObservationSourceOnline(slice.camera, false);
+                    SystemicEvent outage;
+                    outage.id = EventId::New(10000 + services.systemic->EventCount());
+                    outage.type = SystemicEventType::Vandalism;
+                    outage.actor = player;
+                    outage.location = slice.b1_room;
+                    outage.frame = frame;
+                    outage.legality = LegalityClass::Illegal;
+                    outage.outcome = OutcomeType::Success;
+                    outage.method = "camera_disable";
+                    outage.tags.push_back("camera_outage");
+                    services.systemic->AddSystemicEvent(outage);
+                    render->SetSubtitleOnce("Camera offline. The blind spot is temporary.", 150);
+                } else {
+                    render->SetSubtitleOnce("Camera: offline.", 100);
+                }
                 return;
             }
-            if (near(18.5f, 4.5f, 2.5f)) {
-                if (!slice.terminal_session &&
-                    services.systemic->ReaderAcceptsItem(slice.badge, 2)) {
+            if (focused.kind == B1TargetKind::Terminal) {
+                slice.terminal_attempted = true;
+                slice.terminal_session = terminal_session_is_active();
+                if (!slice.terminal_session && player_holds_valid_badge()) {
                     TerminalSession session;
                     session.terminal = slice.terminal;
                     session.user = player;
@@ -1766,14 +2170,24 @@ int RunComposition(const GameConfig& config) {
                 } else if (slice.terminal_session) {
                     render->SetSubtitleOnce("TERMINAL: session active. Route copied.", 120);
                 } else {
+                    slice.terminal_denied = true;
                     render->SetSubtitleOnce("TERMINAL: credential required.", 150);
                 }
+                return;
+            }
+            if (focused.kind == B1TargetKind::Npc) {
+                render->SetSubtitleOnce("The worker watches the route. Your next action will matter.", 120);
                 return;
             }
             render->SetSubtitleOnce("B1: maintenance, camera loop, terminal, or checkpoint.", 100);
             return;
         }
 
+        const auto near = [&](float x, float y, float radius) {
+            const float dx = p.x - x;
+            const float dy = p.y - y;
+            return dx * dx + dy * dy <= radius * radius;
+        };
         if (services.player->CurrentRoom() == "room_01_calibration") {
             if (p.x > 13.0f) {
                 if (!switch_room("room_service_medical", Vec3{2.5f, 7.5f, 0.0f})) {
@@ -1793,7 +2207,9 @@ int RunComposition(const GameConfig& config) {
         }
 
         if (services.player->CurrentRoom() == "room_1f_security") {
-            const bool has_badge = services.systemic->ReaderAcceptsItem(slice.badge, 2);
+            const bool has_badge = slice.badge.IsValid() &&
+                services.systemic->ItemHeldBy(slice.badge, player) &&
+                services.systemic->ReaderAcceptsItem(slice.badge, 2);
             if (near(15.5f, 8.5f, 2.2f)) {
                 if (has_badge) {
                     render->SetSubtitleOnce("ACCESS GRANTED. Security checkpoint logged you.", 180);
@@ -1890,7 +2306,20 @@ int RunComposition(const GameConfig& config) {
         render->SetSubtitleOnce(services.player->Paused() ? "PAUSED" : "RESUMED", 90);
     });
     services.player->SetMeleeCallback([&] {
-        render->SetSubtitleOnce("Melee ready: close-range contact is loud.", 90);
+        FireRequest request;
+        request.origin = services.player->Locomotion().EyePosition();
+        request.yaw = services.player->Locomotion().yaw;
+        request.pitch = services.player->Locomotion().pitch;
+        request.slot = WeaponSlot::Stunner;
+        request.spread_factor = 0.0f;
+        const ShotFeedback feedback = services.ai->HandlePlayerShot(
+            request, DefaultWeapons()[static_cast<size_t>(WeaponSlot::Stunner)],
+            services.player->CurrentFrame());
+        slice.shot_hit = slice.shot_hit || feedback.target_was_npc;
+        slice.nonlethal_hit = slice.nonlethal_hit || feedback.target_stunned;
+        if (!feedback.target_was_npc) {
+            render->SetSubtitleOnce("Stunner: target out of range or line of fire.", 100);
+        }
     });
     if (services.world->HasLoadedRoom()) {
         const Room& room = services.world->LoadedRoom();
@@ -1900,6 +2329,24 @@ int RunComposition(const GameConfig& config) {
     engine.SetRenderModule(render.get());
 
     const int result = engine.Run(config.max_frames);
+    events.Unregister(player_damage_consumer);
+
+    // Discovery is an event-ledger fact, not an inference from the cleaner's
+    // loop count.  Derive the slice receipts from the events that actually
+    // reached the systemic kernel so replay output cannot certify a scripted
+    // timer or a mere process exit.
+    for (const auto& event : services.systemic->SystemEvents()) {
+        if (event.type == SystemicEventType::BodyDiscovered &&
+            event.target == EntityId::New(slice.guard_npc.GetValue())) {
+            slice.body_discovered = true;
+        }
+        if ((event.type == SystemicEventType::Report ||
+             event.type == SystemicEventType::MedicalCall ||
+             event.type == SystemicEventType::HelpCoverUp) &&
+            event.actor == EntityId::New(slice.cleaner_npc.GetValue())) {
+            slice.cleaner_response = true;
+        }
+    }
 
     if (!config.frame_dump_path.empty() && !render->Cells().empty()) {
         if (!WriteCharacterFrameSvg(render->Cells().data(), config.terminal_w,
@@ -1911,6 +2358,40 @@ int RunComposition(const GameConfig& config) {
     if (!config.replay_path.empty()) {
         size_t full_npcs = 0;
         size_t semi_npcs = 0;
+        const size_t replay_keyboard_events = input_module->ReplayKeyboardEventCount();
+        const size_t replay_mouse_events = input_module->ReplayMouseEventCount();
+        const bool replay_process_ok = result == 0;
+        const bool replay_input_consumed = replay_keyboard_events > 0 || replay_mouse_events > 0;
+        const bool chapter_checkpoint_reached = slice.gate_crossed &&
+                                                services.player->CurrentRoom() ==
+                                                    "room_01_calibration";
+        const bool success_replay = config.replay_path.find("recovery_b1_success") !=
+                                    std::string::npos;
+        const bool denied_replay = config.replay_path.find("recovery_b1_denied") !=
+                                   std::string::npos;
+        const bool terminal_denied_replay =
+            config.replay_path.find("recovery_b1_terminal_denied") !=
+            std::string::npos;
+        const bool health_death_replay =
+            config.replay_path.find("recovery_b1_health_death") !=
+            std::string::npos;
+        const bool expected_state_reached = success_replay
+            ? (slice.shot_hit && slice.nonlethal_hit && slice.body_created &&
+               slice.body_hidden && slice.body_discovered && slice.cleaner_response &&
+               slice.terminal_session && slice.gate_open &&
+               replay_save_ok && replay_load_ok && chapter_checkpoint_reached)
+            : denied_replay
+                ? (slice.access_attempted && slice.access_denied && !slice.gate_open &&
+                   !slice.terminal_session && !chapter_checkpoint_reached)
+                : terminal_denied_replay
+                    ? (slice.terminal_attempted && slice.terminal_denied &&
+                       !slice.terminal_session && !slice.gate_open)
+                    : health_death_replay
+                        ? (slice.player_died && slice.player_recovered &&
+                           replay_save_ok && replay_load_ok &&
+                           services.player->Health() > 0 &&
+                           !services.player->Dead())
+                        : false;
         for (const auto& runtime : services.ai->Npcs()) {
             if (runtime.instance.cognition == CognitionTier::Full) {
                 ++full_npcs;
@@ -1918,8 +2399,18 @@ int RunComposition(const GameConfig& config) {
                 ++semi_npcs;
             }
         }
+        std::fprintf(stderr, "REPLAY_PROCESS_EXIT_OK=%s\n",
+                     replay_process_ok ? "YES" : "NO");
+        std::fprintf(stderr, "REPLAY_INPUT_CONSUMED=%s KEYBOARD_EVENTS=%zu MOUSE_EVENTS=%zu\n",
+                     replay_input_consumed ? "YES" : "NO",
+                     replay_keyboard_events, replay_mouse_events);
+        std::fprintf(stderr, "REPLAY_EXPECTED_STATE_REACHED=%s\n",
+                     expected_state_reached ? "YES" : "NO");
+        std::fprintf(stderr, "CHAPTER_CHECKPOINT_REACHED=%s\n",
+                     chapter_checkpoint_reached ? "YES" : "NO");
         std::fprintf(stderr, "REPLAY_RESULT=%s\n",
-                     result == 0 ? "PASS" : "FAIL");
+                     replay_process_ok && replay_input_consumed && expected_state_reached
+                         ? "PASS" : "FAIL");
         std::fprintf(stderr, "REPLAY_EXIT_CODE=%d\n", result);
         std::fprintf(stderr, "REPLAY_ROUTE=");
         for (size_t i = 0; i < replay_route.size(); ++i) {
@@ -1941,6 +2432,30 @@ int RunComposition(const GameConfig& config) {
                      replay_load_ok ? "YES" : "NO",
                      events.JournalCount(), services.systemic->EventCount(),
                      services.systemic->MemoryCount());
+        std::fprintf(stderr,
+                     "SLICE_SHOT_HIT=%s NONLETHAL_HIT=%s BODY_CREATED=%s "
+                     "BODY_HIDDEN=%s BODY_DISCOVERED=%s ACCESS_ATTEMPTED=%s "
+                     "ACCESS_DENIED=%s GATE_OPEN=%s GATE_CROSSED=%s "
+                     "PLAYER_HEALTH=%u PLAYER_DEAD=%s\n",
+                     slice.shot_hit ? "YES" : "NO",
+                     slice.nonlethal_hit ? "YES" : "NO",
+                     slice.body_created ? "YES" : "NO",
+                     slice.body_hidden ? "YES" : "NO",
+                     slice.body_discovered ? "YES" : "NO",
+                     slice.access_attempted ? "YES" : "NO",
+                     slice.access_denied ? "YES" : "NO",
+                     slice.gate_open ? "YES" : "NO",
+                     slice.gate_crossed ? "YES" : "NO",
+                     static_cast<unsigned>(services.player->Health()),
+                     services.player->Dead() ? "YES" : "NO");
+        std::fprintf(stderr, "TERMINAL_ATTEMPTED=%s TERMINAL_DENIED=%s "
+                            "CLEANER_RESPONSE=%s PLAYER_DIED=%s "
+                            "PLAYER_RECOVERED=%s\n",
+                     slice.terminal_attempted ? "YES" : "NO",
+                     slice.terminal_denied ? "YES" : "NO",
+                     slice.cleaner_response ? "YES" : "NO",
+                     slice.player_died ? "YES" : "NO",
+                     slice.player_recovered ? "YES" : "NO");
         std::fprintf(stderr, "NARRATOR_TYPOGRAPHY_ACTIVE=%s\n",
                      render->NarratorTypographyActive() ? "YES" : "NO");
         const BodyRecord* body = services.systemic->GetBody(slice.body);

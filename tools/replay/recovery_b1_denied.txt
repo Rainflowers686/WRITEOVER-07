@@ -1,0 +1,9 @@
+# Counterfactual B1 route: approach the same service reader without taking
+# officer_davis's badge; the reader must deny access and leave the gate closed.
+0 W down
+0 SHIFT down
+1 MOUSEMOVE -120 0
+450 W up
+450 SHIFT up
+451 F down
+452 F up

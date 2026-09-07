@@ -1,0 +1,23 @@
+# Counterfactual B1 terminal route: reach the same terminal without taking
+# the guard's badge. The terminal must reject the session and leave knowledge
+# state unchanged.
+0 W down
+0 SHIFT down
+1 MOUSEMOVE -177 0
+390 W up
+390 SHIFT up
+351 MOUSEMOVE -48 0
+352 W down
+426 W up
+427 MOUSEMOVE -873 0
+428 W down
+428 SHIFT down
+600 W up
+600 SHIFT up
+600 MOUSEMOVE 659 0
+601 W down
+601 SHIFT down
+630 W up
+630 SHIFT up
+631 F down
+632 F up

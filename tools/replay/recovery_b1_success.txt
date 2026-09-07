@@ -1,0 +1,58 @@
+# Truthful B1 recovery route: stunner -> search -> drag -> cleaner discovery
+# -> credentialed terminal -> credentialed service-door checkpoint.
+0 W down
+0 SHIFT down
+1 MOUSEMOVE -177 0
+390 W up
+390 SHIFT up
+351 MOUSEMOVE -48 0
+352 W down
+426 W up
+427 V down
+428 V up
+429 W down
+530 W up
+531 F down
+532 F up
+535 F down
+536 F up
+537 MOUSEMOVE 1120 0
+538 W down
+850 W up
+850 MOUSEMOVE 917 0
+851 F down
+852 F up
+1600 MOUSEMOVE -720 0
+1601 W down
+1601 SHIFT down
+1735 W up
+1735 SHIFT up
+1736 MOUSEMOVE -905 0
+1737 F down
+1738 F up
+1800 MOUSEMOVE -137 0
+1801 W down
+1801 SHIFT down
+2080 W up
+2080 SHIFT up
+2081 F down
+2082 F up
+2083 F5 down
+2084 F5 up
+2090 F9 down
+2091 F9 up
+2083 W down
+2083 SHIFT down
+2125 W up
+2125 SHIFT up
+2126 MOUSEMOVE -573 0
+2127 W down
+2147 W up
+2148 MOUSEMOVE 573 0
+2149 W down
+2149 SHIFT down
+2175 W up
+2175 SHIFT up
+2175 MOUSEMOVE -1012 0
+2176 F down
+2177 F up
