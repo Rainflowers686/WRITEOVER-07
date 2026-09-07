@@ -6,8 +6,10 @@
 #include "writeover/player/input.h"
 #include "writeover/player/weapon.h"
 #include "writeover/world/grid.h"
+#include "src/player/dynamic_collision.h"
 
 #include <cmath>
+#include <cstdio>
 #include <vector>
 
 namespace writeover {
@@ -23,6 +25,26 @@ Grid MakeOpenGrid(int w = 6, int h = 6) {
     }
     return grid;
 }
+
+class TestDynamicActorQuery final : public GridWorldQuery {
+public:
+    TestDynamicActorQuery(const Grid* grid, const Vec3& actor_position)
+        : GridWorldQuery(grid), actor_position_(actor_position) {}
+
+    bool AabbBlocked(const AABB& box) const override {
+        if (GridWorldQuery::AabbBlocked(box)) return true;
+        return actor_standing_ && DynamicActorOverlaps(
+            box, actor_position_, kActorRadius, kActorHeight);
+    }
+
+    void SetActorStanding(bool standing) { actor_standing_ = standing; }
+
+private:
+    static constexpr float kActorRadius = 0.42f;
+    static constexpr float kActorHeight = 1.80f;
+    Vec3 actor_position_;
+    bool actor_standing_ = true;
+};
 
 bool PostureClearance() {
     const Grid grid = MakeOpenGrid();
@@ -63,6 +85,48 @@ bool IntegrateMoveBlocked() {
     IntegrateLocomotion(ls, Vec2{0.0f, 1.0f}, false, query,
                         SimClock::kFixedDeltaTime);
     return ls.position.y > 1.5f;
+}
+
+bool DynamicActorSeparation() {
+    const Grid grid = MakeOpenGrid(10, 6);
+    const Vec3 actor_position{3.0f, 1.5f, 0.0f};
+    TestDynamicActorQuery query(&grid, actor_position);
+
+    LocomotionState ls;
+    ls.position = Vec3{1.5f, 1.5f, 0.0f};
+    ls.contact.grounded = true;
+
+    for (int frame = 0; frame < 180; ++frame) {
+        IntegrateLocomotion(ls, Vec2{1.0f, 0.0f}, false, query,
+                            SimClock::kFixedDeltaTime);
+    }
+    WO_CHECK(ls.position.x > 1.5f);
+    WO_CHECK(!DynamicActorOverlaps(GetPostureBox(Posture::Stand, ls.position),
+                                   actor_position, 0.42f, 1.80f));
+    // The player stops outside the combined body volume but remains close
+    // enough for the bounded interaction seam.
+    const float actor_distance = actor_position.x - ls.position.x;
+    std::printf("PLAYER_NPC_SEPARATION stop_x=%.3f actor_x=%.3f "
+                "minimum_center_distance=%.3f\n",
+                static_cast<double>(ls.position.x),
+                static_cast<double>(actor_position.x),
+                static_cast<double>(actor_distance));
+    WO_CHECK(actor_distance > 0.75f);
+    WO_CHECK(actor_distance < 1.35f);
+    WO_CHECK(query.AabbBlocked(GetPostureBox(Posture::Stand,
+                                             actor_position)));
+
+    const float y_before_strafe = ls.position.y;
+    for (int frame = 0; frame < 60; ++frame) {
+        IntegrateLocomotion(ls, Vec2{0.0f, 1.0f}, false, query,
+                            SimClock::kFixedDeltaTime);
+    }
+    WO_CHECK(ls.position.y > y_before_strafe + 0.10f);
+
+    // An unconscious/dead floor body is not treated as a standing wall by
+    // the bounded seam used for player locomotion.
+    query.SetActorStanding(false);
+    return !query.AabbBlocked(GetPostureBox(Posture::Stand, actor_position));
 }
 
 bool JumpThenLand() {
@@ -566,6 +630,7 @@ void RegisterPlayerTests(TestHarness& test) {
     test.Add("player.posture_clearance", &PostureClearance);
     test.Add("player.locomotion_orthogonal", &LocomotionStateOrthogonal);
     test.Add("player.integrate_move_blocked", &IntegrateMoveBlocked);
+    test.Add("player.dynamic_actor_separation", &DynamicActorSeparation);
     test.Add("player.jump_then_land", &JumpThenLand);
     test.Add("player.input_mapper_rebind", &InputMapperRebind);
     test.Add("input.context_same_key_different_actions", &InputContextSameKeyDifferentActions);

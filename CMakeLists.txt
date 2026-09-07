@@ -78,6 +78,7 @@ writeover_configure_target(writeover_world)
 
 add_library(writeover_player STATIC
     src/player/controller.cpp
+    src/player/dynamic_collision.cpp
     src/player/weapon.cpp
     src/player/combat.cpp
     src/player/input_mapper.cpp

@@ -14,6 +14,12 @@ namespace {
 
 constexpr float kPi = 3.14159265358979323846f;
 constexpr float kMaxSpriteDistance = 50.0f;
+// World sprites remain readable at close range without consuming the whole
+// 67-row terminal viewport.  This is a screen-space projection cap, not an
+// art-scale shortcut: DrawOneSprite applies it to the effective world scale.
+constexpr int kNearCharacterScreenCap = 44;
+constexpr int kMidCharacterScreenCap = 48;
+constexpr int kFarCharacterScreenCap = 24;
 constexpr size_t kMaxArtAssets = 64;
 constexpr size_t kMaxArtRows = 32;
 constexpr size_t kMaxArtColumns = 64;
@@ -316,57 +322,88 @@ char32_t PlaneGlyph(bool ceiling, float world_x, float world_y,
     return U' ';
 }
 
-char32_t WallGlyph(uint8_t material, float distance, int x, int y,
-                   uint8_t flag) {
+int PositiveModulo(int value, int period) {
+    const int remainder = value % period;
+    return remainder < 0 ? remainder + period : remainder;
+}
+
+bool NearWorldLine(float value, float spacing, float tolerance) {
+    return std::fabs(value - std::round(value / spacing) * spacing) < tolerance;
+}
+
+char32_t WallGlyph(uint8_t material, float distance, float surface_u,
+                   float surface_z, uint8_t flag) {
+    const int u_band = static_cast<int>(std::floor(surface_u));
+    const int z_band = static_cast<int>(std::floor(surface_z));
+    const bool vertical_seam = NearWorldLine(surface_u, 1.0f, 0.065f);
+    const bool horizontal_seam = NearWorldLine(surface_z, 1.0f, 0.055f);
+    const bool near_detail = distance <= 18.0f;
+    const bool mid_detail = distance <= 30.0f;
     if (flag == SegFloorRise || flag == SegFloorDrop) {
-        if (y % 6 == 0) return U'═';
-        return (x % 4 == 0 && y % 3 == 0) ? U'▒' : U' ';
+        if (horizontal_seam) return U'═';
+        return near_detail && PositiveModulo(u_band * 3 + z_band * 5, 7) == 0
+                   ? U'▒'
+                   : U' ';
     }
     if (flag == SegCeilingRise || flag == SegCeilingDrop) {
-        if (y % 7 == 0) return U'─';
-        return (x % 5 == 0 && y % 4 == 0) ? U'░' : U' ';
+        if (horizontal_seam) return U'─';
+        return near_detail && PositiveModulo(u_band * 5 + z_band * 3, 11) == 0
+                   ? U'░'
+                   : U' ';
     }
 
-    // Panel seams are the primary orientation cue.  The panel interior stays
-    // quiet; a deterministic rivet or material mark is enough to prevent a
-    // blank wall without turning the surface into ASCII snow.
-    const int seam_period = distance > 24.0f ? 37 :
-                            (distance > 12.0f ? 31 : 29);
-    const bool vertical_seam = x % seam_period == 0;
-    const bool horizontal_seam = y % 12 == 0;
+    // Panel seams are the primary orientation cue.  Their coordinates come
+    // from the world surface, not the destination screen cell, so moving or
+    // turning the camera does not make the wall pattern swim.
     if (material == 1) {
         if (vertical_seam && horizontal_seam) return U'╫';
         if (vertical_seam) return U'║';
         if (horizontal_seam) return U'═';
-        return (x % seam_period == 5 && y % 6 == 3) ? U'·' : U' ';
+        return near_detail && PositiveModulo(u_band * 3 + z_band * 7, 13) == 0
+                   ? U'·'
+                   : U' ';
     }
     if (material == 2) {
         if (vertical_seam && horizontal_seam) return U'┼';
         if (vertical_seam) return U'│';
         if (horizontal_seam) return U'─';
-        return (x + y) % 19 == 0 ? U'╱' : U' ';
+        return mid_detail && PositiveModulo(u_band * 5 + z_band * 11, 19) == 0
+                   ? U'╱'
+                   : U' ';
     }
     if (material == 6) {
         if (vertical_seam && horizontal_seam) return U'╬';
         if (vertical_seam) return U'╫';
         if (horizontal_seam) return U'┼';
-        return (x + y * 2) % 17 == 0 ? U'+' : U' ';
+        return near_detail && PositiveModulo(u_band * 7 + z_band * 2, 17) == 0
+                   ? U'+'
+                   : U' ';
     }
-    if (material == 7) return (x + y) % 7 == 0 ? U'╱' :
-                               ((x - y) % 11 == 0 ? U'╲' : U' ');
+    if (material == 7) {
+        return near_detail && PositiveModulo(u_band + z_band, 7) == 0
+                   ? U'╱'
+                   : (near_detail && PositiveModulo(u_band - z_band, 11) == 0
+                          ? U'╲'
+                          : U' ');
+    }
     if (material == 3 || material == 5) {
         if (vertical_seam && horizontal_seam) return U'┼';
         if (vertical_seam) return U'│';
         if (horizontal_seam) return U'─';
-        return (x * 3 + y) % 17 == 0 ? U'·' : U' ';
+        return near_detail && PositiveModulo(u_band * 3 + z_band, 17) == 0
+                   ? U'·'
+                   : U' ';
     }
     if (vertical_seam && horizontal_seam) return U'┼';
     if (vertical_seam) return U'│';
     if (horizontal_seam) return U'─';
-    return (x * 3 + y * 5) % 19 == 0 ? U'·' : U' ';
+    return near_detail && PositiveModulo(u_band * 3 + z_band * 5, 19) == 0
+               ? U'·'
+               : U' ';
 }
 
-CharCell WallCell(const OccludingSegment& segment, int x, int y,
+CharCell WallCell(const OccludingSegment& segment, float surface_u,
+                  float surface_z,
                   const CharacterRenderOptions& options) {
     const Color base = MaterialBase(segment.material);
     const float light_level = 0.27f + 0.73f * (segment.light / 255.0f);
@@ -376,8 +413,8 @@ CharCell WallCell(const OccludingSegment& segment, int x, int y,
     if (segment.flag == SegCeilingRise || segment.flag == SegCeilingDrop) scale *= 0.70f;
     const Color fg = ScaleColor(base, 0.72f * scale, 170);
     const Color bg = {6, 10, 15};
-    const char32_t glyph = WallGlyph(segment.material, segment.distance, x, y,
-                                      segment.flag);
+    const char32_t glyph = WallGlyph(segment.material, segment.distance,
+                                      surface_u, surface_z, segment.flag);
     return MakeCell(glyph, fg, bg, glyph == U'╬' || glyph == U'═' ? 0x01 : 0);
 }
 
@@ -392,6 +429,17 @@ float FovPerColumn(int cell_w, float focal_cells_per_unit) {
     return 2.0f * std::atan(0.5f * effective_width /
                              focal_cells_per_unit) /
            static_cast<float>(cell_w);
+}
+
+float WallSurfaceCoordinate(const CharacterView& view, const RayConfig& ray,
+                            float distance) {
+    const float hit_x = view.origin.x + std::cos(ray.yaw) * distance;
+    const float hit_y = view.origin.y + std::sin(ray.yaw) * distance;
+    const float edge_x = std::fabs(hit_x - std::round(hit_x));
+    const float edge_y = std::fabs(hit_y - std::round(hit_y));
+    // A vertical grid face runs along Y; a horizontal face runs along X.
+    // Corner ties are deterministic and use the Y-running face.
+    return edge_x <= edge_y ? hit_y : hit_x;
 }
 
 Color SpriteForeground(const CharacterArtAsset& asset, char32_t glyph,
@@ -465,23 +513,36 @@ void DrawOneSprite(const CharacterView& view,
     const float horizontal_angle = FovPerColumn(cell_w, focal_cells_per_unit);
     const float center_x = static_cast<float>(cell_w) * 0.5f +
                            std::tan(relative_yaw) * focal_x;
-    const float scale_y = focal_cells_per_unit / depth;
-    const int lod_cap = lod == CharacterLod::Near ? 96
-                        : lod == CharacterLod::Mid ? 48 : 24;
-    const int dst_h = std::clamp(static_cast<int>(std::lround(
-        instance.height * scale_y)), 1, lod_cap);
+    if (!std::isfinite(center_x)) return;
+    const int lod_cap = lod == CharacterLod::Near ? kNearCharacterScreenCap
+                        : lod == CharacterLod::Mid ? kMidCharacterScreenCap
+                                                   : kFarCharacterScreenCap;
+    const float actor_height = std::max(instance.height, 0.01f);
+    const float raw_scale = focal_cells_per_unit / depth;
+    const float max_scale = static_cast<float>(lod_cap) / actor_height;
+    const float effective_scale = std::min(raw_scale, max_scale);
+    if (!std::isfinite(raw_scale) || !std::isfinite(effective_scale) ||
+        effective_scale <= 0.0f) return;
+    const float projected_height = actor_height * effective_scale;
+    const int dst_h = std::clamp(static_cast<int>(std::lround(projected_height)),
+                                 1, lod_cap);
     const int dst_w = std::max(1, static_cast<int>(std::lround(
         static_cast<float>(asset->Width()) * dst_h /
         static_cast<float>(asset->Height()))));
     const float center_row = static_cast<float>(cell_h) * 0.5f +
                              std::tan(view.pitch) * focal_cells_per_unit;
-    const float ground_row = center_row + (view.origin.z - instance.position.z) * scale_y;
-    const float top_row = ground_row - static_cast<float>(dst_h);
+    // Every vertical placement uses the same effective scale as the capped
+    // sprite height.  In particular, do not anchor the feet with raw_scale
+    // after a close-range cap has bound.
+    const float ground_row = center_row +
+                             (view.origin.z - instance.position.z) * effective_scale;
+    const float top_row = ground_row - projected_height;
     const float bottom_row = ground_row;
     if (bottom_row < 0.0f || top_row >= static_cast<float>(cell_h)) return;
 
     const int left = static_cast<int>(std::floor(center_x - dst_w * 0.5f));
     const int right = left + dst_w - 1;
+    if (right < 0 || left >= cell_w) return;
     const int top = std::max(0, static_cast<int>(std::floor(top_row)));
     const int bottom = std::min(cell_h - 1,
                                 static_cast<int>(std::ceil(bottom_row)));
@@ -686,13 +747,23 @@ void RenderCharacterFrame(const GridCell* cells, int grid_w, int grid_h,
             const WallProjection projection = ProjectWall(
                 segment, view.origin.z, view.pitch, focal_cells_per_unit, cell_h);
             if (!projection.visible) continue;
+            const float surface_u = WallSurfaceCoordinate(
+                view, ray_config, segment.distance);
+            const float screen_span = std::max(
+                projection.screen_bottom_y - projection.screen_top_y, 0.001f);
             const int top = std::max(0, static_cast<int>(std::ceil(
                 projection.screen_top_y)));
             const int bottom = std::min(cell_h - 1, static_cast<int>(std::floor(
                 projection.screen_bottom_y)));
             for (int y = top; y <= bottom; ++y) {
+                const float vertical_t = std::clamp(
+                    (static_cast<float>(y) + 0.5f - projection.screen_top_y) /
+                        screen_span,
+                    0.0f, 1.0f);
+                const float surface_z = segment.top_z +
+                    (segment.bottom_z - segment.top_z) * vertical_t;
                 out_cells[static_cast<size_t>(y) * cell_w + x] =
-                    WallCell(segment, x, y, options);
+                    WallCell(segment, surface_u, surface_z, options);
             }
         }
     }

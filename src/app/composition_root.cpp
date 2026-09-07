@@ -32,6 +32,7 @@
 #include "writeover/world/room.h"
 
 #include "src/app/composition_root.h"
+#include "src/player/dynamic_collision.h"
 #include "src/app/runtime_paths.h"
 #include "writeover/platform/platform_api.h"
 
@@ -53,6 +54,66 @@
 namespace writeover {
 
 namespace {
+
+class PlayerActorWorldQuery final : public IWorldQuery {
+public:
+    PlayerActorWorldQuery(const IWorldQuery* static_query,
+                          const std::vector<RuntimeNpc>* npcs,
+                          RoomId active_room)
+        : static_query_(static_query), npcs_(npcs), active_room_(active_room) {}
+
+    void SetStaticQuery(const IWorldQuery* query) { static_query_ = query; }
+    void SetActiveRoom(RoomId room) { active_room_ = room; }
+
+    bool IsSolidAt(int32_t col, int32_t row) const override {
+        return static_query_ != nullptr && static_query_->IsSolidAt(col, row);
+    }
+    GridCell GetCell(int32_t col, int32_t row) const override {
+        return static_query_ != nullptr ? static_query_->GetCell(col, row)
+                                        : GridCell{};
+    }
+    int32_t Width() const override {
+        return static_query_ != nullptr ? static_query_->Width() : 0;
+    }
+    int32_t Height() const override {
+        return static_query_ != nullptr ? static_query_->Height() : 0;
+    }
+    float FloorHeightAt(float x, float y) const override {
+        return static_query_ != nullptr ? static_query_->FloorHeightAt(x, y) : 0.0f;
+    }
+    float CeilingHeightAt(float x, float y) const override {
+        return static_query_ != nullptr ? static_query_->CeilingHeightAt(x, y) : 0.0f;
+    }
+    bool LineOfSight(const Vec3& a, const Vec3& b, float eye_z) const override {
+        return static_query_ != nullptr && static_query_->LineOfSight(a, b, eye_z);
+    }
+
+    bool AabbBlocked(const AABB& box) const override {
+        if (static_query_ == nullptr || static_query_->AabbBlocked(box)) {
+            return true;
+        }
+        if (npcs_ == nullptr || !active_room_.IsValid()) return false;
+        constexpr float kStandingNpcRadius = 0.42f;
+        constexpr float kStandingNpcHeight = 1.80f;
+        for (const auto& runtime : *npcs_) {
+            if (runtime.room != active_room_ ||
+                runtime.instance.state == NPCState::Stunned ||
+                runtime.instance.state == NPCState::Dead) {
+                continue;
+            }
+            if (DynamicActorOverlaps(box, runtime.instance.position,
+                                     kStandingNpcRadius, kStandingNpcHeight)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+private:
+    const IWorldQuery* static_query_ = nullptr;
+    const std::vector<RuntimeNpc>* npcs_ = nullptr;
+    RoomId active_room_;
+};
 
 const char* QualityPresetName(QualityPreset preset) {
     switch (preset) {
@@ -1640,6 +1701,9 @@ int RunComposition(const GameConfig& config) {
             return 11;
         }
     }
+    PlayerActorWorldQuery player_world_query(
+        &services.world->Query(), &services.ai->Npcs(), slice.b1_room);
+    services.player->SetWorldQuery(&player_world_query);
     render->SetNpcSource(&services.ai->Npcs());
     bool debug_overlay = false;
     services.player->SetDebugToggleCallback([&] {
@@ -1698,7 +1762,9 @@ int RunComposition(const GameConfig& config) {
 
     auto switch_room = [&](const std::string& id, const Vec3& spawn_point) -> bool {
         if (!services.world->LoadRoomById(id)) return false;
-        services.player->SetWorldQuery(&services.world->Query());
+        player_world_query.SetStaticQuery(&services.world->Query());
+        player_world_query.SetActiveRoom(services.world->LoadedRoom().id);
+        services.player->SetWorldQuery(&player_world_query);
         services.ai->SetWorldQuery(&services.world->Query());
         services.player->Locomotion().position = spawn_point;
         services.player->Locomotion().velocity = Vec3{};

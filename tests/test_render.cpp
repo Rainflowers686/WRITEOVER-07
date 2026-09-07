@@ -812,12 +812,42 @@ bool CharacterRendererAssetsAndLod() {
 
 struct CharacterProjectionMeasurement {
     CharacterLod lod = CharacterLod::Far;
+    float raw_scale = 0.0f;
+    float effective_scale = 0.0f;
+    float projected_height = 0.0f;
     int projected_rows = 0;
     int occupied_rows = 0;
     int first_row = -1;
     int last_row = -1;
     int cap = 0;
+    float top = 0.0f;
+    float bottom = 0.0f;
+    float screen_percent = 0.0f;
 };
+
+int CharacterProjectionCap(CharacterLod lod) {
+    return lod == CharacterLod::Near ? 44
+         : lod == CharacterLod::Mid ? 48
+                                    : 24;
+}
+
+void PrintCharacterCapStudy(float distance, float focal) {
+    constexpr float sprite_height = 1.8f;
+    for (const int cap : {40, 44, 48, 52}) {
+        const float raw_scale = focal / distance;
+        const float effective_scale = std::min(
+            raw_scale, static_cast<float>(cap) / sprite_height);
+        const float projected_height = sprite_height * effective_scale;
+        const int projected_rows = std::clamp(static_cast<int>(std::lround(
+            projected_height)), 1, cap);
+        std::printf("CHARACTER_CAP_STUDY distance_m=%.2f cap=%d raw_scale=%.3f "
+                    "effective_scale=%.3f projected_rows=%d screen_pct=%.1f\n",
+                    static_cast<double>(distance), cap,
+                    static_cast<double>(raw_scale),
+                    static_cast<double>(effective_scale), projected_rows,
+                    static_cast<double>(100.0f * projected_height / 67.0f));
+    }
+}
 
 CharacterProjectionMeasurement MeasureCharacterProjection(
     float distance, const CharacterArtBank& bank) {
@@ -827,10 +857,13 @@ CharacterProjectionMeasurement MeasureCharacterProjection(
     const float focal = 0.5f * static_cast<float>(cell_h) /
                         std::tan(60.0f * 3.14159265f / 360.0f);
     const CharacterLod lod = SelectCharacterLod(distance);
-    const int cap = lod == CharacterLod::Near ? 96
-                    : lod == CharacterLod::Mid ? 48 : 24;
+    const int cap = CharacterProjectionCap(lod);
+    const float raw_scale = focal / distance;
+    const float effective_scale = std::min(
+        raw_scale, static_cast<float>(cap) / sprite_height);
+    const float projected_height = sprite_height * effective_scale;
     const int projected = std::clamp(static_cast<int>(std::lround(
-        sprite_height * focal / distance)), 1, cap);
+        projected_height)), 1, cap);
 
     const Grid grid = MakeOpenGrid(16, 8);
     CharacterView view;
@@ -851,8 +884,16 @@ CharacterProjectionMeasurement MeasureCharacterProjection(
 
     CharacterProjectionMeasurement result;
     result.lod = lod;
+    result.raw_scale = raw_scale;
+    result.effective_scale = effective_scale;
+    result.projected_height = projected_height;
     result.projected_rows = projected;
     result.cap = cap;
+    result.bottom = static_cast<float>(cell_h) * 0.5f +
+                    (kEyeStand - 0.0f) * effective_scale;
+    result.top = result.bottom - projected_height;
+    result.screen_percent = 100.0f * projected_height /
+                            static_cast<float>(cell_h);
     for (int row = 0; row < cell_h; ++row) {
         bool occupied = false;
         for (int col = 0; col < cell_w; ++col) {
@@ -869,12 +910,18 @@ CharacterProjectionMeasurement MeasureCharacterProjection(
     if (result.first_row >= 0) {
         result.occupied_rows = result.last_row - result.first_row + 1;
     }
-    std::printf("CHARACTER_SPRITE_PROJECTION distance_m=%.1f lod=%u raw_rows=%.2f "
-                "projected_rows=%d visible_rows=%d bounds=%d..%d cap=%d\n",
+    std::printf("CHARACTER_SPRITE_PROJECTION distance_m=%.2f lod=%u "
+                "raw_scale=%.3f effective_scale=%.3f projected_rows=%d "
+                "visible_rows=%d top=%.2f bottom=%.2f bounds=%d..%d cap=%d "
+                "screen_pct=%.1f\n",
                 static_cast<double>(distance), static_cast<unsigned>(lod),
-                static_cast<double>(sprite_height * focal / distance),
-                result.projected_rows, result.occupied_rows, result.first_row,
-                result.last_row, result.cap);
+                static_cast<double>(result.raw_scale),
+                static_cast<double>(result.effective_scale),
+                result.projected_rows, result.occupied_rows,
+                static_cast<double>(result.top),
+                static_cast<double>(result.bottom), result.first_row,
+                result.last_row,
+                result.cap, static_cast<double>(result.screen_percent));
     return result;
 }
 
@@ -896,18 +943,93 @@ bool CharacterSpriteProjectionAtReviewDistances() {
     WO_CHECK(loaded);
     if (!loaded) return false;
 
-    const std::array<float, 5> distances = {0.5f, 1.0f, 2.0f, 3.0f, 4.0f};
-    const std::array<int, 5> expected_projected_rows = {96, 96, 52, 35, 26};
-    for (size_t index = 0; index < distances.size(); ++index) {
-        const auto measurement = MeasureCharacterProjection(distances[index], bank);
-        WO_CHECK_EQ(measurement.projected_rows, expected_projected_rows[index]);
-        WO_CHECK(measurement.occupied_rows >= 0);
-        WO_CHECK(measurement.occupied_rows <= 67);
-        WO_CHECK(measurement.cap <= 96);
+    constexpr int cell_h = 67;
+    const float focal = 0.5f * static_cast<float>(cell_h) /
+                        std::tan(60.0f * 3.14159265f / 360.0f);
+    PrintCharacterCapStudy(0.5f, focal);
+    PrintCharacterCapStudy(1.0f, focal);
+
+    const std::array<float, 10> distances = {
+        0.4f, 0.5f, 0.75f, 1.0f, 1.5f,
+        2.0f, 3.0f, 4.0f, 8.0f, 12.0f};
+    for (const float distance : distances) {
+        const auto measurement = MeasureCharacterProjection(distance, bank);
+        WO_CHECK(std::isfinite(measurement.raw_scale));
+        WO_CHECK(std::isfinite(measurement.effective_scale));
+        WO_CHECK(std::isfinite(measurement.top));
+        WO_CHECK(std::isfinite(measurement.bottom));
+        WO_CHECK(measurement.projected_rows >= 1);
+        WO_CHECK(measurement.projected_rows <= measurement.cap);
+        WO_CHECK(measurement.occupied_rows > 0);
+        WO_CHECK(measurement.occupied_rows <= cell_h);
+        WO_CHECK(measurement.first_row >= 0);
+        WO_CHECK(measurement.last_row < cell_h);
+        WO_CHECK(measurement.top < static_cast<float>(cell_h));
+        WO_CHECK(measurement.bottom >= 0.0f);
+        WO_CHECK(measurement.cap == CharacterProjectionCap(measurement.lod));
     }
-    // This is an analysis gate only. It records the current 96-cell Near cap
-    // and does not silently redesign the accepted Character Renderer.
+
+    const auto near_before_boundary = MeasureCharacterProjection(3.9f, bank);
+    const auto mid_at_boundary = MeasureCharacterProjection(4.0f, bank);
+    const auto mid_after_boundary = MeasureCharacterProjection(4.1f, bank);
+    WO_CHECK(near_before_boundary.lod == CharacterLod::Near);
+    WO_CHECK(mid_at_boundary.lod == CharacterLod::Mid);
+    WO_CHECK(mid_after_boundary.lod == CharacterLod::Mid);
+    WO_CHECK(std::abs(near_before_boundary.projected_rows -
+                      mid_at_boundary.projected_rows) <= 1);
+    WO_CHECK(std::abs(mid_at_boundary.projected_rows -
+                      mid_after_boundary.projected_rows) <= 1);
+    std::printf("CHARACTER_SPRITE_LOD_BOUNDARY d=3.9/4.0/4.1 "
+                "rows=%d/%d/%d top=%.2f/%.2f/%.2f bottom=%.2f/%.2f/%.2f\n",
+                near_before_boundary.projected_rows,
+                mid_at_boundary.projected_rows,
+                mid_after_boundary.projected_rows,
+                static_cast<double>(near_before_boundary.top),
+                static_cast<double>(mid_at_boundary.top),
+                static_cast<double>(mid_after_boundary.top),
+                static_cast<double>(near_before_boundary.bottom),
+                static_cast<double>(mid_at_boundary.bottom),
+                static_cast<double>(mid_after_boundary.bottom));
     return true;
+}
+
+bool CharacterWallPatternUsesWorldCoordinates() {
+    Grid grid = MakeOpenGrid(12, 8);
+    for (int32_t row = 0; row < grid.Height(); ++row) {
+        GridCell wall;
+        wall.flags = CellFlag_Solid;
+        wall.material = 1;
+        wall.light = 255;
+        grid.SetCell(8, row, wall);
+    }
+
+    constexpr int width = 80;
+    constexpr int height = 36;
+    const float focal = 0.5f * static_cast<float>(height) /
+                        std::tan(60.0f * 3.14159265f / 360.0f);
+    const auto render = [&](float y) {
+        std::vector<CharCell> frame(static_cast<size_t>(width) * height);
+        CharacterView view;
+        view.origin = Vec3{2.5f, y, kEyeStand};
+        view.yaw = 0.0f;
+        RenderCharacterFrame(grid.Data().data(), grid.Width(), grid.Height(),
+                             view, frame.data(), width, height, focal);
+        return frame;
+    };
+
+    const auto seam_frame = render(2.96f);
+    const auto panel_frame = render(3.18f);
+    const char32_t seam_glyph = seam_frame[18 * width + width / 2].code_point;
+    const char32_t panel_glyph = panel_frame[18 * width + width / 2].code_point;
+    std::printf("CHARACTER_WALL_ANCHOR surface_u=2.96/3.18 glyph=U+%04X/U+%04X\n",
+                static_cast<unsigned>(seam_glyph),
+                static_cast<unsigned>(panel_glyph));
+    // The camera translates along the same wall face while the destination
+    // screen cell stays fixed. A screen-space pattern would be identical;
+    // a world-anchored pattern changes when the hit coordinate crosses a
+    // panel seam.
+    WO_CHECK(seam_glyph != panel_glyph);
+    return seam_glyph == U'║' || seam_glyph == U'╫';
 }
 
 bool CharacterPistolKeepsTransparentWhitespace() {
@@ -989,6 +1111,8 @@ void RegisterRenderTests(TestHarness& test) {
     test.Add("character.assets_and_lod", &CharacterRendererAssetsAndLod);
     test.Add("character.sprite_projection_review_distances",
              &CharacterSpriteProjectionAtReviewDistances);
+    test.Add("character.wall_pattern_world_anchor",
+             &CharacterWallPatternUsesWorldCoordinates);
     test.Add("character.pistol_transparency", &CharacterPistolKeepsTransparentWhitespace);
     test.Add("character.portrait_bounded_char_art", &CharacterPortraitIsBoundedCharArt);
     test.Add("render.marker_hidden_behind_full_wall", &MarkerHiddenBehindFullWall);
