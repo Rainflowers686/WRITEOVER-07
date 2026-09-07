@@ -69,7 +69,7 @@ was not relabeled as evidence for this correction.
 
 ```text
 GAMEPLAY_REGRESSION = PASS (local Debug and Release gates listed below)
-CI = PENDING_PUSH
+CI = SUCCESS (GitHub Actions run 34169421899; main push; no release workflow)
 ```
 
 Executed locally against the canonical root:
