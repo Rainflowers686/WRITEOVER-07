@@ -9,7 +9,11 @@
 #include "writeover/render/terminal_backend.h"
 #include "writeover/world/grid.h"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstdio>
+#include <filesystem>
 #include <vector>
 
 namespace writeover {
@@ -806,6 +810,106 @@ bool CharacterRendererAssetsAndLod() {
     return true;
 }
 
+struct CharacterProjectionMeasurement {
+    CharacterLod lod = CharacterLod::Far;
+    int projected_rows = 0;
+    int occupied_rows = 0;
+    int first_row = -1;
+    int last_row = -1;
+    int cap = 0;
+};
+
+CharacterProjectionMeasurement MeasureCharacterProjection(
+    float distance, const CharacterArtBank& bank) {
+    constexpr int cell_w = 240;
+    constexpr int cell_h = 67;
+    constexpr float sprite_height = 1.8f;
+    const float focal = 0.5f * static_cast<float>(cell_h) /
+                        std::tan(60.0f * 3.14159265f / 360.0f);
+    const CharacterLod lod = SelectCharacterLod(distance);
+    const int cap = lod == CharacterLod::Near ? 96
+                    : lod == CharacterLod::Mid ? 48 : 24;
+    const int projected = std::clamp(static_cast<int>(std::lround(
+        sprite_height * focal / distance)), 1, cap);
+
+    const Grid grid = MakeOpenGrid(16, 8);
+    CharacterView view;
+    view.origin = Vec3{1.5f, 3.5f, kEyeStand};
+    view.yaw = 0.0f;
+    std::vector<CharCell> frame(static_cast<size_t>(cell_w) * cell_h);
+    for (auto& cell : frame) {
+        cell.code_point = U' ';
+        cell.bg_r = 5;
+        cell.bg_g = 9;
+        cell.bg_b = 14;
+    }
+    DrawCharacterSprites(view,
+                         {{Vec3{1.5f + distance, 3.5f, 0.0f},
+                           sprite_height, CharacterSpriteKind::FullHuman}},
+                         bank, grid.Data().data(), grid.Width(),
+                         grid.Height(), frame.data(), cell_w, cell_h, focal);
+
+    CharacterProjectionMeasurement result;
+    result.lod = lod;
+    result.projected_rows = projected;
+    result.cap = cap;
+    for (int row = 0; row < cell_h; ++row) {
+        bool occupied = false;
+        for (int col = 0; col < cell_w; ++col) {
+            if (frame[static_cast<size_t>(row) * cell_w + col].code_point != U' ') {
+                occupied = true;
+                break;
+            }
+        }
+        if (occupied) {
+            if (result.first_row < 0) result.first_row = row;
+            result.last_row = row;
+        }
+    }
+    if (result.first_row >= 0) {
+        result.occupied_rows = result.last_row - result.first_row + 1;
+    }
+    std::printf("CHARACTER_SPRITE_PROJECTION distance_m=%.1f lod=%u raw_rows=%.2f "
+                "projected_rows=%d visible_rows=%d bounds=%d..%d cap=%d\n",
+                static_cast<double>(distance), static_cast<unsigned>(lod),
+                static_cast<double>(sprite_height * focal / distance),
+                result.projected_rows, result.occupied_rows, result.first_row,
+                result.last_row, result.cap);
+    return result;
+}
+
+bool CharacterSpriteProjectionAtReviewDistances() {
+    CharacterArtBank bank;
+    std::filesystem::path root = std::filesystem::current_path();
+    bool loaded = false;
+    for (int level = 0; level < 7 && !loaded; ++level) {
+        loaded = bank.Load((root / "data/characters/b1_character_art.txt").string());
+        if (root == root.root_path()) break;
+        root = root.parent_path();
+    }
+    if (!loaded) {
+        std::filesystem::path source_root =
+            std::filesystem::path(__FILE__).parent_path().parent_path();
+        loaded = bank.Load(
+            (source_root / "data/characters/b1_character_art.txt").string());
+    }
+    WO_CHECK(loaded);
+    if (!loaded) return false;
+
+    const std::array<float, 5> distances = {0.5f, 1.0f, 2.0f, 3.0f, 4.0f};
+    const std::array<int, 5> expected_projected_rows = {96, 96, 52, 35, 26};
+    for (size_t index = 0; index < distances.size(); ++index) {
+        const auto measurement = MeasureCharacterProjection(distances[index], bank);
+        WO_CHECK_EQ(measurement.projected_rows, expected_projected_rows[index]);
+        WO_CHECK(measurement.occupied_rows >= 0);
+        WO_CHECK(measurement.occupied_rows <= 67);
+        WO_CHECK(measurement.cap <= 96);
+    }
+    // This is an analysis gate only. It records the current 96-cell Near cap
+    // and does not silently redesign the accepted Character Renderer.
+    return true;
+}
+
 bool CharacterPistolKeepsTransparentWhitespace() {
     CharacterArtBank bank;
     const int w = 80;
@@ -883,6 +987,8 @@ void RegisterRenderTests(TestHarness& test) {
     test.Add("production.half_block_frame", &ProductionHalfBlockFrame);
     test.Add("character.semantic_cells", &CharacterRendererUsesSemanticCells);
     test.Add("character.assets_and_lod", &CharacterRendererAssetsAndLod);
+    test.Add("character.sprite_projection_review_distances",
+             &CharacterSpriteProjectionAtReviewDistances);
     test.Add("character.pistol_transparency", &CharacterPistolKeepsTransparentWhitespace);
     test.Add("character.portrait_bounded_char_art", &CharacterPortraitIsBoundedCharArt);
     test.Add("render.marker_hidden_behind_full_wall", &MarkerHiddenBehindFullWall);

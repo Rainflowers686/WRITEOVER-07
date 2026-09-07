@@ -33,6 +33,9 @@
 - `EventPlayerDamage` 是本轮唯一的 NPC 到玩家伤害 seam；玩家 health/dead
   状态进入 player save section，F9 只恢复通过 bounded deserialize 校验的
   checkpoint 状态。
+- 本轮 guard line-of-sight `EventPlayerDamage` 只证明 bounded player-health /
+  death seam。它不是 complete enemy combat：不覆盖敌方攻击选择、战术决策、
+  敌方武器行为、完整 combat AI 或一般敌人战斗范围；这些仍不在本轮。
 - Windows ANSI backend 在提交 character cells 前显式启用 VT processing 和
   UTF-8 output code page；运行时仍需用真实终端截图确认最终观感。
 

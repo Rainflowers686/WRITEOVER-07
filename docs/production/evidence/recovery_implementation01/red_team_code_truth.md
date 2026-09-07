@@ -54,6 +54,10 @@ enters a dead state at zero.  Health and dead state are serialized with bounded
 validation.  The health replay proves damage, death, save, load, recovery, and
 positive live health after recovery.
 
+This is only a bounded health/death proof seam for the recovery slice.  It does
+not claim complete enemy combat, enemy attack selection, tactical behavior,
+weapon behavior, or general combat coverage.
+
 ### Replay truth — VERIFIED
 
 Replay output reports process exit, consumed keyboard/mouse events, expected

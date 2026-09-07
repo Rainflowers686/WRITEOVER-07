@@ -34,6 +34,10 @@ operation was created.
 - Guard line-of-sight damage now reaches the authoritative player health state.
   Health is reflected by the normal HUD, death removes movement/interaction
   authority, and bounded health/dead state is persisted and restored.
+- The guard line-of-sight damage path is explicitly a bounded health/death
+  proof for this recovery slice, not complete enemy combat.  It does not claim
+  general enemy attack selection, tactical combat, enemy weapon behavior, or
+  a complete combat AI.
 - A bounded non-lethal hit creates a runtime unconscious body, transfers the
   credential from the incapacitated actor, and connects search, badge
   acquisition, drag, hide, cleaner discovery, and response through existing
@@ -89,6 +93,8 @@ Release smoke failure.
   save/load, recovery, and positive live health after recovery.
 - Unit-level counterfactuals cover badge on the body, badge held by another
   entity, player-held badge, transferred/dropped badge, and revoked badge.
+- The Full-NPC speech regression proves one sight-entry event during continuous
+  visibility and a second event only after a real visibility gap.
 - Unit-level cleaner counterfactuals cover pre-arrival, blocked route, another
   room, and incapacitated cleaner cases.  The body remains hidden and no
   response is emitted when the cleaner cannot perceive/arrive.
@@ -234,4 +240,3 @@ OPEN_P0 = 0 for the exercised recovery slice
 OPEN_P1 = 0 for the exercised recovery slice
 
 VERDICT = READY_FOR_RAIN_REVIEW
-

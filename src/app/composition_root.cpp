@@ -2100,7 +2100,6 @@ int RunComposition(const GameConfig& config) {
                                 took_badge = true;
                             }
                         }
-                        slice.access_attempted = slice.access_attempted || took_badge;
                         render->SetSubtitleOnce(took_badge ? "Search complete. Badge taken." :
                                                    "Search complete. Nothing useful found.", 150);
                     } else if (services.systemic->BeginDrag(player, slice.body, frame)) {
@@ -2375,6 +2374,12 @@ int RunComposition(const GameConfig& config) {
         const bool health_death_replay =
             config.replay_path.find("recovery_b1_health_death") !=
             std::string::npos;
+        const bool badge_only_replay =
+            config.replay_path.find("recovery_b1_badge_only") !=
+            std::string::npos;
+        const bool badge_held_by_player =
+            slice.badge.IsValid() &&
+            services.systemic->ItemHeldBy(slice.badge, slice.player);
         const bool expected_state_reached = success_replay
             ? (slice.shot_hit && slice.nonlethal_hit && slice.body_created &&
                slice.body_hidden && slice.body_discovered && slice.cleaner_response &&
@@ -2391,7 +2396,11 @@ int RunComposition(const GameConfig& config) {
                            replay_save_ok && replay_load_ok &&
                            services.player->Health() > 0 &&
                            !services.player->Dead())
-                        : false;
+                        : badge_only_replay
+                            ? (badge_held_by_player && !slice.access_attempted &&
+                               !slice.access_denied && !slice.gate_open &&
+                               !chapter_checkpoint_reached)
+                            : false;
         for (const auto& runtime : services.ai->Npcs()) {
             if (runtime.instance.cognition == CognitionTier::Full) {
                 ++full_npcs;
@@ -2448,6 +2457,8 @@ int RunComposition(const GameConfig& config) {
                      slice.gate_crossed ? "YES" : "NO",
                      static_cast<unsigned>(services.player->Health()),
                      services.player->Dead() ? "YES" : "NO");
+        std::fprintf(stderr, "BADGE_HELD_BY_PLAYER=%s\n",
+                     badge_held_by_player ? "YES" : "NO");
         std::fprintf(stderr, "TERMINAL_ATTEMPTED=%s TERMINAL_DENIED=%s "
                             "CLEANER_RESPONSE=%s PLAYER_DIED=%s "
                             "PLAYER_RECOVERED=%s\n",

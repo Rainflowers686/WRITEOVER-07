@@ -1,0 +1,16 @@
+# Counterfactual telemetry route: acquire the badge, then stop before any
+# terminal/reader interaction. ACCESS_ATTEMPTED must remain NO.
+0 W down
+0 SHIFT down
+1 MOUSEMOVE -177 0
+390 W up
+390 SHIFT up
+351 MOUSEMOVE -48 0
+352 W down
+426 W up
+427 V down
+428 V up
+429 W down
+530 W up
+531 F down
+532 F up

@@ -188,18 +188,25 @@ void AutonomousNpcSystem::Tick(uint64_t frame) {
             if (runtime.room != active_room_ ||
                 runtime.instance.state == NPCState::Dead ||
                 runtime.instance.state == NPCState::Stunned) {
+                // This field is the previous decision interval's visibility,
+                // not a permanent historical fact. Leaving the active room
+                // or losing the ability to perceive creates a fresh sight
+                // transition when the actor becomes active again.
+                runtime.player_observed = false;
                 continue;
             }
             const PerceptionResult perception = perception_system.Update(
                 runtime.instance, *world_query_, player_position_, player_eye_z_,
                 noises_, static_cast<uint32_t>(std::min<uint64_t>(
                     frame, std::numeric_limits<uint32_t>::max())));
+            const bool newly_sees_player =
+                perception.sees_player && !runtime.player_observed;
+            runtime.player_observed = perception.sees_player;
             const bool stimulus = perception.sees_player || perception.hears_noise;
             Receipt(runtime.instance.id, AutonomousPhase::Observe,
                     runtime.instance.state, frame, stimulus);
             if (stimulus) {
                 const bool remembered = AddObservationMemory(runtime, perception, frame);
-                runtime.player_observed = runtime.player_observed || perception.sees_player;
                 Receipt(runtime.instance.id, AutonomousPhase::Remember,
                         runtime.instance.state, frame, remembered);
             } else {
@@ -237,7 +244,7 @@ void AutonomousNpcSystem::Tick(uint64_t frame) {
                 }
             }
             if (runtime.instance.cognition == CognitionTier::Full &&
-                perception.sees_player && events_ != nullptr) {
+                newly_sees_player && events_ != nullptr) {
                 events_->Post(EventNpcSpeak{runtime.instance.id, StringId::New(0xB1003)},
                                EventKind::Notification,
                                EntityId::New(runtime.instance.id.GetValue()),

@@ -191,6 +191,70 @@ bool AutonomousRuntimeRunsFivePhaseLoop() {
     return true;
 }
 
+int CountNpcSpeakEvents(const EventBus& events, NpcId npc) {
+    int count = 0;
+    for (const auto& event : events.JournalSnapshot()) {
+        const auto* speech = std::get_if<EventNpcSpeak>(&event.payload);
+        if (speech != nullptr && speech->npc == npc) ++count;
+    }
+    return count;
+}
+
+bool AutonomousFullNpcSpeaksOnSightTransitionOnly() {
+    Grid grid = MakeViewGrid();
+    GridWorldQuery query(&grid);
+    SystemicWorld systemic;
+    ActorRecord actor;
+    actor.id = NpcId::New(18);
+    actor.data_key = ResourceId::New(7018);
+    actor.faction = Faction::Security;
+    actor.cognition = CognitionTier::Full;
+    actor.role = Role::Guard;
+    WO_CHECK(systemic.AddActor(actor));
+
+    EventBus events;
+    DeterministicRNG rng(0x18a5);
+    AutonomousNpcSystem runtime;
+    runtime.Attach(&systemic, &events, &rng);
+    NPCInstance npc;
+    npc.id = NpcId::New(18);
+    npc.cognition = CognitionTier::Full;
+    npc.faction = Faction::Security;
+    npc.role = Role::Guard;
+    npc.position = Vec3{1.5f, 1.5f, 0.0f};
+    npc.yaw = 0.0f;
+    npc.health = 100;
+    WO_CHECK(runtime.AddNpc(npc, RoomId::New(1)));
+    runtime.SetWorldQuery(&query);
+    runtime.SetActiveRoom(RoomId::New(1));
+    runtime.SetPlayerPose(Vec3{4.5f, 1.5f, 0.0f}, kEyeStand);
+
+    const auto dispatch_tick = [&](uint64_t frame) {
+        runtime.Tick(frame);
+        // Events posted by a tick are deferred by the EventBus contract.
+        events.Dispatch();
+        events.Dispatch();
+    };
+
+    dispatch_tick(12);
+    WO_CHECK_EQ(CountNpcSpeakEvents(events, npc.id), 1);
+    // Ten-Hz decision cadence over five seconds must not repeat the same
+    // speech while the player remains continuously visible.
+    for (uint64_t frame = 24; frame <= 600; frame += 12) {
+        dispatch_tick(frame);
+    }
+    WO_CHECK_EQ(CountNpcSpeakEvents(events, npc.id), 1);
+
+    // A real visibility gap arms a new sight-entry transition.
+    runtime.SetPlayerPose(Vec3{10.5f, 4.5f, 0.0f}, kEyeStand);
+    dispatch_tick(612);
+    WO_CHECK_EQ(CountNpcSpeakEvents(events, npc.id), 1);
+    runtime.SetPlayerPose(Vec3{4.5f, 1.5f, 0.0f}, kEyeStand);
+    dispatch_tick(624);
+    WO_CHECK_EQ(CountNpcSpeakEvents(events, npc.id), 2);
+    return true;
+}
+
 bool AutonomousRuntimeRefreshesContinuousObservation() {
     Grid grid = MakeViewGrid();
     GridWorldQuery query(&grid);
@@ -462,6 +526,8 @@ void RegisterAiTests(TestHarness& test) {
     test.Add("ai.memory_recall_order", &MemoryRecallOrdered);
     test.Add("ai.autonomous_runtime_five_phase_loop",
              &AutonomousRuntimeRunsFivePhaseLoop);
+    test.Add("ai.full_npc_speaks_on_sight_transition_only",
+             &AutonomousFullNpcSpeaksOnSightTransitionOnly);
     test.Add("ai.autonomous_runtime_refreshes_continuous_observation",
              &AutonomousRuntimeRefreshesContinuousObservation);
     test.Add("ai.cleaner_must_arrive_before_discovery",
