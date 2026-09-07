@@ -1,5 +1,8 @@
 #include "writeover/render/production_renderer.h"
 
+// LEGACY PVS-01 half-block renderer. Kept for historical regression coverage;
+// it is intentionally not the active normal-world production path.
+
 #include "writeover/render/raycaster.h"
 
 #include <algorithm>

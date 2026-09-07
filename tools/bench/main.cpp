@@ -1,6 +1,6 @@
 #include "writeover/render/benchmark.h"
 #include "writeover/render/frame_encoder.h"
-#include "writeover/render/production_renderer.h"
+#include "writeover/render/character_renderer.h"
 #include "writeover/render/raycaster.h"
 #include "writeover/ai/runtime.h"
 #include "writeover/systemic/systemic.h"
@@ -417,10 +417,11 @@ double SystemicUpdateBenchmark() {
 
 // Integrated PVS frame proxy. This deliberately stays a benchmark seam rather
 // than becoming a second game loop: it runs the real bounded NPC adapter,
-// event dispatch, production raster, half-block composition, and ANSI encode
-// for one representative 240x67 frame. It is the measured upper-level proxy
-// for the <=6 ms total CPU budget; platform device writes are excluded.
-double ProductionRuntimeFrameBenchmark() {
+// event dispatch, Character-Art CharCell raster, authored sprites, pistol,
+// effects and ANSI encode for one representative 240x67 frame. It is the
+// measured upper-level proxy for the <=6 ms total CPU budget; platform device
+// writes are excluded.
+double CharacterRuntimeFrameBenchmark() {
     using Clock = std::chrono::steady_clock;
 
     Grid grid(24, 18);
@@ -470,11 +471,12 @@ double ProductionRuntimeFrameBenchmark() {
 
     constexpr int cell_w = 240;
     constexpr int cell_h = 67;
-    constexpr int logical_w = cell_w;
-    constexpr int logical_h = cell_h * 2;
     constexpr int kFrames = 1200;
-    std::vector<Color> pixels(static_cast<size_t>(logical_w) * logical_h);
     std::vector<CharCell> cells(static_cast<size_t>(cell_w) * cell_h);
+    CharacterArtBank art;
+    (void)art.Load("data/characters/b1_character_art.txt");
+    std::vector<CharacterSpriteInstance> sprites;
+    sprites.reserve(25);
     std::string scratch;
     AnsiFrameEncoder encoder;
     FrameTimeSampler sampler;
@@ -486,28 +488,31 @@ double ProductionRuntimeFrameBenchmark() {
         ai.Tick(static_cast<uint64_t>(frame));
         events.Dispatch();
 
-        ProductionView view;
+        CharacterView view;
         view.origin = Vec3{1.5f, 15.5f, 1.6f};
         view.yaw = 0.15f + static_cast<float>(frame) * 0.002f;
         view.pitch = 0.0f;
-        const float focal = 0.5f * static_cast<float>(logical_h) /
+        const float focal = 0.5f * static_cast<float>(cell_h) /
                             std::tan(60.0f * 3.14159265f / 360.0f);
-        RenderProductionFrame(grid.Data().data(), grid.Width(), grid.Height(),
-                              view, pixels.data(), logical_w, logical_h, focal);
+        RenderCharacterFrame(grid.Data().data(), grid.Width(), grid.Height(),
+                             view, cells.data(), cell_w, cell_h, focal);
+        sprites.clear();
         for (int i = 0; i < 25; ++i) {
-            DrawProductionSprite(view.origin, view.yaw, view.pitch,
-                                 Vec3{5.0f + static_cast<float>(i % 5) * 1.5f,
-                                      5.0f + static_cast<float>(i / 5) * 1.3f,
-                                      0.0f},
-                                 1.7f, ProductionSpriteKind::Npc,
-                                 i < 5 ? Color{148, 96, 220} : Color{90, 140, 190},
-                                 grid.Data().data(), grid.Width(), grid.Height(),
-                                 pixels.data(), logical_w, logical_h, focal);
+            sprites.push_back({
+                Vec3{5.0f + static_cast<float>(i % 5) * 1.5f,
+                     5.0f + static_cast<float>(i / 5) * 1.3f, 0.0f},
+                i < 5 ? 1.8f : 1.7f,
+                i < 5 ? CharacterSpriteKind::FullHuman
+                      : CharacterSpriteKind::SecurityGuard});
         }
-        DrawWeaponViewmodel(pixels.data(), logical_w, logical_h, frame % 3,
+        DrawCharacterSprites(view, sprites, art, grid.Data().data(), grid.Width(),
+                             grid.Height(), cells.data(), cell_w, cell_h, focal);
+        DrawPistolViewmodel(cells.data(), cell_w, cell_h, art,
+                            frame % 3 == 0 ? PistolFrame::Fire : PistolFrame::IdleA,
                             static_cast<float>(frame % 8) * 0.02f);
-        ComposeHalfBlockFrame(pixels.data(), logical_w, logical_h,
-                              cells.data(), cell_w, cell_h);
+        DrawCharacterEffects(cells.data(), cell_w, cell_h,
+                             static_cast<uint64_t>(frame), frame % 3 == 0,
+                             frame % 5 == 0, false, false, false);
         scratch.clear();
         encoder.Encode(cells.data(), cell_w, cell_h, scratch,
                        frame == 0 ? EncodeMode::ForceFull : EncodeMode::Auto);
@@ -517,11 +522,11 @@ double ProductionRuntimeFrameBenchmark() {
             std::chrono::duration<double, std::milli>(t1 - t0).count());
     }
 
-    PrintCsv("pvs_total_runtime_frame_240x67", sampler.Compute());
+    PrintCsv("character_total_runtime_frame_240x67", sampler.Compute());
     return sampler.Compute().worst_1pct_avg_ms;
 }
 
-double ProductionRendererBenchmark() {
+double CharacterRendererBenchmark() {
     using Clock = std::chrono::steady_clock;
     Grid grid(24, 18);
     for (int r = 0; r < 18; ++r) {
@@ -535,34 +540,40 @@ double ProductionRendererBenchmark() {
     }
     const int cell_w = 240;
     const int cell_h = 67;
-    const int logical_w = cell_w;
-    const int logical_h = cell_h * 2;
-    std::vector<Color> pixels(static_cast<size_t>(logical_w) * logical_h);
     std::vector<CharCell> cells(static_cast<size_t>(cell_w) * cell_h);
+    CharacterArtBank art;
+    (void)art.Load("data/characters/b1_character_art.txt");
+    std::vector<CharacterSpriteInstance> sprites;
+    sprites.reserve(25);
     FrameTimeSampler sampler;
     constexpr int kFrames = 240;
     for (int frame = 0; frame < kFrames; ++frame) {
         const auto t0 = Clock::now();
-        ProductionView view;
+        CharacterView view;
         view.origin = Vec3{1.5f, 15.5f, 1.6f};
         view.yaw = 0.15f + static_cast<float>(frame) * 0.002f;
         view.pitch = 0.0f;
-        const float focal = 0.5f * static_cast<float>(logical_h) /
+        const float focal = 0.5f * static_cast<float>(cell_h) /
                             std::tan(60.0f * 3.14159265f / 360.0f);
-        RenderProductionFrame(grid.Data().data(), grid.Width(), grid.Height(),
-                              view, pixels.data(), logical_w, logical_h, focal);
-        DrawProductionSprite(view.origin, view.yaw, view.pitch,
-                             Vec3{10.5f, 5.5f, 0.0f}, 1.7f,
-                             ProductionSpriteKind::Npc, Color{120,130,140},
-                             grid.Data().data(), grid.Width(), grid.Height(),
-                             pixels.data(), logical_w, logical_h, focal);
-        DrawWeaponViewmodel(pixels.data(), logical_w, logical_h, 0, 0.0f);
-        ComposeHalfBlockFrame(pixels.data(), logical_w, logical_h,
-                              cells.data(), cell_w, cell_h);
+        RenderCharacterFrame(grid.Data().data(), grid.Width(), grid.Height(),
+                             view, cells.data(), cell_w, cell_h, focal);
+        sprites.clear();
+        for (int i = 0; i < 25; ++i) {
+            sprites.push_back({
+                Vec3{5.0f + static_cast<float>(i % 5) * 1.5f,
+                     5.0f + static_cast<float>(i / 5) * 1.3f, 0.0f},
+                i < 5 ? 1.8f : 1.7f,
+                i < 5 ? CharacterSpriteKind::FullHuman
+                      : CharacterSpriteKind::SecurityGuard});
+        }
+        DrawCharacterSprites(view, sprites, art, grid.Data().data(), grid.Width(),
+                             grid.Height(), cells.data(), cell_w, cell_h, focal);
+        DrawPistolViewmodel(cells.data(), cell_w, cell_h, art,
+                            PistolFrame::IdleA, 0.0f);
         const auto t1 = Clock::now();
         sampler.AddSample(std::chrono::duration<double, std::milli>(t1 - t0).count());
     }
-    PrintCsv("pvs_render_workload_240x67", sampler.Compute());
+    PrintCsv("character_render_workload_240x67", sampler.Compute());
     return sampler.Compute().worst_1pct_avg_ms;
 }
 } // namespace
@@ -841,12 +852,12 @@ int main() {
     std::printf("SYSTEMIC_UPDATE_BUDGET=%s\n", update_pass ? "PASS" : "FAIL");
     std::printf("SYSTEMIC_UPDATE_TIME_MS=%.3f (worst1_avg)\n", update_ms);
 
-    const double render_ms = writeover::ProductionRendererBenchmark();
+    const double render_ms = writeover::CharacterRendererBenchmark();
     const bool render_pass = render_ms <= 3.0;
     std::printf("PVS_RENDER_BUDGET=%s\n", render_pass ? "PASS" : "FAIL");
     std::printf("PVS_RENDER_TIME_MS=%.3f (worst1_avg)\n", render_ms);
 
-    const double total_frame_ms = writeover::ProductionRuntimeFrameBenchmark();
+    const double total_frame_ms = writeover::CharacterRuntimeFrameBenchmark();
     const bool total_frame_pass = total_frame_ms <= 6.0;
     std::printf("PVS_TOTAL_FRAME_BUDGET=%s\n",
                 total_frame_pass ? "PASS" : "FAIL");

@@ -1,4 +1,8 @@
-# PVS-01 GOLD GOAL LEDGER — WRITEOVER-07
+# PVS-01 GOLD GOAL LEDGER — WRITEOVER-07 (Historical)
+
+This ledger records the immutable PVS-01 milestone. Character Reboot-01 is a
+later visual-direction correction; its current contract and evidence are
+recorded separately and do not rewrite this historical receipt.
 
 ## Mission state
 
@@ -26,10 +30,11 @@ building, all future M1-M6 content, or a complete AI planner has been shipped.
 
 ## Gold closures in this pass
 
-- The active world path is the production Half-block TrueColor framebuffer:
-  `240x67` terminal cells and `240x134` logical pixels. The frame is rendered
-  from dark material bands with local cyan/amber/purple accents, depth-aware
-  sprite occlusion, a weapon viewmodel and bounded effects.
+- The PVS-01 active world path was the production Half-block TrueColor
+  framebuffer: `240x67` terminal cells and `240x134` logical pixels. The
+  later Character Reboot-01 task isolates that implementation as historical
+  regression code and moves the active B1 route to direct semantic CharCell
+  character art.
 - Pistol fire is live hitscan gameplay with spread, resolved aim, recoil,
   muzzle flash, hit feedback and deterministic systemic firearm events. A
   non-lethal weapon path produces a stunned NPC rather than silently killing

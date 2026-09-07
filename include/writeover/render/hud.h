@@ -15,9 +15,11 @@ struct HudFrame {
     uint16_t ammo_reserve = 0;
     uint16_t score = 0;
     const char* preset_name = "COMPATIBILITY";
+    const char* weapon_name = "PISTOL";
     const char* subtitle = nullptr;  // UTF-8, or nullptr
-    int grid_width = 0;              // for the dev-line, 0 hides
-    int grid_height = 0;
+    int grid_width = 0;              // shown only when developer_overlay is true
+    int grid_height = 0;             // shown only when developer_overlay is true
+    bool developer_overlay = false;
 };
 
 class HudRenderer {

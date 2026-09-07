@@ -1,0 +1,228 @@
+# WRITEOVER-07 authored Character-Art bank, B1 Wake / Revival.
+# Spaces are transparent.  Each LOD is independently curated rather than a
+# scaled copy.  Keep rows short and single-cell glyphs for terminal safety.
+
+sprite security_guard far security
+ /#\
+|o o|
+ \=/
+ /|\
+ / \
+end
+
+sprite security_guard mid security
+   /###\
+  /_o_o_\
+ |  -  |
+ | [=] |
+ | /|\ |
+ |  |  |
+ | / \ |
+ |/   \|
+end
+
+sprite security_guard near security
+      /######\
+     /__o__o__\
+    |  \___/  |
+    |  [===]  |
+   /|  /|^\   |\
+  | | /_|_\   | |
+  | |   | |   | |
+  | |  /   \  | |
+  |_|_/     \_|_|
+end
+
+sprite full_human far full
+ /O O\
+| _ |
+ \_/
+ /|\
+ / \
+end
+
+sprite full_human mid full
+   .----.
+  /_O__O_\
+ |  \__/  |
+ |  /__\  |
+ |  /|\   |
+ |   |    |
+ |  / \   |
+end
+
+sprite full_human near full
+       .--------.
+     _/  O    O  \_
+    /    \____/    \
+   |     /____\     |
+   |   _/      \_   |
+  /|  /|   |  |  |\  |\
+ | | /_|___|__|__|_\ | |
+ | |    /   ||   \    | |
+ | |   /____||____\   | |
+ |_|      /____\      |_|
+end
+
+sprite maintenance_worker far maintenance
+ /#\
+|o o|
+|= =|
+ /|\
+ / \
+end
+
+sprite maintenance_worker mid maintenance
+   /###\
+  /_o_o_\
+ |  ___  |
+ | [___] |
+ | /|\  |
+ |  |   |
+ | / \  |
+end
+
+sprite maintenance_worker near maintenance
+      /######\
+     /__o__o__\
+    |  [___]  |
+    |  /___\  |
+   /| /|=|\   |\
+  | |  | |    | |
+  | | /   \   | |
+  |_|/_____\__|_|
+end
+
+sprite terminal far terminal
+  .----.
+  |[]  |
+  |____|
+    ||
+end
+
+sprite terminal mid terminal
+   .--------.
+   | SYS/07 |
+   | [READY]|
+   '--------'
+      ||
+      ||
+end
+
+sprite terminal near terminal
+    .------------.
+    |  SYS/07    |
+    | [ WAKE ]   |
+    |  >_        |
+    '------------'
+       ||  ||
+      _||__||_
+end
+
+sprite camera far prop
+  [o]
+   |
+end
+
+sprite camera mid prop
+  .---.
+ /  o  \
+ '---+-'
+    |
+end
+
+sprite camera near prop
+   .-------.
+  /  .---.  \
+ |  |  o  |  |
+  \  '---'  /
+   '---+---'
+       |
+end
+
+sprite crate far prop
+ .--.
+ |++|
+ '--'
+end
+
+sprite crate mid prop
+ .------.
+ |  ++  |
+ |--++--|
+ '------'
+end
+
+sprite crate near prop
+  .----------.
+ /|    ++    |\
+| |----++----| |
+| |    ++    | |
+| '----------' |
+ '--------------'
+end
+
+sprite door far prop
+ .--.
+ |<>|
+ |  |
+end
+
+sprite door mid prop
+  .------.
+  | EXIT |
+  |  <>  |
+  |      |
+  '------'
+end
+
+sprite door near prop
+   .----------.
+   |  SERVICE  |
+   |     <>    |
+   |           |
+   |  ||   ||  |
+   '-----------'
+end
+
+weapon pistol idle_a weapon
+       __________
+  ____/  ______/====>
+ /___/  /_____/
+ \   /  /_____/
+  \_/   ||
+ /______||
+/_______/
+end
+
+weapon pistol idle_b weapon
+       __________
+  ____/  ______/====>
+ /___/  /_____/
+ \   /  /_____/
+  \_/  _||
+ /____/ ||
+/_______/
+end
+
+weapon pistol fire weapon
+       __________  *
+  ____/  ______/====>--✦
+ /___/  /_____/
+ \   /  /_____/
+  \_/   ||
+ /______||
+/_______/
+end
+
+weapon pistol reload weapon
+       __________
+  ____/  ______/====>
+ /___/  /_____/
+ \   /  /_____/
+  \_/   ||
+ /______||
+/____  _/
+     \
+      \
+end

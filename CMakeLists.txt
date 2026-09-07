@@ -115,6 +115,7 @@ add_library(writeover_render STATIC
     src/render/raycaster.cpp
     src/render/reference_renderer.cpp
     src/render/production_renderer.cpp
+    src/render/character_renderer.cpp
     src/render/frame_encoder.cpp
     src/render/utf.cpp
     src/render/terminal_backend.cpp

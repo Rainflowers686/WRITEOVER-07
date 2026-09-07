@@ -6,6 +6,7 @@
 #include "writeover/core/console.h"
 #include "writeover/core/engine.h"
 #include "writeover/common/logging.h"
+#include "writeover/common/types.h"
 
 #include "src/app/composition_root.h"
 #include "writeover/platform/platform_api.h"
@@ -48,6 +49,14 @@ GameConfig ParseArgs(int argc, char** argv) {
             config.room_id = argv[++i];
         } else if (arg == "--replay" && i + 1 < argc) {
             config.replay_path = argv[++i];
+        } else if (arg == "--camera" && i + 3 < argc) {
+            config.camera_override = true;
+            config.camera_position.x = std::strtof(argv[++i], nullptr);
+            config.camera_position.y = std::strtof(argv[++i], nullptr);
+            config.camera_yaw = std::strtof(argv[++i], nullptr);
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                config.camera_pitch = std::strtof(argv[++i], nullptr);
+            }
         }
     }
     return config;

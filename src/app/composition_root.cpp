@@ -21,10 +21,10 @@
 #include "writeover/player/input_runtime.h"
 #include "writeover/player/weapon.h"
 #include "writeover/systemic/systemic.h"
+#include "writeover/render/character_renderer.h"
 #include "writeover/render/hud.h"
 #include "writeover/render/raycaster.h"
 #include "writeover/render/reference_renderer.h"
-#include "writeover/render/production_renderer.h"
 #include "writeover/render/terminal_backend.h"
 #include "writeover/world/fact_belief.h"
 #include "writeover/world/grid.h"
@@ -507,9 +507,8 @@ public:
     RenderModule(std::unique_ptr<ITerminalBackend> backend, int w, int h)
         : backend_(std::move(backend)),
           width_(w),
-          height_(h) {
+        height_(h) {
         body_.assign(static_cast<size_t>(w) * h, CharCell{});
-        logical_pixels_.assign(static_cast<size_t>(w) * (h * 2), Color{});
         backend_->Init(w, h);
     }
 
@@ -523,6 +522,18 @@ public:
     void SetNpcSource(const std::vector<RuntimeNpc>* npcs) { npcs_ = npcs; }
     void SetSettingsSource(const Settings* settings) { settings_ = settings; }
     void SetSceneId(const std::string& id) { scene_id_ = id; }
+    bool LoadCharacterArt(const std::string& path) {
+        return character_art_.Load(path);
+    }
+    bool CharacterArtLoadedFromFile() const {
+        return character_art_.LoadedFromFile();
+    }
+    void SetCameraOverride(const Vec3& position, float yaw, float pitch) {
+        camera_override_ = true;
+        override_position_ = position;
+        override_yaw_ = yaw;
+        override_pitch_ = pitch;
+    }
     void SetDebugOverlay(bool enabled) { debug_overlay_ = enabled; }
     void SetSubtitleOnce(const std::string& text, uint64_t frames) { subtitle_override_ = text; subtitle_override_remaining_ = frames; }
     void TriggerNarratorIntrusion(uint64_t frames) {
@@ -545,7 +556,7 @@ public:
         explosion_remaining_ = std::max(explosion_remaining_, frames);
         shake_remaining_ = std::max(shake_remaining_, frames);
     }
-    const std::vector<Color>& LogicalPixels() const { return logical_pixels_; }
+    const std::vector<CharCell>& Cells() const { return body_; }
 
     void SetGridData(const GridCell* cells, int w, int h) {
         grid_cells_ = cells;
@@ -555,103 +566,91 @@ public:
 
     void RenderFrame(uint64_t frame_index, float alpha) override {
         (void)alpha;
-        std::fill(logical_pixels_.begin(), logical_pixels_.end(), Color{0, 0, 0});
         std::fill(body_.begin(), body_.end(), CharCell{});
-        if (locomotion_ != nullptr) {
+        if (!camera_override_ && locomotion_ != nullptr) {
             player_pos_ = locomotion_->position;
             player_yaw_ = locomotion_->yaw;
         }
         if (grid_cells_ != nullptr && grid_w_ > 0 && grid_h_ > 0) {
-            // Production half-block pixel framebuffer path.
-            ProductionView view;
-            view.origin = Vec3{player_pos_.x, player_pos_.y,
-                               locomotion_ != nullptr
-                                   ? locomotion_->EyePosition().z
-                                   : kEyeStand};
-            view.yaw = player_yaw_;
-            view.pitch = locomotion_ != nullptr ? locomotion_->pitch : 0.0f;
-            const int logical_h = height_ * 2;
+            CharacterView view;
+            view.origin = camera_override_ ? override_position_ : player_pos_;
+            view.yaw = camera_override_ ? override_yaw_ : player_yaw_;
+            view.pitch = camera_override_
+                             ? override_pitch_
+                             : (locomotion_ != nullptr ? locomotion_->pitch : 0.0f);
+            if (!camera_override_ && locomotion_ != nullptr) {
+                view.origin.z = locomotion_->EyePosition().z;
+            } else if (!camera_override_) {
+                view.origin.z = kEyeStand;
+            } else if (std::fabs(view.origin.z) < 0.01f) {
+                // Evidence cameras specify floor XY coordinates.  Keep the
+                // normal player eye height unless a test explicitly supplies
+                // a non-zero camera Z; otherwise authored sprites are
+                // projected from the floor and disappear into the ceiling.
+                view.origin.z = kEyeStand;
+            }
             const float focal =
-                0.5f * static_cast<float>(logical_h) /
+                0.5f * static_cast<float>(height_) /
                 std::tan(60.0f * 3.14159265f / 360.0f);
-            RenderProductionFrame(grid_cells_, grid_w_, grid_h_, view,
-                                  logical_pixels_.data(), width_, logical_h,
-                                  focal);
+            CharacterRenderOptions render_options;
+            render_options.high_contrast = settings_ != nullptr &&
+                                           settings_->high_contrast;
+            RenderCharacterFrame(grid_cells_, grid_w_, grid_h_, view,
+                                 body_.data(), width_, height_, focal,
+                                 render_options);
+
+            std::vector<CharacterSpriteInstance> sprites;
             if (scene_id_ == "room_b1_revival") {
                 if (npcs_ != nullptr) {
                     for (const auto& runtime : *npcs_) {
                         if (runtime.instance.state == NPCState::Dead) continue;
-                        const Color tint = runtime.instance.cognition == CognitionTier::Full
-                                                ? Color{196, 118, 188}
-                                                : Color{126, 154, 170};
-                        DrawProductionSprite(view.origin, view.yaw, view.pitch,
-                                             runtime.instance.position, 1.7f,
-                                             ProductionSpriteKind::Npc, tint,
-                                             grid_cells_, grid_w_, grid_h_,
-                                             logical_pixels_.data(), width_, logical_h, focal);
+                        CharacterSpriteKind kind = CharacterSpriteKind::SecurityGuard;
+                        if (runtime.instance.cognition == CognitionTier::Full) {
+                            kind = CharacterSpriteKind::FullHuman;
+                        } else if (runtime.instance.role == Role::Cleaner ||
+                                   runtime.instance.role == Role::Technician) {
+                            kind = CharacterSpriteKind::MaintenanceWorker;
+                        }
+                        sprites.push_back({
+                            runtime.instance.position,
+                            kind == CharacterSpriteKind::FullHuman ? 1.8f : 1.75f,
+                            kind});
                     }
                 }
-                DrawProductionSprite(view.origin, view.yaw, view.pitch,
-                                      Vec3{18.5f, 4.5f, 0.0f}, 1.4f,
-                                      ProductionSpriteKind::Terminal, Color{56, 178, 164},
-                                      grid_cells_, grid_w_, grid_h_,
-                                      logical_pixels_.data(), width_, logical_h, focal);
-                DrawProductionSprite(view.origin, view.yaw, view.pitch,
-                                      Vec3{14.0f, 3.0f, 2.2f}, 0.55f,
-                                      ProductionSpriteKind::Camera, Color{86, 116, 128},
-                                      grid_cells_, grid_w_, grid_h_,
-                                      logical_pixels_.data(), width_, logical_h, focal);
-                DrawProductionSprite(view.origin, view.yaw, view.pitch,
-                                      Vec3{15.5f, 4.0f, 0.0f}, 1.0f,
-                                      ProductionSpriteKind::Crate, Color{150, 102, 48},
-                                      grid_cells_, grid_w_, grid_h_,
-                                      logical_pixels_.data(), width_, logical_h, focal);
+                // The B1 wake bay is a deliberately small visual target: a
+                // readable service terminal in the mid distance and a
+                // marked service door at the end of the sight line.
+                sprites.push_back({Vec3{10.0f, 7.0f, 0.0f}, 1.7f,
+                                   CharacterSpriteKind::Terminal});
+                sprites.push_back({Vec3{21.5f, 8.5f, 0.0f}, 2.4f,
+                                   CharacterSpriteKind::Door});
+                sprites.push_back({Vec3{14.0f, 3.0f, 2.2f}, 0.55f,
+                                   CharacterSpriteKind::Camera});
+                sprites.push_back({Vec3{15.5f, 4.0f, 0.0f}, 1.0f,
+                                   CharacterSpriteKind::Crate});
             } else if (scene_id_ == "room_01_calibration") {
-                DrawProductionSprite(view.origin, view.yaw, view.pitch,
-                                      Vec3{7.5f, 5.5f, 0.0f}, 1.4f,
-                                      ProductionSpriteKind::Terminal, Color{56, 178, 164},
-                                      grid_cells_, grid_w_, grid_h_,
-                                      logical_pixels_.data(), width_, logical_h, focal);
-                DrawProductionSprite(view.origin, view.yaw, view.pitch,
-                                      Vec3{11.5f, 4.5f, 0.0f}, 1.0f,
-                                      ProductionSpriteKind::Sign, Color{184, 126, 44},
-                                      grid_cells_, grid_w_, grid_h_,
-                                      logical_pixels_.data(), width_, logical_h, focal);
+                sprites.push_back({Vec3{7.5f, 5.5f, 0.0f}, 1.4f,
+                                   CharacterSpriteKind::Terminal});
+                sprites.push_back({Vec3{11.5f, 4.5f, 0.0f}, 1.0f,
+                                   CharacterSpriteKind::Door});
             } else if (scene_id_ == "room_1f_security") {
-                DrawProductionSprite(view.origin, view.yaw, view.pitch,
-                                      Vec3{15.5f, 8.5f, 0.0f}, 1.5f,
-                                      ProductionSpriteKind::Npc, Color{142, 150, 164},
-                                      grid_cells_, grid_w_, grid_h_,
-                                      logical_pixels_.data(), width_, logical_h, focal);
-                DrawProductionSprite(view.origin, view.yaw, view.pitch,
-                                      Vec3{20.5f, 8.5f, 0.0f}, 2.2f,
-                                      ProductionSpriteKind::Door, Color{72, 122, 132},
-                                      grid_cells_, grid_w_, grid_h_,
-                                      logical_pixels_.data(), width_, logical_h, focal);
-                DrawProductionSprite(view.origin, view.yaw, view.pitch,
-                                      Vec3{5.5f, 4.5f, 0.0f}, 1.1f,
-                                      ProductionSpriteKind::Sign, Color{184, 126, 44},
-                                      grid_cells_, grid_w_, grid_h_,
-                                      logical_pixels_.data(), width_, logical_h, focal);
+                sprites.push_back({Vec3{15.5f, 8.5f, 0.0f}, 1.5f,
+                                   CharacterSpriteKind::SecurityGuard});
+                sprites.push_back({Vec3{20.5f, 8.5f, 0.0f}, 2.2f,
+                                   CharacterSpriteKind::Door});
             } else if (scene_id_ == "room_service_medical") {
-                DrawProductionSprite(view.origin, view.yaw, view.pitch,
-                                      Vec3{8.5f, 5.5f, 0.0f}, 1.4f,
-                                      ProductionSpriteKind::Medical, Color{74, 164, 158},
-                                      grid_cells_, grid_w_, grid_h_,
-                                      logical_pixels_.data(), width_, logical_h, focal);
+                sprites.push_back({Vec3{8.5f, 5.5f, 0.0f}, 1.4f,
+                                   CharacterSpriteKind::Terminal});
             } else if (scene_id_ == "room_restroom_staff") {
-                DrawProductionSprite(view.origin, view.yaw, view.pitch,
-                                      Vec3{13.5f, 5.5f, 0.0f}, 1.8f,
-                                      ProductionSpriteKind::Door, Color{92, 122, 132},
-                                      grid_cells_, grid_w_, grid_h_,
-                                      logical_pixels_.data(), width_, logical_h, focal);
+                sprites.push_back({Vec3{13.5f, 5.5f, 0.0f}, 1.8f,
+                                   CharacterSpriteKind::Door});
             } else if (scene_id_ == "room_elevator_lobby") {
-                DrawProductionSprite(view.origin, view.yaw, view.pitch,
-                                      Vec3{9.5f, 5.5f, 0.0f}, 2.6f,
-                                      ProductionSpriteKind::Elevator, Color{68, 156, 162},
-                                      grid_cells_, grid_w_, grid_h_,
-                                      logical_pixels_.data(), width_, logical_h, focal);
+                sprites.push_back({Vec3{9.5f, 5.5f, 0.0f}, 2.6f,
+                                   CharacterSpriteKind::Door});
             }
+            DrawCharacterSprites(view, sprites, character_art_, grid_cells_, grid_w_,
+                                 grid_h_, body_.data(), width_, height_, focal,
+                                 render_options);
             int vm_state = 0;
             float recoil = 0.0f;
             if (combat_ != nullptr && frame_index >= combat_->last_shot_frame &&
@@ -660,10 +659,14 @@ public:
                 recoil = 1.0f - static_cast<float>(frame_index - combat_->last_shot_frame) / 4.0f;
             }
             if (combat_ != nullptr && combat_->aiming) vm_state = 2;
-            DrawWeaponViewmodel(logical_pixels_.data(), width_, logical_h, vm_state, recoil);
-            DrawVisualEffects(frame_index, logical_h);
-            ComposeHalfBlockFrame(logical_pixels_.data(), width_, logical_h,
-                                  body_.data(), width_, height_);
+            const PistolFrame weapon_frame = vm_state == 1 ? PistolFrame::Fire
+                : (combat_ != nullptr && combat_->reload_frames_left > 0
+                       ? PistolFrame::Reload
+                       : (frame_index % 96 < 48 ? PistolFrame::IdleA
+                                                : PistolFrame::IdleB));
+            DrawPistolViewmodel(body_.data(), width_, height_, character_art_,
+                                weapon_frame, recoil, render_options);
+            DrawVisualEffects(frame_index);
         }
         if (frame_index < 300 && scene_id_ == "room_b1_revival") {
             subtitle_ = "SYS/07: Wake cycle verified. B1 anomaly detected. Proceed to calibration.";
@@ -702,11 +705,21 @@ public:
             hud.ammo_mag = 12;
             hud.ammo_reserve = 48;
         }
-        hud.preset_name = settings_ != nullptr && settings_->preset == QualityPreset::Ultra120
-                              ? "ULTRA120" : "COMPATIBILITY";
+        if (settings_ != nullptr && settings_->preset == QualityPreset::Ultra120) {
+            hud.preset_name = "ULTRA120";
+        } else if (settings_ != nullptr && settings_->preset == QualityPreset::HighRefresh) {
+            hud.preset_name = "HIGH_REFRESH";
+        } else if (settings_ != nullptr && settings_->preset == QualityPreset::Compatibility) {
+            hud.preset_name = "COMPATIBILITY";
+        } else {
+            hud.preset_name = "PRESENTATION60";
+        }
+        hud.weapon_name = "PISTOL";
         hud.grid_width = grid_w_;
         hud.grid_height = grid_h_;
-        hud.subtitle = subtitle_.c_str();
+        hud.developer_overlay = debug_overlay_;
+        hud.subtitle = settings_ == nullptr || settings_->subtitles
+                           ? subtitle_.c_str() : nullptr;
         hud_.Draw(body_.data(), width_, height_, hud);
         if (narrator_intrusion_remaining_ > 0) {
             const bool reduce_flicker = settings_ != nullptr && settings_->reduce_flicker;
@@ -839,86 +852,32 @@ private:
         }
     }
 
-    void DrawVisualEffects(uint64_t frame_index, int logical_h) {
+    void DrawVisualEffects(uint64_t frame_index) {
         const bool reduce_flicker = settings_ != nullptr && settings_->reduce_flicker;
         const bool reduce_shake = settings_ != nullptr && settings_->reduce_camera_shake;
-        if (shot_flash_remaining_ > 0) {
-            const float gain = reduce_flicker ? 0.24f : 0.48f;
-            const int radius = reduce_flicker ? 5 : 10;
-            const int cx = width_ / 2;
-            const int cy = logical_h / 2;
-            for (int y = std::max(0, cy - radius); y < std::min(logical_h, cy + radius); ++y) {
-                for (int x = std::max(0, cx - radius); x < std::min(width_, cx + radius); ++x) {
-                    const float dx = static_cast<float>(x - cx);
-                    const float dy = static_cast<float>(y - cy);
-                    if (dx * dx + dy * dy > static_cast<float>(radius * radius)) continue;
-                    Color& pixel = logical_pixels_[static_cast<size_t>(y) * width_ + x];
-                    pixel.r = static_cast<uint8_t>(std::min(255.0f,
-                        static_cast<float>(pixel.r) + 255.0f * gain));
-                    pixel.g = static_cast<uint8_t>(std::min(255.0f,
-                        static_cast<float>(pixel.g) + 190.0f * gain));
-                    pixel.b = static_cast<uint8_t>(std::min(255.0f,
-                        static_cast<float>(pixel.b) + 70.0f * gain));
-                }
-            }
-            --shot_flash_remaining_;
-        }
-        if (hit_flash_remaining_ > 0) {
-            const int band = reduce_flicker ? 2 : 4;
-            for (int y = 0; y < logical_h; ++y) {
-                for (int x = 0; x < width_; ++x) {
-                    if (x >= band && x < width_ - band && y >= band && y < logical_h - band) continue;
-                    Color& pixel = logical_pixels_[static_cast<size_t>(y) * width_ + x];
-                    pixel.r = static_cast<uint8_t>(std::min(255,
-                        static_cast<int>(pixel.r) + 36));
-                }
-            }
-            --hit_flash_remaining_;
-        }
-        if (explosion_remaining_ > 0) {
-            const int cx = width_ / 2;
-            const int cy = logical_h / 2;
-            const int radius = reduce_flicker ? 12 : 22;
-            for (int i = 0; i < 12; ++i) {
-                const int dx = ((static_cast<int>(frame_index) * 17 + i * 29) %
-                                (radius * 2 + 1)) - radius;
-                const int dy = ((static_cast<int>(frame_index) * 11 + i * 19) %
-                                (radius * 2 + 1)) - radius;
-                const int x = cx + dx;
-                const int y = cy + dy;
-                if (x < 0 || x >= width_ || y < 0 || y >= logical_h) continue;
-                logical_pixels_[static_cast<size_t>(y) * width_ + x] = Color{222, 146, 52};
-            }
-            --explosion_remaining_;
-        }
-        if (shake_remaining_ > 0) {
-            if (!reduce_shake) {
-                const int dx = static_cast<int>((frame_index * 13) % 3) - 1;
-                const int dy = static_cast<int>((frame_index * 7) % 3) - 1;
-                if (dx != 0 || dy != 0) {
-                    const std::vector<Color> shifted = logical_pixels_;
-                    for (int y = 0; y < logical_h; ++y) {
-                        for (int x = 0; x < width_; ++x) {
-                            const int sx = std::clamp(x - dx, 0, width_ - 1);
-                            const int sy = std::clamp(y - dy, 0, logical_h - 1);
-                            logical_pixels_[static_cast<size_t>(y) * width_ + x] =
-                                shifted[static_cast<size_t>(sy) * width_ + sx];
-                        }
-                    }
-                }
-            }
-            --shake_remaining_;
-        }
+        DrawCharacterEffects(body_.data(), width_, height_, frame_index,
+                             shot_flash_remaining_ > 0,
+                             hit_flash_remaining_ > 0,
+                             explosion_remaining_ > 0,
+                             reduce_flicker, reduce_shake);
+        if (shot_flash_remaining_ > 0) --shot_flash_remaining_;
+        if (hit_flash_remaining_ > 0) --hit_flash_remaining_;
+        if (explosion_remaining_ > 0) --explosion_remaining_;
+        if (shake_remaining_ > 0) --shake_remaining_;
     }
 
     std::unique_ptr<ITerminalBackend> backend_;
     const int width_;
     const int height_;
     HudRenderer hud_;
+    CharacterArtBank character_art_;
     std::vector<CharCell> body_;
-    std::vector<Color> logical_pixels_;
     Vec3 player_pos_;
     float player_yaw_ = 0.0f;
+    bool camera_override_ = false;
+    Vec3 override_position_;
+    float override_yaw_ = 0.0f;
+    float override_pitch_ = 0.0f;
     const LocomotionState* locomotion_ = nullptr;
     const CombatState* combat_ = nullptr;
     const std::vector<RuntimeNpc>* npcs_ = nullptr;
@@ -1150,6 +1109,7 @@ int RunComposition(const GameConfig& config) {
     EventBus events;
     DeterministicRNG sim_rng(config.seed);
     Settings settings = Settings::Defaults();
+    bool settings_loaded_from_disk = false;
     Logger logger;
     logger.SetMinLevel(LogLevel::Info);
     if (std::filesystem::is_regular_file(user_data_root / "settings.cfg")) {
@@ -1157,6 +1117,7 @@ int RunComposition(const GameConfig& config) {
         const auto loaded = registry.Load((user_data_root / "settings.cfg").string());
         if (loaded.IsOk()) {
             settings = loaded.Value();
+            settings_loaded_from_disk = true;
         } else {
             logger.Warn("settings", "settings.cfg is invalid; using defaults");
         }
@@ -1239,6 +1200,13 @@ int RunComposition(const GameConfig& config) {
     // Terminal backend selection (env heuristics, no fake probes) plus the
     // render module that samples the real raycaster for the smoke frame.
     const TerminalProbe probe = ProbeTerminalEnv();
+    if (!settings_loaded_from_disk) {
+        // Preserve an explicit saved choice, but make the first launch select
+        // the host's presentation capability instead of silently using the
+        // legacy compatibility preset.
+        const int refresh_hint_hz = probe.is_windows_terminal ? 120 : 60;
+        settings.preset = SuggestPreset(probe, refresh_hint_hz);
+    }
     std::unique_ptr<ITerminalBackend> backend =
         CreateTerminalBackend(config.terminal_w, config.terminal_h, probe);
     if (!backend) {
@@ -1250,6 +1218,15 @@ int RunComposition(const GameConfig& config) {
                                                  config.terminal_h);
     render->SetSettingsSource(&settings);
     render->SetSceneId(config.room_id.empty() ? "room_b1_revival" : config.room_id);
+    const bool character_art_loaded = render->LoadCharacterArt(
+        (data_root / "characters" / "b1_character_art.txt").string());
+    if (!character_art_loaded) {
+        logger.Warn("render", "character art bank unavailable; using bounded fallback");
+    }
+    if (config.camera_override) {
+        render->SetCameraOverride(config.camera_position, config.camera_yaw,
+                                  config.camera_pitch);
+    }
     const Vec3 spawn = services.world->HasLoadedRoom()
                            ? services.world->LoadedRoom().spawn_point
                            : Vec3{1.5f, 6.0f, 0.0f};
@@ -1924,22 +1901,10 @@ int RunComposition(const GameConfig& config) {
 
     const int result = engine.Run(config.max_frames);
 
-    if (!config.frame_dump_path.empty() && !render->LogicalPixels().empty()) {
-        const auto& px = render->LogicalPixels();
-        const int pw = config.terminal_w;
-        const int ph = config.terminal_h * 2;
-        std::filesystem::path dump_path(config.frame_dump_path);
-        if (dump_path.has_parent_path()) {
-            std::error_code dump_ec;
-            std::filesystem::create_directories(dump_path.parent_path(), dump_ec);
-        }
-        FILE* f = std::fopen(config.frame_dump_path.c_str(), "wb");
-        if (f) {
-            std::fprintf(f, "P6\n%d %d\n255\n", pw, ph);
-            for (const auto& p : px) {
-                std::fputc(p.r, f); std::fputc(p.g, f); std::fputc(p.b, f);
-            }
-            std::fclose(f);
+    if (!config.frame_dump_path.empty() && !render->Cells().empty()) {
+        if (!WriteCharacterFrameSvg(render->Cells().data(), config.terminal_w,
+                                    config.terminal_h, config.frame_dump_path)) {
+            std::fprintf(stderr, "warning: unable to write character frame dump\n");
         }
     }
 

@@ -1,6 +1,7 @@
 #include "tests/test_harness.h"
 
 #include "writeover/render/benchmark.h"
+#include "writeover/render/character_renderer.h"
 #include "writeover/render/frame_encoder.h"
 #include "writeover/render/raycaster.h"
 #include "writeover/render/reference_renderer.h"
@@ -763,6 +764,93 @@ bool ProductionHalfBlockFrame() {
     WO_CHECK(dark_count > 0);
     return true;
 }
+
+bool CharacterRendererUsesSemanticCells() {
+    const Grid grid = MakeRayGrid();
+    const int w = 96;
+    const int h = 36;
+    std::vector<CharCell> frame(static_cast<size_t>(w) * h);
+    CharacterView view;
+    view.origin = Vec3{1.5f, 4.5f, kEyeStand};
+    view.yaw = 0.0f;
+    const float focal = 0.5f * static_cast<float>(h) /
+                        std::tan(60.0f * 3.14159265f / 360.0f);
+    RenderCharacterFrame(grid.Data().data(), grid.Width(), grid.Height(),
+                         view, frame.data(), w, h, focal);
+    int visible_glyphs = 0;
+    int pixel_packing_glyphs = 0;
+    for (const auto& cell : frame) {
+        if (cell.code_point != U' ') ++visible_glyphs;
+        if (cell.code_point == U'\u2580') {
+            ++pixel_packing_glyphs;
+        }
+    }
+    // The character path must carry the scene in glyphs and must not regress
+    // to the old logical-pixel/half-block composition contract.
+    WO_CHECK(visible_glyphs > 0);
+    WO_CHECK_EQ(pixel_packing_glyphs, 0);
+    return true;
+}
+
+bool CharacterRendererAssetsAndLod() {
+    CharacterArtBank bank;
+    WO_CHECK(bank.Find(CharacterSpriteKind::SecurityGuard,
+                       CharacterLod::Far) != nullptr);
+    WO_CHECK(bank.Find(CharacterSpriteKind::FullHuman,
+                       CharacterLod::Near) != nullptr);
+    WO_CHECK(bank.FindPistol(PistolFrame::IdleA) != nullptr);
+    WO_CHECK(bank.FindPistol(PistolFrame::Fire) != nullptr);
+    WO_CHECK(SelectCharacterLod(2.0f) == CharacterLod::Near);
+    WO_CHECK(SelectCharacterLod(6.0f) == CharacterLod::Mid);
+    WO_CHECK(SelectCharacterLod(20.0f) == CharacterLod::Far);
+    return true;
+}
+
+bool CharacterPistolKeepsTransparentWhitespace() {
+    CharacterArtBank bank;
+    const int w = 80;
+    const int h = 36;
+    std::vector<CharCell> frame(static_cast<size_t>(w) * h);
+    for (auto& cell : frame) {
+        cell.code_point = U' ';
+        cell.bg_r = 11;
+        cell.bg_g = 22;
+        cell.bg_b = 33;
+    }
+    DrawPistolViewmodel(frame.data(), w, h, bank, PistolFrame::IdleA,
+                        0.0f);
+    int weapon_glyphs = 0;
+    int untouched_spaces = 0;
+    for (const auto& cell : frame) {
+        if (cell.code_point == U'=' || cell.code_point == U'>') ++weapon_glyphs;
+        if (cell.code_point == U' ' && cell.bg_r == 11 &&
+            cell.bg_g == 22 && cell.bg_b == 33) ++untouched_spaces;
+    }
+    WO_CHECK(weapon_glyphs > 0);
+    WO_CHECK(untouched_spaces > 0);
+    return true;
+}
+
+bool CharacterPortraitIsBoundedCharArt() {
+    CharacterArtBank bank;
+    const int w = 40;
+    const int h = 24;
+    std::vector<CharCell> frame(static_cast<size_t>(w) * h);
+    for (auto& cell : frame) cell = CharCell{};
+    DrawCharacterPortrait(frame.data(), w, h, bank,
+                          CharacterSpriteKind::FullHuman, 3, 2, 20, 16);
+    bool has_corner = false;
+    bool has_face_stroke = false;
+    for (const auto& cell : frame) {
+        if (cell.code_point == U'╔' || cell.code_point == U'╝') has_corner = true;
+        if (cell.code_point == U'o' || cell.code_point == U'O') {
+            has_face_stroke = true;
+        }
+    }
+    WO_CHECK(has_corner);
+    WO_CHECK(has_face_stroke);
+    return true;
+}
 void RegisterRenderTests(TestHarness& test) {
     test.Add("ray.flat_hits_wall", &RayFlatHitsWall);
     test.Add("ray.low_wall_floor_rise", &RayLowWallSegment);
@@ -793,6 +881,10 @@ void RegisterRenderTests(TestHarness& test) {
     test.Add("reference_renderer_visible", &ReferenceRendererVisible);
     test.Add("reference_renderer_deterministic", &ReferenceRendererDeterministic);
     test.Add("production.half_block_frame", &ProductionHalfBlockFrame);
+    test.Add("character.semantic_cells", &CharacterRendererUsesSemanticCells);
+    test.Add("character.assets_and_lod", &CharacterRendererAssetsAndLod);
+    test.Add("character.pistol_transparency", &CharacterPistolKeepsTransparentWhitespace);
+    test.Add("character.portrait_bounded_char_art", &CharacterPortraitIsBoundedCharArt);
     test.Add("render.marker_hidden_behind_full_wall", &MarkerHiddenBehindFullWall);
     test.Add("render.marker_visible_above_low_wall", &MarkerVisibleAboveLowWall);
     test.Add("terminal.unchanged_frame_emits_no_payload", &TerminalUnchangedFrameNoPayload);

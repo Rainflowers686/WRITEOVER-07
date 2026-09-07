@@ -1,4 +1,4 @@
-# ADR-0007: PVS-01 Runtime Seam Closure
+# ADR-0007: PVS-01 Runtime Seam Closure (Historical)
 
 - 状态: 已实现
 - 日期: 2026-09-04
@@ -7,8 +7,8 @@
 
 ## 背景
 
-PVS-01 needs a small amount of public contract surface to expose the
-production half-block renderer's authored prop kinds and to audit the
+PVS-01 needed a small amount of public contract surface to expose the
+historical half-block renderer's authored prop kinds and to audit the
 SystemicWorld records that cross the player, world, AI, narrative, and save
 boundaries. The existing private implementation could not prove those seams
 without either duplicating state or relying on a test-only back door.

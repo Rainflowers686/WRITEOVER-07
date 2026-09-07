@@ -1,10 +1,10 @@
 #pragma once
-// PVS-01 production renderer: Half-block TrueColor Pixel Framebuffer.
+// LEGACY PVS-01 renderer: Half-block TrueColor Pixel Framebuffer.
 //
-// Normal world output is a logical pixel buffer composed into terminal cells
-// with U+2580 (upper half block). Foreground = upper logical pixel, background
-// = lower logical pixel. This renderer is the production path; ReferenceRenderer
-// remains only as a test/reference raster.
+// This implementation is retained for historical regression tests and
+// comparison evidence only. The active Character Reboot-01 world path is in
+// character_renderer.h and writes semantic CharCell values directly;
+// composition_root.cpp must not route normal gameplay through this header.
 
 #include "writeover/common/types.h"
 #include "writeover/render/terminal_backend.h"

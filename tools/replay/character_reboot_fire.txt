@@ -1,0 +1,3 @@
+# Character Reboot-01 evidence: one deterministic pistol shot at frame zero.
+0 MOUSELEFT down
+1 MOUSELEFT up

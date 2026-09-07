@@ -64,13 +64,27 @@ void HudRenderer::Draw(CharCell* buffer, int width, int height,
         return;
     }
     std::string top = "HP " + std::to_string(frame.health) +
-                      " AMMO " + std::to_string(frame.ammo_mag) + "/" +
-                      std::to_string(frame.ammo_reserve);
-    std::string dev = std::string("PRESET ") + frame.preset_name +
-                      " GRID " + std::to_string(frame.grid_width) + "x" +
-                      std::to_string(frame.grid_height);
+                      "   AMMO " + std::to_string(frame.ammo_mag) + "/" +
+                      std::to_string(frame.ammo_reserve) + "   " +
+                      (frame.weapon_name != nullptr ? frame.weapon_name : "PISTOL");
     DrawRow(buffer, width, std::min(1, height - 1), top);
-    if (height > 1) DrawRow(buffer, width, 1, dev);
+    if (frame.developer_overlay && height > 2) {
+        std::string dev = std::string("F3 DEV  PRESET ") + frame.preset_name +
+                          "  GRID " + std::to_string(frame.grid_width) + "x" +
+                          std::to_string(frame.grid_height);
+        DrawRow(buffer, width, 2, dev);
+    }
+    if (width > 4 && height > 4) {
+        CharCell& crosshair = buffer[static_cast<size_t>(height / 2) * width + width / 2];
+        crosshair.code_point = U'·';
+        crosshair.fg_r = 190;
+        crosshair.fg_g = 226;
+        crosshair.fg_b = 216;
+        crosshair.bg_r = 5;
+        crosshair.bg_g = 9;
+        crosshair.bg_b = 14;
+        crosshair.flags = 0;
+    }
     if (frame.subtitle != nullptr) {
         DrawRow(buffer, width, std::max(0, height - 3), frame.subtitle);
     }

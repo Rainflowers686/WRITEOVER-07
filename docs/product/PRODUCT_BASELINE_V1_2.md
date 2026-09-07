@@ -43,17 +43,17 @@ Content quantity is deliberately last. The current `ReferenceRenderer` is
 
 ## 2. Visual Direction
 
-Final normal-world presentation: **Half-block TrueColor Pixel Framebuffer**.
+The active normal-world presentation is **Character-Art / ANSI / Unicode FPS**.
+The PVS-01 half-block TrueColor framebuffer is retained as a historical
+engineering milestone and regression fixture only; it is not the active
+production world path. Normal rendering emits semantic `CharCell` values
+directly from ray geometry, authored material glyphs, transparent character
+sprites, the character pistol viewmodel, effects and HUD.
 
-- Each terminal cell is `▀`
-- foreground RGB = upper logical pixel
-- background RGB = lower logical pixel
-- ULTRA: 240×67 terminal cells = 240×134 logical pixels
-- Normal world is a pixel FPS
-- Character/text corruption is reserved for Narrator intrusion, glitch, HUD,
-  and terminal contexts
-
-See `VISUAL_BIBLE_V1_2.md`.
+The target canvas remains 240×67 terminal cells. Character glyphs carry the
+world silhouette and spatial information; ANSI TrueColor enriches, but does
+not replace, those glyphs. See `VISUAL_BIBLE_V1_2.md` for the active M2
+contract and the Character Reboot-01 evidence boundary.
 
 ## 3. Building
 
@@ -131,7 +131,7 @@ modules is forbidden.
 | Module | Owns |
 |--------|------|
 | M1 Core | save, timeline, persistence, global state, Protected Recovery |
-| M2 Render | pixel framebuffer, sprites, viewmodels, lighting, effects, HUD, subtitle, Narrator typography, visual performance |
+| M2 Render | semantic CharCell surfaces, material glyphs, authored transparent sprites, character viewmodels, lighting, effects, HUD, subtitle, Narrator typography, visual performance |
 | M3 Player | interaction verbs, movement, combat, inventory, body dragging, weapon handling, throwables |
 | M4 World | building topology, containers, doors, power, terminals, ownership, loot ecology, environment interaction |
 | M5 AI | NPC identity, perception, routine, memory, relationship, witness, communication, social decision, body discovery |

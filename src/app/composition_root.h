@@ -6,6 +6,8 @@
 #ifndef WO_COMPOSITION_ROOT_H
 #define WO_COMPOSITION_ROOT_H
 
+#include "writeover/common/types.h"
+
 #include <cstdint>
 #include <string>
 
@@ -24,6 +26,10 @@ struct GameConfig {
     std::string frame_dump_path;
     std::string room_id;
     std::string replay_path;
+    bool camera_override = false;  // deterministic visual evidence camera only
+    Vec3 camera_position;
+    float camera_yaw = 0.0f;
+    float camera_pitch = 0.0f;
 };
 
 // Builds the world/player/ai/narrative modules, the terminal backend, the
