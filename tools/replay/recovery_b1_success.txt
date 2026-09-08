@@ -11,7 +11,10 @@
 427 V down
 428 V up
 429 W down
-530 W up
+512 W up
+513 S down
+530 S up
+530 MOUSEMOVE 0 200
 531 F down
 532 F up
 535 F down
@@ -23,6 +26,7 @@
 851 F down
 852 F up
 1600 MOUSEMOVE -720 0
+1600 MOUSEMOVE 0 -200
 1601 W down
 1601 SHIFT down
 1735 W up
@@ -53,6 +57,9 @@
 2149 SHIFT down
 2175 W up
 2175 SHIFT up
-2175 MOUSEMOVE -1012 0
-2176 F down
-2177 F up
+2175 A down
+2208 A up
+2208 W down
+2250 W up
+2251 F down
+2252 F up

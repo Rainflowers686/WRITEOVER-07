@@ -45,14 +45,14 @@ end
 sprite full_human mid full
     .-'''-.
    /  O O  \
-  |    \_/  |
+  |~~~ \_/~~|
    \       /
-    |  |  |
-  __|  |  |__
+    |~~|  |~|
+  __|~~|  |~|__
  /   \ | /   \
-|     \|/     |
-|   .--|--.   |
-|  /   |   \  |
+|~~~  \|/  ~~|
+|~~ .--|--. ~~|
+|~ /   |   \ ~|
 | /    |    \ |
 |/     |     \|
  \     |     /
@@ -66,17 +66,17 @@ sprite full_human near full
         .-###-.
       .' O O  '.
      /   \_/    \
-    |     -      |
-     \   ###    /
+    |~~~  -  ~~~|
+     \~~ ### ~~ /
       \   ||   /
-       |  ||  |
-    ___|  ||  |___
+       |~~||~~|
+    ___|~~||~~|___
   _/    \_||_/    \_
  /      .-||-.      \
-|      /  ||  \      |
-|     /   ||   \     |
-|    /    ||    \    |
-|   /     ||     \   |
+|~~~  /  ||  \  ~~~|
+|~~  /   ||   \  ~~|
+|~  /    ||    \  ~|
+|  /     ||     \  |
  \_/      ||      \_/
   /       ||       \
  /    .---||---.    \
@@ -210,6 +210,57 @@ sprite door near prop
    |           |
    |  ||   ||  |
    '-----------'
+end
+
+# Body poses are floor-presented world sprites, not standing NPC art. '~' is
+# an occupied blank cell: it blocks the wall behind the body without emitting
+# a visible glyph. Spaces remain real negative space.
+sprite body_unconscious far maintenance
+  .------.
+ /  o o   \
+|  /___\  |
+ \_______/
+end
+
+sprite body_unconscious mid maintenance
+   .----------.
+  /  o     o   \
+ /    [___]     \
+|~~  /     \  ~~|
+ \____\___/_____/
+end
+
+sprite body_unconscious near maintenance
+    .------------.
+   /  o      o    \
+  /     [____]     \
+ |~~  /      \  ~~|
+ |___/        \___|
+  \____/  \______/
+end
+
+sprite body_dead far prop
+  .------.
+ /  x x   \
+|  /___\  |
+ \_______/
+end
+
+sprite body_dead mid prop
+   .----------.
+  /  x     x   \
+ /    [___]     \
+|~~  /     \  ~~|
+ \____\___/_____/
+end
+
+sprite body_dead near prop
+    .------------.
+   /  x      x    \
+  /     [____]     \
+ |~~  /      \  ~~|
+ |___/        \___|
+  \____/  \______/
 end
 
 weapon pistol idle_a weapon

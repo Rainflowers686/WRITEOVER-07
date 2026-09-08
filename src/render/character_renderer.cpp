@@ -1,5 +1,7 @@
 #include "writeover/render/character_renderer.h"
 
+#include "writeover/common/math.h"
+
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
@@ -12,7 +14,7 @@ namespace writeover {
 
 namespace {
 
-constexpr float kPi = 3.14159265358979323846f;
+constexpr float kCharacterPi = 3.14159265358979323846f;
 constexpr float kMaxSpriteDistance = 50.0f;
 // World sprites remain readable at close range without consuming the whole
 // 67-row terminal viewport.  This is a screen-space projection cap, not an
@@ -147,6 +149,25 @@ std::string TrimRight(std::string value) {
     return value;
 }
 
+void DecodeArtRow(const std::string& text, std::u32string& glyphs,
+                  std::vector<CharacterCellOpacity>& opacity) {
+    glyphs = DecodeUtf8(text);
+    opacity.clear();
+    opacity.reserve(glyphs.size());
+    for (auto& glyph : glyphs) {
+        if (glyph == U'~') {
+            // '~' is an authoring-only marker for an occupied blank cell. It
+            // is never emitted as a visible glyph.
+            glyph = U' ';
+            opacity.push_back(CharacterCellOpacity::OpaqueEmpty);
+        } else if (glyph == U' ') {
+            opacity.push_back(CharacterCellOpacity::Transparent);
+        } else {
+            opacity.push_back(CharacterCellOpacity::Glyph);
+        }
+    }
+}
+
 bool ParseKind(const std::string& value, CharacterSpriteKind& out) {
     if (value == "security_guard") {
         out = CharacterSpriteKind::SecurityGuard;
@@ -162,6 +183,10 @@ bool ParseKind(const std::string& value, CharacterSpriteKind& out) {
         out = CharacterSpriteKind::Crate;
     } else if (value == "door") {
         out = CharacterSpriteKind::Door;
+    } else if (value == "body_unconscious") {
+        out = CharacterSpriteKind::BodyUnconscious;
+    } else if (value == "body_dead") {
+        out = CharacterSpriteKind::BodyDead;
     } else {
         return false;
     }
@@ -247,6 +272,8 @@ void BuildFallbackBank(std::vector<CharacterArtAsset>& assets) {
         CharacterSpriteKind::Camera,
         CharacterSpriteKind::Crate,
         CharacterSpriteKind::Door,
+        CharacterSpriteKind::BodyUnconscious,
+        CharacterSpriteKind::BodyDead,
     };
     for (const auto kind : kinds) {
         for (const auto lod : {CharacterLod::Far, CharacterLod::Mid,
@@ -427,16 +454,9 @@ CharCell WallCell(const OccludingSegment& segment, float surface_u,
 }
 
 float NormalizeAngle(float angle) {
-    while (angle > kPi) angle -= 2.0f * kPi;
-    while (angle < -kPi) angle += 2.0f * kPi;
+    while (angle > kCharacterPi) angle -= 2.0f * kCharacterPi;
+    while (angle < -kCharacterPi) angle += 2.0f * kCharacterPi;
     return angle;
-}
-
-float FovPerColumn(int cell_w, float focal_cells_per_unit) {
-    const float effective_width = static_cast<float>(cell_w) * kCharacterCellAspect;
-    return 2.0f * std::atan(0.5f * effective_width /
-                             focal_cells_per_unit) /
-           static_cast<float>(cell_w);
 }
 
 float WallSurfaceCoordinate(const CharacterView& view, const RayConfig& ray,
@@ -519,29 +539,115 @@ std::string XmlEscape(const std::string& text) {
     return out;
 }
 
+bool IsEyeGlyph(char32_t glyph) {
+    return glyph == U'o' || glyph == U'O' || glyph == U'@';
+}
+
+void ResolveFacingCell(const CharacterArtAsset& asset, int source_x,
+                       int source_y, CharacterFacing facing,
+                       char32_t& glyph, CharacterCellOpacity& opacity) {
+    opacity = asset.OpacityAt(source_x, source_y);
+    if (opacity == CharacterCellOpacity::Transparent ||
+        source_y < 0 || source_y >= asset.Height() ||
+        source_x < 0 || source_x >= static_cast<int>(
+            asset.rows[static_cast<size_t>(source_y)].size())) {
+        opacity = CharacterCellOpacity::Transparent;
+        return;
+    }
+    glyph = asset.rows[static_cast<size_t>(source_y)][static_cast<size_t>(source_x)];
+    if (opacity == CharacterCellOpacity::Glyph && !IsSingleWidthGlyph(glyph)) {
+        opacity = CharacterCellOpacity::Transparent;
+        return;
+    }
+
+    const bool face_band = source_y < std::max(1, asset.Height() / 3);
+    if (face_band && IsEyeGlyph(glyph)) {
+        if (facing == CharacterFacing::Back) {
+            // A back view keeps the authored silhouette but does not expose
+            // the front-facing eyes.
+            glyph = U'=';
+        } else if (facing == CharacterFacing::SideLeft &&
+                   source_x > asset.Width() / 2) {
+            opacity = CharacterCellOpacity::Transparent;
+        } else if (facing == CharacterFacing::SideRight &&
+                   source_x < asset.Width() / 2) {
+            opacity = CharacterCellOpacity::Transparent;
+        }
+    }
+}
+
+using CharacterDepthBuffer = std::vector<float>;
+
+void BuildWallDepthBuffer(const CameraProjection& projection,
+                          const GridCell* cells, int grid_w, int grid_h,
+                          CharacterDepthBuffer& depths) {
+    const size_t expected = static_cast<size_t>(std::max(0, projection.screen_width)) *
+                            static_cast<size_t>(std::max(0, projection.screen_height));
+    depths.assign(expected, std::numeric_limits<float>::infinity());
+    if (cells == nullptr || grid_w <= 0 || grid_h <= 0 || expected == 0) return;
+
+    for (int x = 0; x < projection.screen_width; ++x) {
+        RayConfig ray_config;
+        ray_config.origin_xy = Vec2{projection.origin.x, projection.origin.y};
+        ray_config.yaw = projection.ColumnYaw(x);
+        const RayResult ray = CastColumnRay(ray_config, cells, grid_w, grid_h);
+        for (uint32_t i = 0; i < ray.segment_count; ++i) {
+            const OccludingSegment& segment = ray.segments[i];
+            const WallProjection wall = ProjectWall(
+                segment, projection.origin.z, projection.pitch,
+                projection.focal_y, projection.screen_height);
+            if (!wall.visible || !std::isfinite(wall.screen_top_y) ||
+                !std::isfinite(wall.screen_bottom_y) ||
+                wall.screen_top_y > wall.screen_bottom_y) {
+                continue;
+            }
+            const int top = std::max(0, static_cast<int>(std::ceil(
+                wall.screen_top_y)));
+            const int bottom = std::min(
+                projection.screen_height - 1,
+                static_cast<int>(std::floor(wall.screen_bottom_y)));
+            for (int y = top; y <= bottom; ++y) {
+                float& depth = depths[static_cast<size_t>(y) *
+                                      projection.screen_width + x];
+                depth = std::min(depth, segment.distance);
+            }
+        }
+    }
+}
+
 void DrawOneSprite(const CharacterView& view,
                    const CharacterSpriteInstance& instance,
                    const CharacterArtBank& art,
                    const GridCell* cells, int grid_w, int grid_h,
                    CharCell* out_cells, int cell_w, int cell_h,
                    float focal_cells_per_unit,
-                   const CharacterRenderOptions& options) {
+                   const CharacterRenderOptions& options,
+                   const CharacterDepthBuffer& wall_depths,
+                   CharacterDepthBuffer& sprite_depths) {
+    (void)cells;
+    (void)grid_w;
+    (void)grid_h;
+    const CameraProjection projection(
+        view.origin, view.yaw, view.pitch, cell_w, cell_h,
+        focal_cells_per_unit, kCharacterCellAspect);
     const float dx = instance.position.x - view.origin.x;
     const float dy = instance.position.y - view.origin.y;
     const float distance = std::sqrt(dx * dx + dy * dy);
     if (distance < 0.05f || distance > kMaxSpriteDistance) return;
-    const float relative_yaw = NormalizeAngle(std::atan2(dy, dx) - view.yaw);
-    const float depth = distance * std::cos(relative_yaw);
-    if (depth <= 0.05f) return;
+    const Vec3 actor_center{instance.position.x, instance.position.y,
+                            instance.position.z + instance.height * 0.5f};
+    const float depth = projection.Depth(actor_center);
+    const float horizontal_depth = projection.HorizontalDepth(instance.position);
+    if (!std::isfinite(depth) || depth <= 0.05f ||
+        !std::isfinite(horizontal_depth) || horizontal_depth <= 0.05f) return;
 
     const CharacterLod lod = SelectCharacterLod(distance);
     const CharacterArtAsset* asset = art.Find(instance.kind, lod);
     if (asset == nullptr || asset->Height() <= 0 || asset->Width() <= 0) return;
 
-    const float focal_x = focal_cells_per_unit * kCharacterCellAspect;
-    const float horizontal_angle = FovPerColumn(cell_w, focal_cells_per_unit);
-    const float center_x = static_cast<float>(cell_w) * 0.5f +
-                           std::tan(relative_yaw) * focal_x;
+    const CharacterFacing facing = SelectCharacterFacing(
+        instance.yaw, instance.position, view.origin);
+    const float center_x = projection.ScreenX(actor_center);
     if (!std::isfinite(center_x)) return;
     const int lod_cap = lod == CharacterLod::Near ? kNearCharacterScreenCap
                         : lod == CharacterLod::Mid ? kMidCharacterScreenCap
@@ -558,13 +664,14 @@ void DrawOneSprite(const CharacterView& view,
     const int dst_w = std::max(1, static_cast<int>(std::lround(
         static_cast<float>(asset->Width()) * dst_h /
         static_cast<float>(asset->Height()))));
-    const float center_row = static_cast<float>(cell_h) * 0.5f +
-                             std::tan(view.pitch) * focal_cells_per_unit;
+    const float ground_raw = projection.ScreenY(instance.position);
+    if (!std::isfinite(ground_raw)) return;
     // Every vertical placement uses the same effective scale as the capped
     // sprite height.  In particular, do not anchor the feet with raw_scale
-    // after a close-range cap has bound.
-    const float ground_row = center_row +
-                             (view.origin.z - instance.position.z) * effective_scale;
+    // after a close-range cap has bound.  Scaling the camera-space foot
+    // offset keeps the pinhole pitch relationship while applying the cap.
+    const float ground_row = projection.CenterY() +
+        (ground_raw - projection.CenterY()) * (effective_scale / raw_scale);
     const float top_row = ground_row - projected_height;
     const float bottom_row = ground_row;
     if (bottom_row < 0.0f || top_row >= static_cast<float>(cell_h)) return;
@@ -577,49 +684,46 @@ void DrawOneSprite(const CharacterView& view,
                                 static_cast<int>(std::ceil(bottom_row)));
     for (int x = left; x <= right; ++x) {
         if (x < 0 || x >= cell_w) continue;
-        const float ray_relative = (static_cast<float>(x) + 0.5f -
-                                    static_cast<float>(cell_w) * 0.5f) *
-                                   horizontal_angle;
-        const float ray_depth = distance * std::cos(ray_relative - relative_yaw);
-        if (ray_depth <= 0.05f) continue;
-        RayConfig ray_config;
-        ray_config.origin_xy = Vec2{view.origin.x, view.origin.y};
-        ray_config.yaw = view.yaw + ray_relative;
-        const RayResult ray = CastColumnRay(ray_config, cells, grid_w, grid_h);
-        bool occluded = false;
-        for (uint32_t i = 0; i < ray.segment_count; ++i) {
-            const OccludingSegment& segment = ray.segments[i];
-            if (segment.distance >= ray_depth - 0.05f) continue;
-            const WallProjection wall = ProjectWall(
-                segment, view.origin.z, view.pitch, focal_cells_per_unit, cell_h);
-            if (wall.visible && bottom_row >= wall.screen_top_y - 0.5f &&
-                top_row <= wall.screen_bottom_y + 0.5f) {
-                occluded = true;
-                break;
-            }
-        }
-        if (occluded) continue;
+        const float ray_depth = projection.HorizontalRayDepthToPoint(
+            instance.position, x);
+        if (!std::isfinite(ray_depth) || ray_depth <= 0.05f) continue;
 
         const int local_x = x - left;
-        const int source_x = std::clamp(
+        int source_x = std::clamp(
             static_cast<int>(static_cast<float>(local_x) * asset->Width() /
                              static_cast<float>(dst_w)),
             0, asset->Width() - 1);
+        if (facing == CharacterFacing::Back) {
+            source_x = asset->Width() - 1 - source_x;
+        }
         for (int y = top; y <= bottom; ++y) {
             const int local_y = std::clamp(
                 static_cast<int>((static_cast<float>(y) - top_row) *
                                  asset->Height() /
                                  std::max(1.0f, bottom_row - top_row)),
                 0, asset->Height() - 1);
-            const std::u32string& row = asset->rows[static_cast<size_t>(local_y)];
-            if (source_x >= static_cast<int>(row.size())) continue;
-            const char32_t glyph = row[static_cast<size_t>(source_x)];
-            if (glyph == U' ' || !IsSingleWidthGlyph(glyph)) continue;
-            const Color fg = SpriteForeground(*asset, glyph, distance, 210, options);
-            const Color bg = {5, 9, 14};
-            out_cells[static_cast<size_t>(y) * cell_w + x] =
-                MakeCell(glyph, fg, bg,
-                         glyph == U'o' || glyph == U'O' ? 0x01 : 0);
+            char32_t glyph = U' ';
+            CharacterCellOpacity opacity = CharacterCellOpacity::Transparent;
+            ResolveFacingCell(*asset, source_x, local_y, facing, glyph, opacity);
+            if (opacity == CharacterCellOpacity::Transparent) continue;
+            const size_t index = static_cast<size_t>(y) * cell_w + x;
+            if (index >= wall_depths.size() || index >= sprite_depths.size()) {
+                continue;
+            }
+            if (wall_depths[index] < ray_depth - 0.05f ||
+                sprite_depths[index] <= ray_depth + 0.05f) {
+                continue;
+            }
+            const Color bg{5, 9, 14};
+            const Color fg = opacity == CharacterCellOpacity::OpaqueEmpty
+                ? SpriteForeground(*asset, U'_', distance, 210, options)
+                : SpriteForeground(*asset, glyph, distance, 210, options);
+            out_cells[index] = MakeCell(
+                opacity == CharacterCellOpacity::OpaqueEmpty ? U' ' : glyph,
+                fg, bg,
+                opacity == CharacterCellOpacity::Glyph && IsEyeGlyph(glyph)
+                    ? 0x01 : 0);
+            sprite_depths[index] = ray_depth;
         }
     }
 }
@@ -630,6 +734,23 @@ int CharacterArtAsset::Width() const {
     size_t width = 0;
     for (const auto& row : rows) width = std::max(width, row.size());
     return static_cast<int>(width);
+}
+
+CharacterCellOpacity CharacterArtAsset::OpacityAt(int x, int y) const {
+    if (x < 0 || y < 0 || y >= Height()) {
+        return CharacterCellOpacity::Transparent;
+    }
+    const auto& row = rows[static_cast<size_t>(y)];
+    if (x >= static_cast<int>(row.size())) {
+        return CharacterCellOpacity::Transparent;
+    }
+    if (y < static_cast<int>(opacity.size()) &&
+        x < static_cast<int>(opacity[static_cast<size_t>(y)].size())) {
+        return opacity[static_cast<size_t>(y)][static_cast<size_t>(x)];
+    }
+    return row[static_cast<size_t>(x)] == U' '
+               ? CharacterCellOpacity::Transparent
+               : CharacterCellOpacity::Glyph;
 }
 
 CharacterArtBank::CharacterArtBank() {
@@ -686,7 +807,11 @@ bool CharacterArtBank::Load(const std::string& path) {
         if (current.rows.size() >= kMaxArtRows || line.size() > kMaxArtColumns * 4) {
             return false;
         }
-        current.rows.push_back(DecodeUtf8(line));
+        std::u32string glyphs;
+        std::vector<CharacterCellOpacity> row_opacity;
+        DecodeArtRow(line, glyphs, row_opacity);
+        current.rows.push_back(std::move(glyphs));
+        current.opacity.push_back(std::move(row_opacity));
         if (current.Width() > static_cast<int>(kMaxArtColumns)) return false;
     }
     if (in_asset || parsed.empty()) return false;
@@ -719,6 +844,19 @@ CharacterLod SelectCharacterLod(float distance_meters) {
     return CharacterLod::Far;
 }
 
+CharacterFacing SelectCharacterFacing(float actor_yaw,
+                                      const Vec3& actor_position,
+                                      const Vec3& camera_position) {
+    const float to_camera = std::atan2(camera_position.y - actor_position.y,
+                                       camera_position.x - actor_position.x);
+    const float relative = NormalizeAngle(actor_yaw - to_camera);
+    const float absolute = std::fabs(relative);
+    if (absolute <= kCharacterPi * 0.25f) return CharacterFacing::Front;
+    if (absolute >= kCharacterPi * 0.75f) return CharacterFacing::Back;
+    return relative > 0.0f ? CharacterFacing::SideRight
+                           : CharacterFacing::SideLeft;
+}
+
 void RenderCharacterFrame(const GridCell* cells, int grid_w, int grid_h,
                           const CharacterView& view,
                           CharCell* out_cells, int cell_w, int cell_h,
@@ -731,30 +869,42 @@ void RenderCharacterFrame(const GridCell* cells, int grid_w, int grid_h,
     const CharCell clear = MakeCell(U' ', {138, 148, 156}, {5, 9, 14});
     std::fill(out_cells, out_cells + static_cast<size_t>(cell_w) * cell_h, clear);
 
-    const float horizontal_angle = FovPerColumn(cell_w, focal_cells_per_unit);
-    const float center_row = static_cast<float>(cell_h) * 0.5f;
-    const float horizon = center_row + std::tan(view.pitch) * focal_cells_per_unit;
+    const CameraProjection camera(view.origin, view.yaw, view.pitch,
+                                  cell_w, cell_h, focal_cells_per_unit,
+                                  kCharacterCellAspect);
     for (int x = 0; x < cell_w; ++x) {
         RayConfig ray_config;
         ray_config.origin_xy = Vec2{view.origin.x, view.origin.y};
-        ray_config.yaw = view.yaw +
-                         (static_cast<float>(x) + 0.5f -
-                          static_cast<float>(cell_w) * 0.5f) * horizontal_angle;
+        ray_config.yaw = camera.ColumnYaw(x);
         const RayResult ray = CastColumnRay(ray_config, cells, grid_w, grid_h);
-        const float dx = std::cos(ray_config.yaw);
-        const float dy = std::sin(ray_config.yaw);
         for (int y = 0; y < cell_h; ++y) {
-            const float delta = static_cast<float>(y) - horizon;
-            const bool ceiling = delta < 0.0f;
+            const bool ceiling = static_cast<float>(y) + 0.5f < camera.CenterY();
             const float plane_z = ceiling ? ray.final_ceiling_z : ray.final_floor_z;
-            const float height_delta = std::fabs(view.origin.z - plane_z);
-            const float abs_delta = std::fabs(delta);
-            const float distance = abs_delta > 0.5f
-                ? std::min(kMaxSpriteDistance, std::max(0.25f,
-                    height_delta * focal_cells_per_unit / abs_delta))
-                : kMaxSpriteDistance;
-            const float world_x = view.origin.x + dx * distance;
-            const float world_y = view.origin.y + dy * distance;
+            const Vec3 ray_direction = camera.RayDirectionAt(
+                static_cast<float>(x) + 0.5f,
+                static_cast<float>(y) + 0.5f);
+            float ray_distance = std::numeric_limits<float>::quiet_NaN();
+            if (std::fabs(ray_direction.z) > 1e-5f) {
+                ray_distance = (plane_z - view.origin.z) / ray_direction.z;
+            }
+            Vec3 world_point;
+            if (std::isfinite(ray_distance) && ray_distance > 0.0f) {
+                ray_distance = std::min(kMaxSpriteDistance, ray_distance);
+                world_point = view.origin + ray_direction * ray_distance;
+            } else {
+                const Vec3 horizontal = camera.HorizontalColumnDirection(x);
+                ray_distance = kMaxSpriteDistance;
+                world_point = view.origin + horizontal * ray_distance;
+            }
+            const float distance = std::min(
+                kMaxSpriteDistance,
+                std::max(0.25f, std::sqrt(
+                    (world_point.x - view.origin.x) *
+                        (world_point.x - view.origin.x) +
+                    (world_point.y - view.origin.y) *
+                        (world_point.y - view.origin.y))));
+            const float world_x = world_point.x;
+            const float world_y = world_point.y;
             const GridCell sample = SampleCell(cells, grid_w, grid_h,
                                                world_x, world_y);
             const char32_t glyph = PlaneGlyph(ceiling, world_x, world_y,
@@ -773,20 +923,21 @@ void RenderCharacterFrame(const GridCell* cells, int grid_w, int grid_h,
         }
         for (uint32_t i = ray.segment_count; i > 0; --i) {
             const OccludingSegment& segment = ray.segments[i - 1];
-            const WallProjection projection = ProjectWall(
+            const WallProjection wall_projection = ProjectWall(
                 segment, view.origin.z, view.pitch, focal_cells_per_unit, cell_h);
-            if (!projection.visible) continue;
+            if (!wall_projection.visible) continue;
             const float surface_u = WallSurfaceCoordinate(
                 view, ray_config, segment.distance);
             const float screen_span = std::max(
-                projection.screen_bottom_y - projection.screen_top_y, 0.001f);
+                wall_projection.screen_bottom_y - wall_projection.screen_top_y,
+                0.001f);
             const int top = std::max(0, static_cast<int>(std::ceil(
-                projection.screen_top_y)));
+                wall_projection.screen_top_y)));
             const int bottom = std::min(cell_h - 1, static_cast<int>(std::floor(
-                projection.screen_bottom_y)));
+                wall_projection.screen_bottom_y)));
             for (int y = top; y <= bottom; ++y) {
                 const float vertical_t = std::clamp(
-                    (static_cast<float>(y) + 0.5f - projection.screen_top_y) /
+                    (static_cast<float>(y) + 0.5f - wall_projection.screen_top_y) /
                         screen_span,
                     0.0f, 1.0f);
                 const float surface_z = segment.top_z +
@@ -806,18 +957,24 @@ void DrawCharacterSprites(const CharacterView& view,
                           float focal_cells_per_unit,
                           const CharacterRenderOptions& options) {
     if (out_cells == nullptr || cell_w <= 0 || cell_h <= 0) return;
+    const CameraProjection projection(
+        view.origin, view.yaw, view.pitch, cell_w, cell_h,
+        focal_cells_per_unit, kCharacterCellAspect);
+    CharacterDepthBuffer wall_depths;
+    BuildWallDepthBuffer(projection, cells, grid_w, grid_h, wall_depths);
+    CharacterDepthBuffer sprite_depths(
+        static_cast<size_t>(cell_w) * cell_h,
+        std::numeric_limits<float>::infinity());
     std::vector<CharacterSpriteInstance> ordered = sprites;
     std::stable_sort(ordered.begin(), ordered.end(), [&](const auto& left,
                                                          const auto& right) {
-        const float ldx = left.position.x - view.origin.x;
-        const float ldy = left.position.y - view.origin.y;
-        const float rdx = right.position.x - view.origin.x;
-        const float rdy = right.position.y - view.origin.y;
-        return ldx * ldx + ldy * ldy > rdx * rdx + rdy * rdy;
+        return projection.HorizontalDepth(left.position) >
+               projection.HorizontalDepth(right.position);
     });
     for (const auto& sprite : ordered) {
         DrawOneSprite(view, sprite, art, cells, grid_w, grid_h, out_cells,
-                      cell_w, cell_h, focal_cells_per_unit, options);
+                      cell_w, cell_h, focal_cells_per_unit, options,
+                      wall_depths, sprite_depths);
     }
 }
 

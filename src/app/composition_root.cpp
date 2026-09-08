@@ -21,6 +21,7 @@
 #include "writeover/player/input_runtime.h"
 #include "writeover/player/weapon.h"
 #include "writeover/systemic/systemic.h"
+#include "writeover/common/math.h"
 #include "writeover/render/character_renderer.h"
 #include "writeover/render/hud.h"
 #include "writeover/render/raycaster.h"
@@ -991,7 +992,8 @@ public:
                         sprites.push_back({
                             runtime.instance.position,
                             kind == CharacterSpriteKind::FullHuman ? 1.8f : 1.75f,
-                            kind});
+                            kind,
+                            runtime.instance.yaw});
                     }
                 }
                 // An incapacitated actor has one visual authority: the
@@ -1005,15 +1007,14 @@ public:
                             body.status == BodyStatus::Alive) {
                             continue;
                         }
-                        CharacterSpriteKind body_kind = CharacterSpriteKind::MaintenanceWorker;
-                        const ActorRecord* actor = systemic_->GetActor(
-                            NpcId::New(body.npc.GetValue()));
-                        if (actor != nullptr && actor->cognition == CognitionTier::Full) {
-                            body_kind = CharacterSpriteKind::FullHuman;
-                        } else if (actor != nullptr && actor->role == Role::Guard) {
-                            body_kind = CharacterSpriteKind::SecurityGuard;
-                        }
-                        sprites.push_back({body.position, 0.70f, body_kind});
+                        const CharacterSpriteKind body_kind =
+                            body.status == BodyStatus::Dead
+                                ? CharacterSpriteKind::BodyDead
+                                : CharacterSpriteKind::BodyUnconscious;
+                        // Body art is a distinct floor pose.  Its visual
+                        // authority is BodyRecord::position, not the
+                        // incapacitated actor's standing sprite.
+                        sprites.push_back({body.position, 0.45f, body_kind, 0.0f});
                     }
                 }
             } else if (scene_id_ == "room_1f_security") {
@@ -1024,7 +1025,8 @@ public:
                             runtime.instance.state != NPCState::Dead &&
                             runtime.instance.state != NPCState::Stunned) {
                             sprites.push_back({runtime.instance.position, 1.8f,
-                                               CharacterSpriteKind::SecurityGuard});
+                                               CharacterSpriteKind::SecurityGuard,
+                                               runtime.instance.yaw});
                         }
                     }
                 }
@@ -2523,71 +2525,70 @@ int RunComposition(const GameConfig& config) {
             };
             B1Target focused;
             float focused_distance = 1000000.0f;
-            const Vec3 eye = services.player->Locomotion().EyePosition();
-            const auto consider = [&](B1Target candidate, bool requires_sight) {
-                const float dx = candidate.position.x - p.x;
-                const float dy = candidate.position.y - p.y;
-                const float distance = std::sqrt(dx * dx + dy * dy);
-                if (distance > candidate.radius || distance >= focused_distance) return;
-                const Vec3 target_center{
-                    candidate.position.x, candidate.position.y,
-                    candidate.position.z + candidate.height * 0.5f};
-                const Vec3 to_target{target_center.x - eye.x,
-                                     target_center.y - eye.y,
-                                     target_center.z - eye.z};
-                const float horizontal_distance = std::sqrt(
-                    to_target.x * to_target.x + to_target.y * to_target.y);
-                if (!std::isfinite(horizontal_distance)) return;
-                const float cos_yaw = std::cos(services.player->Locomotion().yaw);
-                const float sin_yaw = std::sin(services.player->Locomotion().yaw);
-                // Interaction is a bounded world-space target, not a pixel
-                // under the reticle.  Use the horizontal body cone for
-                // selection so a close, waist-height cart is still reachable
-                // while the 3-D segment below remains the occlusion check.
-                if (horizontal_distance > 0.05f) {
-                    const float facing = (to_target.x * cos_yaw +
-                                          to_target.y * sin_yaw) / horizontal_distance;
-                    const float angular_radius = std::atan2(
-                        candidate.radius, std::max(0.05f, horizontal_distance));
-                    if (facing < std::cos(std::min(1.45f, angular_radius))) return;
+            const LocomotionState& locomotion = services.player->Locomotion();
+            const Vec3 eye = locomotion.EyePosition();
+            const float focal = 0.5f * static_cast<float>(config.terminal_h) /
+                                std::tan(60.0f * 3.14159265f / 360.0f);
+            const CameraProjection camera(eye, locomotion.yaw, locomotion.pitch,
+                                          config.terminal_w, config.terminal_h,
+                                          focal, kCharacterCellAspect);
+            const Vec3 interaction_ray = camera.RayDirectionAt(
+                static_cast<float>(config.terminal_w) * 0.5f,
+                static_cast<float>(config.terminal_h) * 0.5f);
+            const auto consider = [&](B1Target candidate) {
+                const AABB bounds{
+                    Vec3{candidate.position.x - candidate.radius,
+                         candidate.position.y - candidate.radius,
+                         candidate.position.z},
+                    Vec3{candidate.position.x + candidate.radius,
+                         candidate.position.y + candidate.radius,
+                         candidate.position.z + candidate.height}};
+                float hit_distance = 0.0f;
+                if (!IntersectRayAabb(eye, interaction_ray, bounds,
+                                      hit_distance) ||
+                    hit_distance >= focused_distance) {
+                    return;
                 }
-                if (requires_sight &&
-                    !services.world->Query().LineOfSight(
-                        eye, target_center, target_center.z)) return;
+                const Vec3 hit_point = eye + interaction_ray * hit_distance;
+                // Every B1 target, including the reader, is a real visible
+                // world target.  An opaque wall/door therefore blocks the
+                // interaction ray instead of a radius/cone selecting it.
+                if (!services.world->Query().LineOfSight(
+                        eye, hit_point, hit_point.z)) return;
                 focused = candidate;
-                focused_distance = distance;
+                focused_distance = hit_distance;
             };
             if (services.systemic->GetDrag(slice.body) == nullptr) {
                 if (const BodyRecord* body = services.systemic->GetBody(slice.body)) {
                     if (body->room == slice.b1_room &&
                         body->disposition == BodyDisposition::Exposed) {
                         consider(B1Target{B1TargetKind::Body, body->position, 1.5f,
-                                          1.8f, {}}, true);
+                                          0.45f, {}});
                     }
                 }
             }
             for (const auto& entity : scene_entities) {
                     B1TargetKind kind = B1TargetKind::None;
-                    bool requires_sight = true;
                     switch (entity.kind) {
                     case SceneEntityKind::Cart: kind = B1TargetKind::Cart; break;
                     case SceneEntityKind::Camera: kind = B1TargetKind::Camera; break;
                     case SceneEntityKind::Terminal: kind = B1TargetKind::Terminal; break;
                     case SceneEntityKind::DoorReader:
                         kind = B1TargetKind::Gate;
-                        requires_sight = false;
                         break;
                     default: break;
                     }
                     if (kind != B1TargetKind::None) {
                         consider(B1Target{kind, entity.position, entity.radius,
-                                          entity.height, {}}, requires_sight);
+                                          entity.height, {}});
                     }
             }
             for (const auto& runtime : services.ai->Npcs()) {
-                if (runtime.room == slice.b1_room && runtime.instance.state != NPCState::Dead) {
+                if (runtime.room == slice.b1_room &&
+                    runtime.instance.state != NPCState::Dead &&
+                    runtime.instance.state != NPCState::Stunned) {
                     consider(B1Target{B1TargetKind::Npc, runtime.instance.position, 1.25f,
-                                      1.8f, runtime.instance.id}, true);
+                                      1.8f, runtime.instance.id});
                 }
             }
 
@@ -2677,8 +2678,9 @@ int RunComposition(const GameConfig& config) {
                 return;
             }
             if (focused.kind == B1TargetKind::Camera) {
-                const ObservationSource* camera = services.systemic->GetObservationSource(slice.camera);
-                if (camera != nullptr && camera->online) {
+                const ObservationSource* camera_source =
+                    services.systemic->GetObservationSource(slice.camera);
+                if (camera_source != nullptr && camera_source->online) {
                     services.systemic->SetObservationSourceOnline(slice.camera, false);
                     SystemicEvent outage;
                     outage.id = EventId::New(10000 + services.systemic->EventCount());

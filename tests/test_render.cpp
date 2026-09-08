@@ -14,6 +14,7 @@
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
+#include <limits>
 #include <vector>
 
 namespace writeover {
@@ -1156,6 +1157,377 @@ bool CharacterPortraitIsBoundedCharArt() {
     WO_CHECK(has_face_stroke);
     return true;
 }
+
+constexpr int kSpatialTestWidth = 240;
+constexpr int kSpatialTestHeight = 67;
+
+float SpatialTestFocal() {
+    return 0.5f * static_cast<float>(kSpatialTestHeight) /
+           std::tan(60.0f * 3.14159265f / 360.0f);
+}
+
+void FillSpatialSentinel(std::vector<CharCell>& frame, char32_t glyph = U'.') {
+    for (auto& cell : frame) {
+        cell = CharCell{};
+        cell.code_point = glyph;
+        cell.bg_r = 41;
+        cell.bg_g = 47;
+        cell.bg_b = 53;
+    }
+}
+
+bool IsSpatialSpriteCell(const CharCell& cell) {
+    return cell.bg_r == 5 && cell.bg_g == 9 && cell.bg_b == 14;
+}
+
+int CountSpatialSpriteCells(const std::vector<CharCell>& frame) {
+    int count = 0;
+    for (const auto& cell : frame) {
+        if (IsSpatialSpriteCell(cell)) ++count;
+    }
+    return count;
+}
+
+struct SpatialSpriteBounds {
+    int first_x = kSpatialTestWidth;
+    int last_x = -1;
+    int first_y = kSpatialTestHeight;
+    int last_y = -1;
+};
+
+SpatialSpriteBounds FindSpatialSpriteBounds(
+    const std::vector<CharCell>& frame) {
+    SpatialSpriteBounds bounds;
+    for (int y = 0; y < kSpatialTestHeight; ++y) {
+        for (int x = 0; x < kSpatialTestWidth; ++x) {
+            if (!IsSpatialSpriteCell(frame[static_cast<size_t>(y) *
+                                           kSpatialTestWidth + x])) {
+                continue;
+            }
+            bounds.first_x = std::min(bounds.first_x, x);
+            bounds.last_x = std::max(bounds.last_x, x);
+            bounds.first_y = std::min(bounds.first_y, y);
+            bounds.last_y = std::max(bounds.last_y, y);
+        }
+    }
+    return bounds;
+}
+
+void DrawSpatialSprite(const Grid& grid, const CharacterView& view,
+                       CharacterSpriteKind kind, const Vec3& position,
+                       float height, std::vector<CharCell>& frame) {
+    FillSpatialSentinel(frame);
+    DrawCharacterSprites(
+        view, {{position, height, kind, 0.0f}}, CharacterArtBank{},
+        grid.Data().data(), grid.Width(), grid.Height(), frame.data(),
+        kSpatialTestWidth, kSpatialTestHeight, SpatialTestFocal());
+}
+
+bool SpatialCameraProjectionContract() {
+    const Vec3 camera_position{2.5f, 3.5f, kEyeStand};
+    const Vec3 actor{7.5f, 3.5f, 0.9f};
+    const Vec3 same_surface{7.5f, 3.5f, 2.2f};
+    const std::array<float, 5> yaw_sweep = {
+        -0.65f, -0.30f, 0.0f, 0.30f, 0.65f};
+    float previous_actor_x = std::numeric_limits<float>::quiet_NaN();
+    for (const float yaw : yaw_sweep) {
+        const CameraProjection projection(
+            camera_position, yaw, 0.0f, kSpatialTestWidth,
+            kSpatialTestHeight, SpatialTestFocal(), kCharacterCellAspect);
+        const float actor_x = projection.ScreenX(actor);
+        const float surface_x = projection.ScreenX(same_surface);
+        WO_CHECK(std::isfinite(actor_x));
+        WO_CHECK(std::isfinite(surface_x));
+        // Points sharing one world XY location must share the same screen-X;
+        // their vertical separation is not allowed to create sprite/wall
+        // horizontal drift.
+        WO_CHECK_NEAR(actor_x, surface_x, 0.001f);
+        if (std::isfinite(previous_actor_x)) {
+            WO_CHECK(std::fabs(actor_x - previous_actor_x) > 0.01f);
+        }
+        previous_actor_x = actor_x;
+
+        const int nearest_column = std::clamp(
+            static_cast<int>(std::lround(actor_x - 0.5f)), 0,
+            kSpatialTestWidth - 1);
+        const Vec3 column_ray =
+            projection.HorizontalColumnDirection(nearest_column);
+        const Vec3 to_actor{actor.x - camera_position.x,
+                            actor.y - camera_position.y, 0.0f};
+        const float cross = to_actor.x * column_ray.y -
+                            to_actor.y * column_ray.x;
+        const float dot = to_actor.x * column_ray.x +
+                          to_actor.y * column_ray.y;
+        // ScreenX and the ray-column mapping are the same pinhole contract;
+        // one terminal cell of quantisation is the only allowed error.
+        WO_CHECK(std::fabs(std::atan2(cross, dot)) <=
+                 std::atan(1.0f / projection.focal_x) + 0.01f);
+    }
+
+    const CharacterFacing fixed_actor_facing = SelectCharacterFacing(
+        0.0f, actor, camera_position);
+    for (const float camera_yaw : yaw_sweep) {
+        (void)camera_yaw;
+        // Rotating the camera does not change an actor's world-facing pose.
+        WO_CHECK(SelectCharacterFacing(0.0f, actor, camera_position) ==
+                 fixed_actor_facing);
+    }
+    return true;
+}
+
+bool SpatialActorFacingOrbit() {
+    const Vec3 actor{5.5f, 4.5f, 0.0f};
+    const float half_pi = 3.14159265f * 0.5f;
+    WO_CHECK(SelectCharacterFacing(0.0f, actor,
+                                   Vec3{actor.x + 3.0f, actor.y, 1.6f}) ==
+             CharacterFacing::Front);
+    WO_CHECK(SelectCharacterFacing(0.0f, actor,
+                                   Vec3{actor.x, actor.y + 3.0f, 1.6f}) ==
+             CharacterFacing::SideLeft);
+    WO_CHECK(SelectCharacterFacing(0.0f, actor,
+                                   Vec3{actor.x - 3.0f, actor.y, 1.6f}) ==
+             CharacterFacing::Back);
+    WO_CHECK(SelectCharacterFacing(0.0f, actor,
+                                   Vec3{actor.x, actor.y - 3.0f, 1.6f}) ==
+             CharacterFacing::SideRight);
+    (void)half_pi;
+    return true;
+}
+
+bool SpatialLowWallPartialOcclusion() {
+    Grid clear_grid = MakeOpenGrid(12, 8);
+    Grid low_wall = clear_grid;
+    for (int32_t col = 2; col <= 10; ++col) {
+        GridCell cell = low_wall.GetCell(col, 3);
+        cell.floor_height = 1.0f;
+        cell.material = 4;
+        low_wall.SetCell(col, 3, cell);
+    }
+
+    CharacterView view;
+    view.origin = Vec3{1.5f, 2.5f, kEyeStand};
+    view.yaw = 0.0f;
+    std::vector<CharCell> clear_frame(
+        static_cast<size_t>(kSpatialTestWidth) * kSpatialTestHeight);
+    std::vector<CharCell> wall_frame = clear_frame;
+    DrawSpatialSprite(clear_grid, view, CharacterSpriteKind::FullHuman,
+                      Vec3{7.5f, 3.5f, 0.0f}, 1.8f, clear_frame);
+    DrawSpatialSprite(low_wall, view, CharacterSpriteKind::FullHuman,
+                      Vec3{7.5f, 3.5f, 0.0f}, 1.8f, wall_frame);
+    const int clear_count = CountSpatialSpriteCells(clear_frame);
+    const int wall_count = CountSpatialSpriteCells(wall_frame);
+    WO_CHECK(clear_count > 0);
+    WO_CHECK(wall_count > 0);
+    WO_CHECK(wall_count < clear_count);
+
+    bool upper_survives = false;
+    bool lower_is_occluded = false;
+    for (int y = 0; y < kSpatialTestHeight; ++y) {
+        int clear_row = 0;
+        int wall_row = 0;
+        for (int x = 0; x < kSpatialTestWidth; ++x) {
+            clear_row += IsSpatialSpriteCell(
+                clear_frame[static_cast<size_t>(y) * kSpatialTestWidth + x]);
+            wall_row += IsSpatialSpriteCell(
+                wall_frame[static_cast<size_t>(y) * kSpatialTestWidth + x]);
+        }
+        if (y < kSpatialTestHeight / 2 && wall_row > 0) upper_survives = true;
+        if (clear_row > wall_row && clear_row > 0) lower_is_occluded = true;
+    }
+    WO_CHECK(upper_survives);
+    WO_CHECK(lower_is_occluded);
+    return true;
+}
+
+bool SpatialPillarPartialOcclusion() {
+    Grid clear_grid = MakeOpenGrid(12, 8);
+    Grid pillar_grid = clear_grid;
+    GridCell pillar = pillar_grid.GetCell(5, 3);
+    pillar.flags = CellFlag_Solid;
+    pillar.material = 1;
+    pillar_grid.SetCell(5, 3, pillar);
+
+    CharacterView view;
+    view.origin = Vec3{1.5f, 3.5f, kEyeStand};
+    view.yaw = 0.0f;
+    const Vec3 actor_position{7.5f, 4.2f, 0.0f};
+    std::vector<CharCell> clear_frame(
+        static_cast<size_t>(kSpatialTestWidth) * kSpatialTestHeight);
+    std::vector<CharCell> pillar_frame = clear_frame;
+    DrawSpatialSprite(clear_grid, view, CharacterSpriteKind::FullHuman,
+                      actor_position, 1.8f, clear_frame);
+    DrawSpatialSprite(pillar_grid, view, CharacterSpriteKind::FullHuman,
+                      actor_position, 1.8f, pillar_frame);
+    const int clear_count = CountSpatialSpriteCells(clear_frame);
+    const int pillar_count = CountSpatialSpriteCells(pillar_frame);
+    WO_CHECK(clear_count > 0);
+    WO_CHECK(pillar_count > 0);
+    WO_CHECK(pillar_count < clear_count);
+    const SpatialSpriteBounds bounds = FindSpatialSpriteBounds(pillar_frame);
+    WO_CHECK(bounds.last_x - bounds.first_x >= 2);
+    return true;
+}
+
+bool SpatialCharacterOpacity() {
+    CharacterArtBank bank;
+    WO_CHECK(LoadProductionCharacterArtBank(bank));
+    const CharacterArtAsset* near =
+        bank.Find(CharacterSpriteKind::FullHuman, CharacterLod::Near);
+    WO_CHECK(near != nullptr);
+    bool has_opaque_empty = false;
+    bool has_transparent = false;
+    bool has_enclosed_gap = false;
+    for (int y = 0; y < near->Height(); ++y) {
+        bool occupied_before = false;
+        for (int x = 0; x < near->Width(); ++x) {
+            const CharacterCellOpacity opacity = near->OpacityAt(x, y);
+            has_opaque_empty = has_opaque_empty ||
+                               opacity == CharacterCellOpacity::OpaqueEmpty;
+            has_transparent = has_transparent ||
+                              opacity == CharacterCellOpacity::Transparent;
+            if (opacity == CharacterCellOpacity::Transparent &&
+                occupied_before) {
+                for (int right = x + 1; right < near->Width(); ++right) {
+                    if (near->OpacityAt(right, y) !=
+                        CharacterCellOpacity::Transparent) {
+                        has_enclosed_gap = true;
+                        break;
+                    }
+                }
+            }
+            if (opacity != CharacterCellOpacity::Transparent) {
+                occupied_before = true;
+            }
+        }
+    }
+    WO_CHECK(has_opaque_empty);
+    WO_CHECK(has_transparent);
+    WO_CHECK(has_enclosed_gap);
+
+    Grid grid = MakeOpenGrid(10, 8);
+    CharacterView view;
+    view.origin = Vec3{1.5f, 3.5f, 1.0f};
+    view.yaw = 0.0f;
+    std::vector<CharCell> frame(
+        static_cast<size_t>(kSpatialTestWidth) * kSpatialTestHeight);
+    FillSpatialSentinel(frame);
+    DrawCharacterSprites(
+        view, {{Vec3{3.5f, 3.5f, 0.0f}, 1.8f,
+                CharacterSpriteKind::FullHuman, 0.0f}},
+        bank, grid.Data().data(), grid.Width(), grid.Height(), frame.data(),
+        kSpatialTestWidth, kSpatialTestHeight, SpatialTestFocal());
+    const SpatialSpriteBounds bounds = FindSpatialSpriteBounds(frame);
+    WO_CHECK(bounds.last_x >= bounds.first_x);
+    WO_CHECK(bounds.last_y >= bounds.first_y);
+    int opaque_blank_cells = 0;
+    int visible_glyph_cells = 0;
+    int preserved_negative_space = 0;
+    for (int y = bounds.first_y; y <= bounds.last_y; ++y) {
+        for (int x = bounds.first_x; x <= bounds.last_x; ++x) {
+            const CharCell& cell =
+                frame[static_cast<size_t>(y) * kSpatialTestWidth + x];
+            if (!IsSpatialSpriteCell(cell)) {
+                if (cell.code_point == U'.') ++preserved_negative_space;
+                continue;
+            }
+            if (cell.code_point == U' ') ++opaque_blank_cells;
+            else ++visible_glyph_cells;
+        }
+    }
+    WO_CHECK(opaque_blank_cells > 0);
+    WO_CHECK(visible_glyph_cells > 0);
+    WO_CHECK(preserved_negative_space > 0);
+    return true;
+}
+
+bool SpatialInteractionRayPitchAndOcclusion() {
+    const int width = kSpatialTestWidth;
+    const int height = kSpatialTestHeight;
+    const float focal = SpatialTestFocal();
+    const float center_x = static_cast<float>(width - 1) * 0.5f;
+    const float center_y = static_cast<float>(height - 1) * 0.5f;
+    const Vec3 eye{0.5f, 1.5f, kEyeStand};
+
+    const CameraProjection up_camera(eye, 0.0f, 0.35f, width, height,
+                                     focal, kCharacterCellAspect);
+    const Vec3 up_ray = up_camera.RayDirectionAt(center_x, center_y);
+    float distance = 0.0f;
+    const AABB ceiling_target{{1.8f, 1.30f, 2.0f},
+                              {2.3f, 1.70f, 2.8f}};
+    WO_CHECK(IntersectRayAabb(eye, up_ray, ceiling_target, distance));
+    const CameraProjection down_camera(eye, 0.0f, -0.35f, width, height,
+                                       focal, kCharacterCellAspect);
+    const Vec3 down_ray = down_camera.RayDirectionAt(center_x, center_y);
+    const AABB floor_body{{2.7f, 1.25f, 0.0f}, {3.3f, 1.75f, 0.8f}};
+    WO_CHECK(IntersectRayAabb(eye, down_ray, floor_body, distance));
+    WO_CHECK(!IntersectRayAabb(eye, down_ray, ceiling_target, distance));
+    WO_CHECK(!IntersectRayAabb(eye, up_ray, floor_body, distance));
+
+    Grid open_grid = MakeOpenGrid(8, 3);
+    GridWorldQuery open_query(&open_grid);
+    const Vec3 target{4.5f, 1.5f, 1.0f};
+    WO_CHECK(open_query.LineOfSight(eye, target, target.z));
+    Grid blocked_grid = open_grid;
+    GridCell wall = blocked_grid.GetCell(2, 1);
+    wall.flags = CellFlag_Solid;
+    blocked_grid.SetCell(2, 1, wall);
+    GridWorldQuery blocked_query(&blocked_grid);
+    WO_CHECK(!blocked_query.LineOfSight(eye, target, target.z));
+    return true;
+}
+
+bool SpatialBodyWorldPresentation() {
+    CharacterArtBank bank;
+    WO_CHECK(LoadProductionCharacterArtBank(bank));
+    WO_CHECK(bank.Find(CharacterSpriteKind::BodyUnconscious,
+                       CharacterLod::Near) != nullptr);
+    WO_CHECK(bank.Find(CharacterSpriteKind::BodyDead,
+                       CharacterLod::Near) != nullptr);
+
+    Grid grid = MakeOpenGrid(10, 8);
+    CharacterView view;
+    view.origin = Vec3{1.5f, 3.5f, 1.0f};
+    view.yaw = 0.0f;
+    const auto render = [&](CharacterSpriteKind kind, const Vec3& position,
+                            float height) {
+        std::vector<CharCell> frame(
+            static_cast<size_t>(kSpatialTestWidth) * kSpatialTestHeight);
+        FillSpatialSentinel(frame);
+        DrawCharacterSprites(
+            view, {{position, height, kind, 0.0f}}, bank,
+            grid.Data().data(), grid.Width(), grid.Height(), frame.data(),
+            kSpatialTestWidth, kSpatialTestHeight, SpatialTestFocal());
+        return frame;
+    };
+    const auto body_near = render(CharacterSpriteKind::BodyUnconscious,
+                                  Vec3{4.5f, 3.5f, 0.0f}, 0.45f);
+    const auto body_far = render(CharacterSpriteKind::BodyUnconscious,
+                                 Vec3{5.5f, 3.5f, 0.0f}, 0.45f);
+    const auto standing = render(CharacterSpriteKind::FullHuman,
+                                 Vec3{4.5f, 3.5f, 0.0f}, 1.8f);
+    const SpatialSpriteBounds near_bounds = FindSpatialSpriteBounds(body_near);
+    const SpatialSpriteBounds far_bounds = FindSpatialSpriteBounds(body_far);
+    const SpatialSpriteBounds standing_bounds =
+        FindSpatialSpriteBounds(standing);
+    WO_CHECK(near_bounds.last_x >= near_bounds.first_x);
+    WO_CHECK(near_bounds.last_y >= near_bounds.first_y);
+    WO_CHECK(far_bounds.last_x >= far_bounds.first_x);
+    WO_CHECK(near_bounds.first_y != far_bounds.first_y ||
+             near_bounds.last_y != far_bounds.last_y);
+    WO_CHECK(standing_bounds.last_y >= standing_bounds.first_y);
+    WO_CHECK(near_bounds.last_y - near_bounds.first_y <
+             standing_bounds.last_y - standing_bounds.first_y);
+
+    std::vector<CharCell> hidden(
+        static_cast<size_t>(kSpatialTestWidth) * kSpatialTestHeight);
+    FillSpatialSentinel(hidden);
+    DrawCharacterSprites(view, {}, bank, grid.Data().data(), grid.Width(),
+                         grid.Height(), hidden.data(), kSpatialTestWidth,
+                         kSpatialTestHeight, SpatialTestFocal());
+    WO_CHECK_EQ(CountSpatialSpriteCells(hidden), 0);
+    return true;
+}
+
 void RegisterRenderTests(TestHarness& test) {
     test.Add("ray.flat_hits_wall", &RayFlatHitsWall);
     test.Add("ray.low_wall_floor_rise", &RayLowWallSegment);
@@ -1198,6 +1570,18 @@ void RegisterRenderTests(TestHarness& test) {
              &CharacterWallPatternUsesWorldCoordinates);
     test.Add("character.pistol_transparency", &CharacterPistolKeepsTransparentWhitespace);
     test.Add("character.portrait_bounded_char_art", &CharacterPortraitIsBoundedCharArt);
+    test.Add("spatial.camera_projection_contract",
+             &SpatialCameraProjectionContract);
+    test.Add("spatial.actor_facing_orbit", &SpatialActorFacingOrbit);
+    test.Add("spatial.low_wall_partial_occlusion",
+             &SpatialLowWallPartialOcclusion);
+    test.Add("spatial.pillar_partial_occlusion",
+             &SpatialPillarPartialOcclusion);
+    test.Add("spatial.character_opacity", &SpatialCharacterOpacity);
+    test.Add("spatial.interaction_ray_pitch_and_wall",
+             &SpatialInteractionRayPitchAndOcclusion);
+    test.Add("spatial.body_world_presentation",
+             &SpatialBodyWorldPresentation);
     test.Add("render.marker_hidden_behind_full_wall", &MarkerHiddenBehindFullWall);
     test.Add("render.marker_visible_above_low_wall", &MarkerVisibleAboveLowWall);
     test.Add("terminal.unchanged_frame_emits_no_payload", &TerminalUnchangedFrameNoPayload);

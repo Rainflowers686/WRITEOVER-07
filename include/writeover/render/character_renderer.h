@@ -25,6 +25,8 @@ enum class CharacterSpriteKind : uint8_t {
     Camera = 4,
     Crate = 5,
     Door = 6,
+    BodyUnconscious = 7,
+    BodyDead = 8,
 };
 
 enum class CharacterLod : uint8_t {
@@ -49,6 +51,23 @@ enum class PistolFrame : uint8_t {
     Reload = 3,
 };
 
+enum class CharacterFacing : uint8_t {
+    Front = 0,
+    Back = 1,
+    SideLeft = 2,
+    SideRight = 3,
+};
+
+// Authored character-art cells distinguish real negative space from a blank
+// stroke that still occupies the character surface.  Transparent cells leave
+// the world untouched; OpaqueEmpty cells write a blank CharCell and therefore
+// occlude the world behind the body without drawing a visible glyph.
+enum class CharacterCellOpacity : uint8_t {
+    Transparent = 0,
+    Glyph = 1,
+    OpaqueEmpty = 2,
+};
+
 struct CharacterArtAsset {
     CharacterSpriteKind sprite_kind = CharacterSpriteKind::SecurityGuard;
     CharacterLod lod = CharacterLod::Far;
@@ -56,9 +75,11 @@ struct CharacterArtAsset {
     PistolFrame pistol_frame = PistolFrame::IdleA;
     bool is_pistol = false;
     std::vector<std::u32string> rows;
+    std::vector<std::vector<CharacterCellOpacity>> opacity;
 
     int Width() const;
     int Height() const { return static_cast<int>(rows.size()); }
+    CharacterCellOpacity OpacityAt(int x, int y) const;
 };
 
 // Lightweight bounded authoring bank.  The file format is intentionally
@@ -102,6 +123,9 @@ struct CharacterSpriteInstance {
     Vec3 position;
     float height = 1.7f;
     CharacterSpriteKind kind = CharacterSpriteKind::SecurityGuard;
+    // World-facing direction supplied by RuntimeNpc::yaw.  It is deliberately
+    // not a camera-facing billboard orientation.
+    float yaw = 0.0f;
 };
 
 // Character-cell aspect convention: a terminal cell is treated as half as
@@ -110,6 +134,10 @@ struct CharacterSpriteInstance {
 inline constexpr float kCharacterCellAspect = 0.5f;
 
 CharacterLod SelectCharacterLod(float distance_meters);
+
+CharacterFacing SelectCharacterFacing(float actor_yaw,
+                                      const Vec3& actor_position,
+                                      const Vec3& camera_position);
 
 void RenderCharacterFrame(const GridCell* cells, int grid_w, int grid_h,
                           const CharacterView& view,

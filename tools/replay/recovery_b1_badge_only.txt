@@ -12,5 +12,6 @@
 428 V up
 429 W down
 530 W up
+530 MOUSEMOVE 0 200
 531 F down
 532 F up

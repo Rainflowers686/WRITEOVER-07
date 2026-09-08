@@ -84,6 +84,55 @@ struct WallProjection {
 // focal_px_per_unit = (0.5 * screen_h) / tan(fov_v / 2).
 inline constexpr int kMaxProjectionsPerColumn = kMaxSegmentsPerRay;
 
+// One pinhole camera contract shared by the height-span renderer, character
+// sprites, floor/ceiling sampling, and player interaction.  Screen X is
+// expressed in terminal cells while focal_y is expressed in terminal rows;
+// the cell aspect converts the horizontal focal length accordingly.
+struct CameraProjection {
+    Vec3 origin;
+    float yaw = 0.0f;
+    float pitch = 0.0f;
+    int screen_width = 0;
+    int screen_height = 0;
+    float focal_y = 1.0f;
+    float focal_x = 2.0f;
+    float cell_aspect = 0.5f;
+
+    CameraProjection(const Vec3& camera_origin, float camera_yaw,
+                     float camera_pitch, int width, int height,
+                     float vertical_focal, float horizontal_cell_aspect = 0.5f);
+
+    float CenterY() const;
+    float ColumnYaw(int screen_x) const;
+    Vec3 Forward() const;
+    Vec3 Right() const;
+    Vec3 Up() const;
+    Vec3 RayDirectionAt(float screen_x, float screen_y) const;
+    Vec3 HorizontalColumnDirection(int screen_x) const;
+
+    // Camera-space depth and terminal-cell projection of an arbitrary point.
+    float Depth(const Vec3& world_point) const;
+    float HorizontalDepth(const Vec3& world_point) const;
+    float ScreenX(const Vec3& world_point) const;
+    float ScreenY(const Vec3& world_point) const;
+
+    // Projects a vertical wall/sprite edge whose XY hit is on the camera's
+    // horizontal ray. This is the same pinhole basis as ScreenY(), expressed
+    // in terms of the height-span ray distance.
+    float ScreenYAtHorizontalDepth(float world_z,
+                                   float horizontal_depth) const;
+
+    // Ray parameter to a point along a particular terminal column's
+    // horizontal world ray. Used for per-cell wall/sprite depth comparison.
+    float HorizontalRayDepthToPoint(const Vec3& world_point,
+                                    int screen_x) const;
+};
+
+// Slab intersection for bounded player-facing interaction targets.
+// Returns the nearest non-negative ray parameter, with no allocation.
+bool IntersectRayAabb(const Vec3& origin, const Vec3& direction,
+                      const AABB& bounds, float& out_distance);
+
 // Projects one occluding segment to screen Y using camera eye height + pitch.
 // pitch is clamped to +-30 degrees by the controller; negative = looking down.
 WallProjection ProjectWall(const OccludingSegment& seg,
