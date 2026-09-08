@@ -23,7 +23,9 @@ constexpr int kNearCharacterScreenCap = 44;
 constexpr int kMidCharacterScreenCap = 48;
 constexpr int kFarCharacterScreenCap = 24;
 constexpr size_t kMaxArtAssets = 64;
-constexpr size_t kMaxArtRows = 32;
+// Weapon viewmodels may use a taller authored hand/forearm silhouette than
+// world sprites, but remain bounded well below an unbounded text asset.
+constexpr size_t kMaxArtRows = 48;
 constexpr size_t kMaxArtColumns = 64;
 // The authored pistol is a held viewmodel: its grip/hand is the stable
 // screen-space anchor, while the muzzle remains several cells inward toward
@@ -206,6 +208,34 @@ bool ParseLod(const std::string& value, CharacterLod& out) {
     return true;
 }
 
+bool ParseFacing(const std::string& value, CharacterFacing& out) {
+    if (value == "front") {
+        out = CharacterFacing::Front;
+    } else if (value == "back") {
+        out = CharacterFacing::Back;
+    } else if (value == "side_left") {
+        out = CharacterFacing::SideLeft;
+    } else if (value == "side_right" || value == "side") {
+        out = CharacterFacing::SideRight;
+    } else {
+        return false;
+    }
+    return true;
+}
+
+bool ParseWeaponSlot(const std::string& value, WeaponSlot& out) {
+    if (value == "pistol") {
+        out = WeaponSlot::Pistol;
+    } else if (value == "smg") {
+        out = WeaponSlot::Smg;
+    } else if (value == "stunner") {
+        out = WeaponSlot::Stunner;
+    } else {
+        return false;
+    }
+    return true;
+}
+
 bool ParseInk(const std::string& value, CharacterInk& out) {
     if (value == "security") {
         out = CharacterInk::Security;
@@ -246,6 +276,7 @@ CharacterArtAsset FallbackAsset(CharacterSpriteKind kind, CharacterLod lod) {
     CharacterArtAsset asset;
     asset.sprite_kind = kind;
     asset.lod = lod;
+    asset.facing = CharacterFacing::Front;
     asset.ink = kind == CharacterSpriteKind::SecurityGuard
                    ? CharacterInk::Security
                    : CharacterInk::Prop;
@@ -257,6 +288,7 @@ CharacterArtAsset FallbackPistol(PistolFrame frame) {
     CharacterArtAsset asset;
     asset.is_pistol = true;
     asset.pistol_frame = frame;
+    asset.weapon_slot = WeaponSlot::Pistol;
     asset.ink = CharacterInk::Weapon;
     asset.rows = {U"  ____====>", U" /___/", U"  ||", U" /__\\"};
     if (frame == PistolFrame::Fire) asset.rows[0] += U"*";
@@ -544,7 +576,7 @@ bool IsEyeGlyph(char32_t glyph) {
 }
 
 void ResolveFacingCell(const CharacterArtAsset& asset, int source_x,
-                       int source_y, CharacterFacing facing,
+                       int source_y, CharacterFacing fallback_facing,
                        char32_t& glyph, CharacterCellOpacity& opacity) {
     opacity = asset.OpacityAt(source_x, source_y);
     if (opacity == CharacterCellOpacity::Transparent ||
@@ -560,16 +592,19 @@ void ResolveFacingCell(const CharacterArtAsset& asset, int source_x,
         return;
     }
 
+    // Directional art is authored per facing whenever available.  The
+    // fallback transform is retained only for an incomplete/old bank so a
+    // missing optional direction does not make a production sprite vanish.
     const bool face_band = source_y < std::max(1, asset.Height() / 3);
     if (face_band && IsEyeGlyph(glyph)) {
-        if (facing == CharacterFacing::Back) {
+        if (fallback_facing == CharacterFacing::Back) {
             // A back view keeps the authored silhouette but does not expose
             // the front-facing eyes.
             glyph = U'=';
-        } else if (facing == CharacterFacing::SideLeft &&
+        } else if (fallback_facing == CharacterFacing::SideLeft &&
                    source_x > asset.Width() / 2) {
             opacity = CharacterCellOpacity::Transparent;
-        } else if (facing == CharacterFacing::SideRight &&
+        } else if (fallback_facing == CharacterFacing::SideRight &&
                    source_x < asset.Width() / 2) {
             opacity = CharacterCellOpacity::Transparent;
         }
@@ -641,12 +676,21 @@ void DrawOneSprite(const CharacterView& view,
     if (!std::isfinite(depth) || depth <= 0.05f ||
         !std::isfinite(horizontal_depth) || horizontal_depth <= 0.05f) return;
 
-    const CharacterLod lod = SelectCharacterLod(distance);
-    const CharacterArtAsset* asset = art.Find(instance.kind, lod);
-    if (asset == nullptr || asset->Height() <= 0 || asset->Width() <= 0) return;
-
+    const CharacterLod lod = instance.has_lod_hint
+                                 ? instance.lod_hint
+                                 : SelectCharacterLod(distance);
     const CharacterFacing facing = SelectCharacterFacing(
         instance.yaw, instance.position, view.origin);
+    const CharacterArtAsset* asset = art.Find(instance.kind, lod, facing);
+    bool fallback_facing = false;
+    bool mirror_side = false;
+    if (asset == nullptr) {
+        asset = art.Find(instance.kind, lod);
+        fallback_facing = asset != nullptr && facing != CharacterFacing::Front;
+        mirror_side = fallback_facing && facing == CharacterFacing::SideLeft;
+    }
+    if (asset == nullptr || asset->Height() <= 0 || asset->Width() <= 0) return;
+
     const float center_x = projection.ScreenX(actor_center);
     if (!std::isfinite(center_x)) return;
     const int lod_cap = lod == CharacterLod::Near ? kNearCharacterScreenCap
@@ -693,7 +737,7 @@ void DrawOneSprite(const CharacterView& view,
             static_cast<int>(static_cast<float>(local_x) * asset->Width() /
                              static_cast<float>(dst_w)),
             0, asset->Width() - 1);
-        if (facing == CharacterFacing::Back) {
+        if (fallback_facing && (facing == CharacterFacing::Back || mirror_side)) {
             source_x = asset->Width() - 1 - source_x;
         }
         for (int y = top; y <= bottom; ++y) {
@@ -704,7 +748,9 @@ void DrawOneSprite(const CharacterView& view,
                 0, asset->Height() - 1);
             char32_t glyph = U' ';
             CharacterCellOpacity opacity = CharacterCellOpacity::Transparent;
-            ResolveFacingCell(*asset, source_x, local_y, facing, glyph, opacity);
+            ResolveFacingCell(*asset, source_x, local_y,
+                              fallback_facing ? facing : CharacterFacing::Front,
+                              glyph, opacity);
             if (opacity == CharacterCellOpacity::Transparent) continue;
             const size_t index = static_cast<size_t>(y) * cell_w + x;
             if (index >= wall_depths.size() || index >= sprite_depths.size()) {
@@ -775,17 +821,26 @@ bool CharacterArtBank::Load(const std::string& path) {
             std::string name;
             std::string detail;
             std::string ink_name;
+            std::string facing_name;
+            CharacterFacing parsed_facing = CharacterFacing::Front;
             if (!(header >> record >> name >> detail >> ink_name) ||
                 (record != "sprite" && record != "weapon") ||
                 parsed.size() >= kMaxArtAssets || !ParseInk(ink_name, current.ink)) {
                 return false;
             }
+            if (header >> facing_name && !ParseFacing(facing_name, parsed_facing)) {
+                return false;
+            }
+            std::string unexpected;
+            if (header >> unexpected) return false;
             current = CharacterArtAsset{};
+            current.facing = parsed_facing;
             if (!ParseInk(ink_name, current.ink)) return false;
             is_pistol = record == "weapon";
             current.is_pistol = is_pistol;
             if (is_pistol) {
-                if (name != "pistol" || !ParsePistolFrame(detail, current.pistol_frame)) {
+                if (!ParseWeaponSlot(name, current.weapon_slot) ||
+                    !ParsePistolFrame(detail, current.pistol_frame)) {
                     return false;
                 }
                 current.ink = CharacterInk::Weapon;
@@ -823,25 +878,64 @@ bool CharacterArtBank::Load(const std::string& path) {
 
 const CharacterArtAsset* CharacterArtBank::Find(CharacterSpriteKind kind,
                                                 CharacterLod lod) const {
+    return Find(kind, lod, CharacterFacing::Front);
+}
+
+const CharacterArtAsset* CharacterArtBank::Find(CharacterSpriteKind kind,
+                                                CharacterLod lod,
+                                                CharacterFacing facing) const {
     for (const auto& asset : assets_) {
-        if (!asset.is_pistol && asset.sprite_kind == kind && asset.lod == lod) {
+        if (!asset.is_pistol && asset.sprite_kind == kind && asset.lod == lod &&
+            asset.facing == facing) {
             return &asset;
+        }
+    }
+    // A single authored side profile is allowed to serve both side views;
+    // DrawOneSprite mirrors it only when the requested side is absent.
+    if (facing == CharacterFacing::SideLeft) {
+        for (const auto& asset : assets_) {
+            if (!asset.is_pistol && asset.sprite_kind == kind &&
+                asset.lod == lod && asset.facing == CharacterFacing::SideRight) {
+                return &asset;
+            }
         }
     }
     return nullptr;
 }
 
-const CharacterArtAsset* CharacterArtBank::FindPistol(PistolFrame frame) const {
+const CharacterArtAsset* CharacterArtBank::FindWeapon(WeaponSlot slot,
+                                                       PistolFrame frame) const {
     for (const auto& asset : assets_) {
-        if (asset.is_pistol && asset.pistol_frame == frame) return &asset;
+        if (asset.is_pistol && asset.weapon_slot == slot &&
+            asset.pistol_frame == frame) return &asset;
     }
     return nullptr;
+}
+
+const CharacterArtAsset* CharacterArtBank::FindPistol(PistolFrame frame) const {
+    return FindWeapon(WeaponSlot::Pistol, frame);
 }
 
 CharacterLod SelectCharacterLod(float distance_meters) {
     if (distance_meters < 4.0f) return CharacterLod::Near;
     if (distance_meters < 12.0f) return CharacterLod::Mid;
     return CharacterLod::Far;
+}
+
+CharacterLod SelectCharacterLodHysteretic(float distance_meters,
+                                          CharacterLod previous) {
+    if (!std::isfinite(distance_meters)) return previous;
+    switch (previous) {
+    case CharacterLod::Near:
+        return distance_meters >= 4.5f ? CharacterLod::Mid : CharacterLod::Near;
+    case CharacterLod::Mid:
+        if (distance_meters < 3.5f) return CharacterLod::Near;
+        if (distance_meters >= 12.5f) return CharacterLod::Far;
+        return CharacterLod::Mid;
+    case CharacterLod::Far:
+    default:
+        return distance_meters < 11.5f ? CharacterLod::Mid : CharacterLod::Far;
+    }
 }
 
 CharacterFacing SelectCharacterFacing(float actor_yaw,
@@ -1063,8 +1157,16 @@ void DrawPistolViewmodel(CharCell* cells, int cell_w, int cell_h,
                          const CharacterArtBank& art, PistolFrame frame,
                          float recoil_amount,
                          const CharacterRenderOptions& options) {
+    DrawWeaponViewmodel(cells, cell_w, cell_h, art, WeaponSlot::Pistol, frame,
+                        recoil_amount, options);
+}
+
+void DrawWeaponViewmodel(CharCell* cells, int cell_w, int cell_h,
+                         const CharacterArtBank& art, WeaponSlot slot,
+                         PistolFrame frame, float recoil_amount,
+                         const CharacterRenderOptions& options) {
     if (cells == nullptr || cell_w <= 0 || cell_h <= 0) return;
-    const CharacterArtAsset* asset = art.FindPistol(frame);
+    const CharacterArtAsset* asset = art.FindWeapon(slot, frame);
     if (asset == nullptr || asset->Width() <= 0 || asset->Height() <= 0) return;
     const int source_width = asset->Width();
     const int source_height = asset->Height();

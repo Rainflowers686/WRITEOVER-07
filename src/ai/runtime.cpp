@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <queue>
 
 namespace writeover {
 
@@ -17,6 +18,19 @@ constexpr uint64_t kMemoryIdBase = 0xA100000000000000ull;
 constexpr uint64_t kMemoryRefreshWindowFrames = 600; // five seconds at 120 Hz
 constexpr uint64_t kDiscoveryInspectionFrames = 60; // 0.5 seconds at 120 Hz
 constexpr float kNpcRadius = 0.42f;
+constexpr float kNpcHeight = 1.80f;
+constexpr float kNpcMotorSpeed = 1.20f;
+constexpr float kNavigationArrivalRadius = 0.80f;
+constexpr float kGuardCombatRange = 9.0f;
+constexpr uint64_t kGuardAttackPeriodFrames = 60;
+
+enum NavigationTask : uint8_t {
+    kNavigationNone = 0,
+    kNavigationPatrol = 1,
+    kNavigationInvestigate = 2,
+    kNavigationBodyDiscovery = 3,
+    kNavigationCombat = 4,
+};
 
 bool IsNpcState(uint8_t value) {
     return value < static_cast<uint8_t>(NPCState::Count);
@@ -50,6 +64,11 @@ bool RayHitsNpc(const FireRequest& request, const RuntimeNpc& runtime,
     return true;
 }
 
+bool Finite(const Vec3& value) {
+    return std::isfinite(value.x) && std::isfinite(value.y) &&
+           std::isfinite(value.z);
+}
+
 } // namespace
 
 void AutonomousNpcSystem::Attach(SystemicWorld* systemic, EventBus* events,
@@ -76,6 +95,194 @@ bool AutonomousNpcSystem::AddNpc(const NPCInstance& npc, RoomId room) {
         return a.instance.id < b.instance.id;
     });
     return true;
+}
+
+bool AutonomousNpcSystem::SetPatrolRoute(NpcId npc,
+                                          const std::vector<Vec3>& points) {
+    if (!npc.IsValid() || points.empty() || points.size() > 32) return false;
+    RuntimeNpc* runtime = FindRuntimeNpc(npc);
+    if (runtime == nullptr) return false;
+    if (!std::all_of(points.begin(), points.end(), Finite)) return false;
+    runtime->patrol_points = points;
+    runtime->patrol_index = 0;
+    runtime->navigation_path.clear();
+    runtime->navigation_cursor = 0;
+    runtime->has_navigation_goal = false;
+    runtime->navigation_task = kNavigationNone;
+    runtime->navigation_hold_until_frame = 0;
+    runtime->route_failed = false;
+    return true;
+}
+
+void AutonomousNpcSystem::SetNavigationGoal(RuntimeNpc& runtime,
+                                             const Vec3& target,
+                                             uint8_t task) {
+    runtime.navigation_goal = target;
+    runtime.navigation_task = task;
+    runtime.has_navigation_goal = true;
+    runtime.route_failed = !PlanRoute(runtime, target);
+}
+
+bool AutonomousNpcSystem::PlanRoute(RuntimeNpc& runtime, const Vec3& target) {
+    runtime.navigation_path.clear();
+    runtime.navigation_cursor = 0;
+    if (world_query_ == nullptr || runtime.room != active_room_ || !Finite(target)) {
+        return false;
+    }
+    const int width = world_query_->Width();
+    const int height = world_query_->Height();
+    if (width <= 0 || height <= 0 || width > 128 || height > 128) return false;
+    const auto cell_for = [](float value, int limit) {
+        return std::clamp(static_cast<int>(std::floor(value)), 0, limit - 1);
+    };
+    const GridCoord start{cell_for(runtime.instance.position.x, width),
+                          cell_for(runtime.instance.position.y, height)};
+    const GridCoord goal{cell_for(target.x, width), cell_for(target.y, height)};
+    const auto index_for = [width](GridCoord cell) {
+        return cell.row * width + cell.col;
+    };
+    const auto walkable = [&](GridCoord cell) {
+        if (cell.col < 0 || cell.row < 0 || cell.col >= width || cell.row >= height ||
+            world_query_->IsSolidAt(cell.col, cell.row)) {
+            return false;
+        }
+        const GridCell data = world_query_->GetCell(cell.col, cell.row);
+        if (data.Clearance() < kNpcHeight) return false;
+        const Vec3 center{static_cast<float>(cell.col) + 0.5f,
+                          static_cast<float>(cell.row) + 0.5f,
+                          data.floor_height};
+        const AABB body{{center.x - kNpcRadius, center.y - kNpcRadius, center.z},
+                        {center.x + kNpcRadius, center.y + kNpcRadius,
+                         center.z + kNpcHeight}};
+        return !world_query_->AabbBlocked(body);
+    };
+    if (!walkable(start) || !walkable(goal)) return false;
+
+    const int cell_count = width * height;
+    std::vector<int> parent(static_cast<size_t>(cell_count), -2);
+    std::queue<GridCoord> open;
+    parent[static_cast<size_t>(index_for(start))] = -1;
+    open.push(start);
+    constexpr int kDirections[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+    while (!open.empty()) {
+        const GridCoord current = open.front();
+        open.pop();
+        if (current == goal) break;
+        for (const auto& direction : kDirections) {
+            const GridCoord next{current.col + direction[0],
+                                 current.row + direction[1]};
+            if (next.col < 0 || next.row < 0 || next.col >= width || next.row >= height ||
+                !walkable(next)) continue;
+            const int next_index = index_for(next);
+            if (parent[static_cast<size_t>(next_index)] != -2) continue;
+            parent[static_cast<size_t>(next_index)] = index_for(current);
+            open.push(next);
+        }
+    }
+    if (parent[static_cast<size_t>(index_for(goal))] == -2) return false;
+
+    std::vector<GridCoord> cells;
+    for (GridCoord current = goal; !(current == start);) {
+        cells.push_back(current);
+        const int parent_index = parent[static_cast<size_t>(index_for(current))];
+        current = GridCoord{parent_index % width, parent_index / width};
+    }
+    std::reverse(cells.begin(), cells.end());
+    for (const GridCoord cell : cells) {
+        const GridCell data = world_query_->GetCell(cell.col, cell.row);
+        runtime.navigation_path.push_back(
+            Vec3{static_cast<float>(cell.col) + 0.5f,
+                 static_cast<float>(cell.row) + 0.5f, data.floor_height});
+    }
+    if (runtime.navigation_path.empty() &&
+        ((runtime.instance.position.x - target.x) * (runtime.instance.position.x - target.x) +
+         (runtime.instance.position.y - target.y) * (runtime.instance.position.y - target.y) >
+         kNavigationArrivalRadius * kNavigationArrivalRadius)) {
+        runtime.navigation_path.push_back(target);
+    }
+    runtime.route_failed = false;
+    return true;
+}
+
+bool AutonomousNpcSystem::MoveAlongRoute(RuntimeNpc& runtime,
+                                          float delta_seconds) {
+    if (!runtime.has_navigation_goal) return true;
+    if (runtime.navigation_cursor >= runtime.navigation_path.size()) {
+        const float dx = runtime.navigation_goal.x - runtime.instance.position.x;
+        const float dy = runtime.navigation_goal.y - runtime.instance.position.y;
+        if (std::sqrt(dx * dx + dy * dy) <= kNavigationArrivalRadius) return true;
+        if (!PlanRoute(runtime, runtime.navigation_goal)) {
+            runtime.route_failed = true;
+            return false;
+        }
+    }
+    if (runtime.navigation_cursor >= runtime.navigation_path.size()) return true;
+    const Vec3 waypoint = runtime.navigation_path[runtime.navigation_cursor];
+    const float dx = waypoint.x - runtime.instance.position.x;
+    const float dy = waypoint.y - runtime.instance.position.y;
+    const float distance = std::sqrt(dx * dx + dy * dy);
+    if (distance <= 0.05f) {
+        ++runtime.navigation_cursor;
+        return true;
+    }
+    const float step = std::min(distance, kNpcMotorSpeed * delta_seconds);
+    const Vec3 candidate{
+        runtime.instance.position.x + dx / distance * step,
+        runtime.instance.position.y + dy / distance * step,
+        runtime.instance.position.z};
+    const AABB body{{candidate.x - kNpcRadius, candidate.y - kNpcRadius, candidate.z},
+                    {candidate.x + kNpcRadius, candidate.y + kNpcRadius,
+                     candidate.z + kNpcHeight}};
+    if (world_query_ != nullptr && world_query_->AabbBlocked(body)) {
+        runtime.navigation_path.clear();
+        runtime.navigation_cursor = 0;
+        if (!PlanRoute(runtime, runtime.navigation_goal)) {
+            runtime.route_failed = true;
+        }
+        return false;
+    }
+    runtime.instance.position = candidate;
+    runtime.instance.yaw = std::atan2(dy, dx);
+    if (step >= distance - 0.001f) ++runtime.navigation_cursor;
+    return true;
+}
+
+void AutonomousNpcSystem::UpdateMotor(uint64_t frame) {
+    const uint64_t elapsed_frames = frame >= last_motor_frame_
+        ? std::max<uint64_t>(1, std::min<uint64_t>(frame - last_motor_frame_, 12))
+        : 1;
+    last_motor_frame_ = frame;
+    const float delta_seconds = static_cast<float>(elapsed_frames) / 120.0f;
+    for (auto& runtime : npcs_) {
+        if (runtime.room != active_room_ || runtime.instance.state == NPCState::Dead ||
+            runtime.instance.state == NPCState::Stunned ||
+            !runtime.has_navigation_goal) continue;
+        if (!MoveAlongRoute(runtime, delta_seconds)) continue;
+        if (runtime.navigation_cursor < runtime.navigation_path.size()) continue;
+        const float dx = runtime.navigation_goal.x - runtime.instance.position.x;
+        const float dy = runtime.navigation_goal.y - runtime.instance.position.y;
+        if (std::sqrt(dx * dx + dy * dy) > kNavigationArrivalRadius) continue;
+        if (runtime.navigation_task == kNavigationPatrol && !runtime.patrol_points.empty()) {
+            runtime.patrol_index = (runtime.patrol_index + 1) % runtime.patrol_points.size();
+            const Vec3 next = runtime.patrol_points[runtime.patrol_index];
+            SetNavigationGoal(runtime, next, kNavigationPatrol);
+        } else if (runtime.navigation_task == kNavigationInvestigate) {
+            runtime.has_navigation_goal = false;
+            runtime.navigation_task = kNavigationNone;
+            runtime.navigation_path.clear();
+            runtime.navigation_cursor = 0;
+            runtime.navigation_hold_until_frame = frame + kDecisionPeriodFrames * 5;
+            runtime.instance.state = NPCState::Investigate;
+            runtime.instance.state_timer_frames =
+                static_cast<uint32_t>(kDecisionPeriodFrames * 5);
+        } else {
+            runtime.has_navigation_goal = false;
+            runtime.navigation_task = kNavigationNone;
+            runtime.navigation_path.clear();
+            runtime.navigation_cursor = 0;
+            runtime.navigation_hold_until_frame = 0;
+        }
+    }
 }
 
 bool AutonomousNpcSystem::ConfigureBodyDiscovery(NpcId cleaner, EntityId body,
@@ -177,88 +384,193 @@ bool AutonomousNpcSystem::AddObservationMemory(const RuntimeNpc& runtime,
     return systemic_->AddMemory(memory);
 }
 
-void AutonomousNpcSystem::Tick(uint64_t frame) {
-    if (frame % kDecisionPeriodFrames != 0) return;
+bool AutonomousNpcSystem::CanSeePlayer(const RuntimeNpc& runtime) const {
+    if (!player_target_active_ || world_query_ == nullptr || runtime.room != active_room_ ||
+        runtime.instance.state == NPCState::Dead ||
+        runtime.instance.state == NPCState::Stunned) return false;
+    PerceptionSystem perception_system;
+    PerceptionResult perception = perception_system.Update(
+        runtime.instance, *world_query_, player_position_, player_eye_z_, {},
+        std::numeric_limits<uint32_t>::max());
+    if (!perception.sees_player) return false;
+    perception.sight_confidence *= player_visibility_;
+    return perception.sight_confidence >= 0.15f;
+}
 
+void AutonomousNpcSystem::RunDecision(uint64_t frame) {
+    if (world_query_ == nullptr) return;
+    PerceptionSystem perception_system;
+    for (auto& runtime : npcs_) {
+        if (runtime.room != active_room_ ||
+            runtime.instance.state == NPCState::Dead ||
+            runtime.instance.state == NPCState::Stunned) {
+            // This field is the previous decision interval's visibility, not
+            // a permanent historical fact. Leaving the room or losing
+            // perception creates a fresh transition when visible again.
+            runtime.player_observed = false;
+            continue;
+        }
+        const bool body_task = runtime.instance.id == cleaner_npc_ &&
+                               !discovery_complete_ && frame >= discovery_due_frame_;
+        if (body_task) {
+            const BodyRecord* body = systemic_ != nullptr
+                ? systemic_->GetBody(discovery_body_) : nullptr;
+            if (body != nullptr && body->disposition == BodyDisposition::HiddenInContainer) {
+                runtime.instance.state = NPCState::Investigate;
+                continue;
+            }
+        }
+        // Reaching a noise location is an observable inspect action. Keep
+        // that state for a short bounded hold instead of relabelling the NPC
+        // Patrol on the very next quiet decision tick.  Perception still runs
+        // during the hold: a genuinely new shot or sighting must refresh the
+        // semantic memory and may supersede the inspection.
+        const bool holding_investigate =
+            runtime.instance.state == NPCState::Investigate &&
+            frame < runtime.navigation_hold_until_frame &&
+            !runtime.has_navigation_goal;
+        if (frame >= runtime.navigation_hold_until_frame) {
+            runtime.navigation_hold_until_frame = 0;
+        }
+        PerceptionResult perception = perception_system.Update(
+            runtime.instance, *world_query_, player_position_, player_eye_z_, noises_,
+            static_cast<uint32_t>(std::min<uint64_t>(
+                frame, std::numeric_limits<uint32_t>::max())));
+        if (!player_target_active_) {
+            // A dead/restarting player is not a valid perception target.  The
+            // guard combat loop and the durable observation path must not
+            // turn a stale player pose into a new hostile sighting.
+            perception.sees_player = false;
+        }
+        if (perception.sees_player) {
+            perception.sight_confidence *= player_visibility_;
+            if (perception.sight_confidence < 0.15f) perception.sees_player = false;
+        }
+        const bool newly_sees_player = perception.sees_player && !runtime.player_observed;
+        runtime.player_observed = perception.sees_player;
+        const bool stimulus = perception.sees_player || perception.hears_noise;
+        Receipt(runtime.instance.id, AutonomousPhase::Observe,
+                runtime.instance.state, frame, stimulus);
+        if (stimulus) {
+            const bool remembered = AddObservationMemory(runtime, perception, frame);
+            Receipt(runtime.instance.id, AutonomousPhase::Remember,
+                    runtime.instance.state, frame, remembered);
+        } else {
+            Receipt(runtime.instance.id, AutonomousPhase::Remember,
+                    runtime.instance.state, frame, true);
+        }
+
+        Receipt(runtime.instance.id, AutonomousPhase::Evaluate,
+                runtime.instance.state, frame, true);
+        const NPCState chosen = perception.sees_player &&
+                                        runtime.instance.role == Role::Guard
+                                    ? NPCState::Combat
+                                : perception.sees_player ? NPCState::Alert :
+                                (perception.hears_noise || holding_investigate)
+                                    ? NPCState::Investigate
+                                    : NPCState::Patrol;
+        Receipt(runtime.instance.id, AutonomousPhase::Choose,
+                chosen, frame, true);
+        const bool changed = runtime.instance.state != chosen;
+        runtime.instance.state = chosen;
+        runtime.instance.alertness = perception.sees_player ? 100 :
+                                     (perception.hears_noise ? 65 : 20);
+        runtime.instance.state_timer_frames = 120;
+        if (changed && events_ != nullptr) {
+            events_->Post(EventNpcStateChange{runtime.instance.id,
+                                               static_cast<uint8_t>(chosen)},
+                           EventKind::Mutation,
+                           EntityId::New(runtime.instance.id.GetValue()),
+                           EntityId::New(1), EventId::Invalid(), frame);
+        }
+        if (chosen == NPCState::Patrol && !runtime.patrol_points.empty() &&
+            !runtime.has_navigation_goal) {
+            SetNavigationGoal(runtime, runtime.patrol_points[runtime.patrol_index],
+                              kNavigationPatrol);
+        } else if (chosen == NPCState::Investigate && perception.hears_noise &&
+                   (!runtime.has_navigation_goal ||
+                    runtime.navigation_task != kNavigationInvestigate ||
+                    std::fabs(runtime.navigation_goal.x - perception.noise_position.x) > 0.25f ||
+                    std::fabs(runtime.navigation_goal.y - perception.noise_position.y) > 0.25f)) {
+            SetNavigationGoal(runtime, perception.noise_position,
+                              kNavigationInvestigate);
+        } else if (chosen == NPCState::Combat && runtime.instance.role == Role::Guard) {
+            const float dx = player_position_.x - runtime.instance.position.x;
+            const float dy = player_position_.y - runtime.instance.position.y;
+            if (std::sqrt(dx * dx + dy * dy) > kGuardCombatRange &&
+                !runtime.has_navigation_goal) {
+                SetNavigationGoal(runtime, player_position_, kNavigationCombat);
+            }
+        }
+        if (runtime.instance.cognition == CognitionTier::Full &&
+            newly_sees_player && frame >= runtime.next_speech_frame && events_ != nullptr) {
+            events_->Post(EventNpcSpeak{runtime.instance.id, StringId::New(0xB1003)},
+                          EventKind::Notification,
+                          EntityId::New(runtime.instance.id.GetValue()),
+                          EntityId::New(1), EventId::Invalid(), frame);
+            runtime.next_speech_frame = frame + kDecisionPeriodFrames * 10;
+        }
+        Receipt(runtime.instance.id, AutonomousPhase::Act,
+                runtime.instance.state, frame, true);
+        if (stimulus) ++autonomous_loop_count_;
+    }
+}
+
+void AutonomousNpcSystem::UpdateGuardCombat(uint64_t frame) {
+    if (events_ == nullptr || world_query_ == nullptr) return;
+    for (auto& runtime : npcs_) {
+        if (runtime.room != active_room_ || runtime.instance.role != Role::Guard ||
+            runtime.instance.state == NPCState::Dead ||
+            runtime.instance.state == NPCState::Stunned ||
+            (runtime.instance.state != NPCState::Alert &&
+             runtime.instance.state != NPCState::Combat)) continue;
+        if (!CanSeePlayer(runtime)) {
+            runtime.has_navigation_goal = false;
+            runtime.navigation_path.clear();
+            runtime.navigation_cursor = 0;
+            if (runtime.instance.state == NPCState::Combat) {
+                runtime.instance.state = NPCState::Alert;
+            }
+            continue;
+        }
+        const float dx = player_position_.x - runtime.instance.position.x;
+        const float dy = player_position_.y - runtime.instance.position.y;
+        const float distance = std::sqrt(dx * dx + dy * dy);
+        if (distance > kGuardCombatRange) {
+            runtime.instance.state = NPCState::Combat;
+            if (!runtime.has_navigation_goal) {
+                SetNavigationGoal(runtime, player_position_, kNavigationCombat);
+            } else {
+                runtime.navigation_goal = player_position_;
+            }
+            continue;
+        }
+        runtime.has_navigation_goal = false;
+        runtime.navigation_path.clear();
+        runtime.navigation_cursor = 0;
+        if (frame < runtime.next_attack_frame) continue;
+        events_->Post(EventPlayerDamage{8, 0,
+                                        EntityId::New(runtime.instance.id.GetValue())},
+                      EventKind::Mutation,
+                      EntityId::New(runtime.instance.id.GetValue()),
+                      EntityId::New(1), EventId::Invalid(), frame);
+        runtime.next_attack_frame = frame + kGuardAttackPeriodFrames;
+        ++guard_attack_count_;
+    }
+}
+
+void AutonomousNpcSystem::Tick(uint64_t frame) {
     noises_.erase(std::remove_if(noises_.begin(), noises_.end(),
                                  [frame](const NoiseSource& noise) {
         return frame > noise.sim_frame && frame - noise.sim_frame > 120;
     }), noises_.end());
 
-    if (world_query_ != nullptr) {
-        PerceptionSystem perception_system;
-        for (auto& runtime : npcs_) {
-            if (runtime.room != active_room_ ||
-                runtime.instance.state == NPCState::Dead ||
-                runtime.instance.state == NPCState::Stunned) {
-                // This field is the previous decision interval's visibility,
-                // not a permanent historical fact. Leaving the active room
-                // or losing the ability to perceive creates a fresh sight
-                // transition when the actor becomes active again.
-                runtime.player_observed = false;
-                continue;
-            }
-            const PerceptionResult perception = perception_system.Update(
-                runtime.instance, *world_query_, player_position_, player_eye_z_,
-                noises_, static_cast<uint32_t>(std::min<uint64_t>(
-                    frame, std::numeric_limits<uint32_t>::max())));
-            const bool newly_sees_player =
-                perception.sees_player && !runtime.player_observed;
-            runtime.player_observed = perception.sees_player;
-            const bool stimulus = perception.sees_player || perception.hears_noise;
-            Receipt(runtime.instance.id, AutonomousPhase::Observe,
-                    runtime.instance.state, frame, stimulus);
-            if (stimulus) {
-                const bool remembered = AddObservationMemory(runtime, perception, frame);
-                Receipt(runtime.instance.id, AutonomousPhase::Remember,
-                        runtime.instance.state, frame, remembered);
-            } else {
-                Receipt(runtime.instance.id, AutonomousPhase::Remember,
-                        runtime.instance.state, frame, true);
-            }
-
-            Receipt(runtime.instance.id, AutonomousPhase::Evaluate,
-                    runtime.instance.state, frame, true);
-            const NPCState chosen = perception.sees_player ? NPCState::Alert :
-                                    (perception.hears_noise ? NPCState::Investigate
-                                                             : NPCState::Patrol);
-            Receipt(runtime.instance.id, AutonomousPhase::Choose,
-                    chosen, frame, true);
-            const bool changed = runtime.instance.state != chosen;
-            runtime.instance.state = chosen;
-            runtime.instance.alertness = perception.sees_player ? 100 :
-                                         (perception.hears_noise ? 65 : 20);
-            runtime.instance.state_timer_frames = 120;
-            if (changed && events_ != nullptr) {
-                events_->Post(EventNpcStateChange{runtime.instance.id,
-                                                   static_cast<uint8_t>(chosen)},
-                               EventKind::Mutation,
-                                EntityId::New(runtime.instance.id.GetValue()),
-                                EntityId::New(1), EventId::Invalid(), frame);
-                // A guard with newly acquired line of sight creates a real,
-                // bounded NPC->player consequence.  PlayerModule applies the
-                // authoritative health mutation when this event is dispatched.
-                if (chosen == NPCState::Alert && runtime.instance.role == Role::Guard) {
-                    events_->Post(EventPlayerDamage{8, 0,
-                                                    EntityId::New(runtime.instance.id.GetValue())},
-                                  EventKind::Mutation,
-                                  EntityId::New(runtime.instance.id.GetValue()),
-                                  EntityId::New(1), EventId::Invalid(), frame);
-                }
-            }
-            if (runtime.instance.cognition == CognitionTier::Full &&
-                newly_sees_player && events_ != nullptr) {
-                events_->Post(EventNpcSpeak{runtime.instance.id, StringId::New(0xB1003)},
-                               EventKind::Notification,
-                               EntityId::New(runtime.instance.id.GetValue()),
-                               EntityId::New(1), EventId::Invalid(), frame);
-            }
-            Receipt(runtime.instance.id, AutonomousPhase::Act,
-                    runtime.instance.state, frame, true);
-            if (stimulus) ++autonomous_loop_count_;
-        }
-    }
+    // The motor is a 120 Hz path follower. Decisions/perception remain
+    // bounded at 10 Hz, so visible movement is not a sequence of 0.1 m jumps.
+    UpdateMotor(frame);
     TryBodyDiscovery(frame);
+    if (frame % kDecisionPeriodFrames == 0) RunDecision(frame);
+    UpdateGuardCombat(frame);
 }
 
 bool AutonomousNpcSystem::TryBodyDiscovery(uint64_t frame) {
@@ -290,32 +602,29 @@ bool AutonomousNpcSystem::TryBodyDiscovery(uint64_t frame) {
     const float distance = std::sqrt(dx * dx + dy * dy);
     constexpr float kArrivalRadius = 0.80f;
     if (distance > kArrivalRadius) {
-        const float step = std::min(0.10f, distance);
-        const Vec3 candidate{
-            cleaner->instance.position.x + dx / distance * step,
-            cleaner->instance.position.y + dy / distance * step,
-            cleaner->instance.position.z};
-        if (world_query_ != nullptr) {
-            const AABB box{{candidate.x - kNpcRadius, candidate.y - kNpcRadius,
-                            candidate.z},
-                           {candidate.x + kNpcRadius, candidate.y + kNpcRadius,
-                            candidate.z + 1.8f}};
-            if (world_query_->AabbBlocked(box)) {
-                Receipt(cleaner_npc_, AutonomousPhase::Act,
-                        cleaner->instance.state, frame, false);
-                return false;
-            }
+        if (!cleaner->has_navigation_goal ||
+            cleaner->navigation_task != kNavigationBodyDiscovery ||
+            std::fabs(cleaner->navigation_goal.x - container->position.x) > 0.01f ||
+            std::fabs(cleaner->navigation_goal.y - container->position.y) > 0.01f) {
+            SetNavigationGoal(*cleaner, container->position,
+                              kNavigationBodyDiscovery);
         }
-        cleaner->instance.position = candidate;
-        cleaner->instance.yaw = std::atan2(dy, dx);
         cleaner->instance.state = NPCState::Investigate;
-        cleaner->instance.state_timer_frames =
-            static_cast<uint32_t>(kDecisionPeriodFrames);
-        discovery_inspect_until_frame_ = 0;
+        // The discovery callback may be entered between motor ticks (for
+        // example immediately after a sparse replay event).  Advance only
+        // one bounded motor step here; subsequent movement still follows the
+        // normal 120 Hz path follower.
+        (void)MoveAlongRoute(*cleaner, 1.0f / 120.0f);
         Receipt(cleaner_npc_, AutonomousPhase::Act,
-                cleaner->instance.state, frame, true);
+                cleaner->instance.state, frame,
+                !cleaner->route_failed);
         return false;
     }
+
+    cleaner->has_navigation_goal = false;
+    cleaner->navigation_task = kNavigationNone;
+    cleaner->navigation_path.clear();
+    cleaner->navigation_cursor = 0;
 
     // Arrival is not discovery. The cleaner holds position for a bounded
     // inspection interval before opening the container.
@@ -569,6 +878,13 @@ bool AutonomousNpcSystem::Load(Deserializer& deserializer) {
         runtime->instance.state_timer_frames = value.timer;
         runtime->instance.plan_step = value.plan;
         runtime->player_observed = value.observed;
+        runtime->navigation_path.clear();
+        runtime->navigation_cursor = 0;
+        runtime->has_navigation_goal = false;
+        runtime->navigation_task = kNavigationNone;
+        runtime->navigation_hold_until_frame = 0;
+        runtime->route_failed = false;
+        runtime->next_attack_frame = 0;
     }
     cleaner_npc_ = cleaner;
     discovery_body_ = body;

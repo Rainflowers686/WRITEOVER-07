@@ -29,6 +29,8 @@ WOC_MAGIC = 0x574F4331  # "WOC1"
 WOC_VERSION = 1
 NPC_MAGIC = 0x574E5043  # "WNPC"
 NPC_VERSION = 1
+SCENE_MAGIC = 0x57534331  # "WSC1"
+SCENE_VERSION = 1
 
 ERRORS = []
 
@@ -48,6 +50,14 @@ NPC_ROLE_IDS = {
     "Civilian": 8, "Other": 9,
 }
 NPC_COGNITION_IDS = {"Full": 0, "SemiHuman": 1}
+
+SCENE_KINDS = {"cart": 0, "camera": 1, "terminal": 2,
+               "door_reader": 3, "door": 4, "crate": 5}
+SCENE_VISUALS = {
+    "security_guard": 0, "full_human": 1, "maintenance_worker": 2,
+    "terminal": 3, "camera": 4, "crate": 5, "door": 6,
+    "body_unconscious": 7, "body_dead": 8,
+}
 
 
 def fail(path, message):
@@ -254,6 +264,239 @@ def compile_npc_profiles(npc_paths, out_dir: Path):
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_bytes(body)
     print(f"npcs: {len(entries)} -> {out.name} ({len(body)} bytes)")
+
+
+def _finite_number(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(float(value))
+
+
+def load_text_resource_ids(data_dir: Path):
+    """Load the bounded UTF-8 text table used by the recovery runtime.
+
+    The runtime owns display lookup, while contentc owns the authoring-time
+    cross-reference check. Keeping this as a plain table avoids introducing a
+    second asset engine for the small recovery slice.
+    """
+    path = data_dir / "text" / "recovery_text.txt"
+    if not path.exists():
+        fail(path.name, "required recovery text resource is missing")
+        return set()
+    ids = set()
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        fail(path.name, f"cannot read text resource: {exc}")
+        return set()
+    if len(lines) > 512:
+        fail(path.name, "text resource exceeds 512 lines")
+    for index, line in enumerate(lines, 1):
+        if not line or line.startswith("#"):
+            continue
+        if "\t" not in line:
+            fail(f"{path.name}:{index}", "expected id<TAB>text")
+            continue
+        text_id, display = line.split("\t", 1)
+        if not text_id or len(text_id) > 128 or not display or len(display) > 512:
+            fail(f"{path.name}:{index}", "text id/display is outside bounds")
+            continue
+        if text_id in ids:
+            fail(f"{path.name}:{index}", f"duplicate text id '{text_id}'")
+        ids.add(text_id)
+    return ids
+
+
+def validate_storylet_text_refs(storylet_paths, text_ids):
+    for path in storylet_paths:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        for index, storylet in enumerate(data.get("storylets", [])):
+            if not isinstance(storylet, dict):
+                continue
+            text_id = storylet.get("textId", "")
+            if text_id and text_id not in text_ids:
+                fail(f"{path.name}:storylets[{index}]",
+                     f"missing text resource '{text_id}'")
+            for action_index, action in enumerate(storylet.get("actions", [])):
+                if not isinstance(action, dict) or action.get("type") not in ("narrator", "dialog"):
+                    continue
+                action_text_id = action.get("textId", "")
+                if action_text_id not in text_ids:
+                    fail(f"{path.name}:storylets[{index}].actions[{action_index}]",
+                         f"missing text resource '{action_text_id}'")
+
+
+def _scene_vec(entry, path, label):
+    if not isinstance(entry, dict):
+        fail(path, f"{label} must be an object")
+        return (0.0, 0.0, 0.0)
+    values = []
+    for key in ("x", "y", "z"):
+        value = entry.get(key, 0.0)
+        if not _finite_number(value):
+            fail(path, f"{label}.{key} must be finite")
+        values.append(float(value) if _finite_number(value) else 0.0)
+    return tuple(values)
+
+
+def _scene_int(entry, key, path, default=0):
+    value = entry.get(key, default)
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        fail(path, f"{key} must be a non-negative integer")
+        return default
+    return value
+
+
+def validate_scene_file(path: Path, room_ids, npc_registry):
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        fail(path.name, f"invalid JSON: {exc}")
+        return None
+    if data.get("schemaVersion") != 1:
+        fail(path.name, "expected schemaVersion 1")
+    entities = data.get("entities", [])
+    transitions = data.get("transitions", [])
+    routes = data.get("patrolRoutes", [])
+    if not isinstance(entities, list) or len(entities) > 256:
+        fail(path.name, "entities must be a list with at most 256 entries")
+        entities = []
+    if not isinstance(transitions, list) or len(transitions) > 128:
+        fail(path.name, "transitions must be a list with at most 128 entries")
+        transitions = []
+    if not isinstance(routes, list) or len(routes) > 64:
+        fail(path.name, "patrolRoutes must be a list with at most 64 entries")
+        routes = []
+    seen = set()
+    for index, entity in enumerate(entities):
+        p = f"{path.name}:entities[{index}]"
+        if not isinstance(entity, dict):
+            fail(p, "entry must be an object")
+            continue
+        eid = entity.get("id")
+        if not isinstance(eid, str) or not eid:
+            fail(p, "id is required")
+        elif eid in seen:
+            fail(p, f"duplicate id {eid}")
+        else:
+            seen.add(eid)
+        room = entity.get("room")
+        if room not in room_ids:
+            fail(p, f"unknown room '{room}'")
+        if entity.get("kind") not in SCENE_KINDS:
+            fail(p, "kind is not a supported scene entity kind")
+        if entity.get("visual") not in SCENE_VISUALS:
+            fail(p, "visual is not a supported character visual")
+        _scene_vec(entity.get("position"), p, "position")
+        for key in ("yaw", "radius", "height"):
+            if not _finite_number(entity.get(key, 0.0)):
+                fail(p, f"{key} must be finite")
+        if float(entity.get("radius", 0.0)) <= 0.0 or float(entity.get("height", 0.0)) <= 0.0:
+            fail(p, "radius and height must be positive")
+        _scene_int(entity, "systemicId", p)
+        _scene_int(entity, "linkId", p)
+    transition_seen = set()
+    for index, transition in enumerate(transitions):
+        p = f"{path.name}:transitions[{index}]"
+        if not isinstance(transition, dict):
+            fail(p, "entry must be an object")
+            continue
+        tid = transition.get("id")
+        if not isinstance(tid, str) or not tid:
+            fail(p, "id is required")
+        elif tid in transition_seen:
+            fail(p, f"duplicate id {tid}")
+        else:
+            transition_seen.add(tid)
+        source = transition.get("sourceRoom")
+        dest = transition.get("destinationRoom")
+        if source not in room_ids: fail(p, f"unknown sourceRoom '{source}'")
+        if dest not in room_ids: fail(p, f"unknown destinationRoom '{dest}'")
+        bounds = transition.get("bounds")
+        if not isinstance(bounds, dict):
+            fail(p, "bounds is required")
+            bounds = {}
+        for key in ("minX", "maxX", "minY", "maxY"):
+            if not _finite_number(bounds.get(key)):
+                fail(p, f"bounds.{key} must be finite")
+        if (_finite_number(bounds.get("minX")) and _finite_number(bounds.get("maxX")) and
+                float(bounds["minX"]) > float(bounds["maxX"])):
+            fail(p, "bounds minX must not exceed maxX")
+        if (_finite_number(bounds.get("minY")) and _finite_number(bounds.get("maxY")) and
+                float(bounds["minY"]) > float(bounds["maxY"])):
+            fail(p, "bounds minY must not exceed maxY")
+        _scene_vec(transition.get("destinationSpawn"), p, "destinationSpawn")
+        if not _finite_number(transition.get("destinationYaw", 0.0)):
+            fail(p, "destinationYaw must be finite")
+    route_seen = set()
+    for index, route in enumerate(routes):
+        p = f"{path.name}:patrolRoutes[{index}]"
+        if not isinstance(route, dict):
+            fail(p, "entry must be an object")
+            continue
+        npc = route.get("npcRef")
+        if npc not in npc_registry: fail(p, f"unknown npcRef '{npc}'")
+        if npc in route_seen: fail(p, f"duplicate npcRef '{npc}'")
+        route_seen.add(npc)
+        if route.get("room") not in room_ids: fail(p, "unknown room")
+        points = route.get("points")
+        if not isinstance(points, list) or not 1 <= len(points) <= 32:
+            fail(p, "points must contain 1..32 entries")
+        else:
+            for point_index, point in enumerate(points):
+                _scene_vec(point, f"{p}:points[{point_index}]", "point")
+    return data
+
+
+def compile_scene(json_path: Path, out_dir: Path, room_ids, npc_registry):
+    data = validate_scene_file(json_path, room_ids, npc_registry)
+    if data is None:
+        return
+    entities = sorted(data.get("entities", []), key=lambda item: item.get("id", ""))
+    transitions = sorted(data.get("transitions", []), key=lambda item: item.get("id", ""))
+    routes = sorted(data.get("patrolRoutes", []), key=lambda item: item.get("npcRef", ""))
+    body = bytearray(struct.pack("<II", SCENE_MAGIC, SCENE_VERSION))
+    body += struct.pack("<I", len(entities))
+    for entity in entities:
+        position = entity.get("position", {})
+        body += struct.pack("<QBB", stable_id64(entity["id"]),
+                            SCENE_KINDS[entity["kind"]],
+                            SCENE_VISUALS[entity["visual"]])
+        body += utf8(entity["id"])
+        body += utf8(entity["room"])
+        body += struct.pack("<QQ", _scene_int(entity, "systemicId", json_path.name),
+                            _scene_int(entity, "linkId", json_path.name))
+        body += struct.pack("<ffffff", float(position.get("x", 0.0)),
+                            float(position.get("y", 0.0)), float(position.get("z", 0.0)),
+                            float(entity.get("yaw", 0.0)), float(entity.get("radius", 1.0)),
+                            float(entity.get("height", 1.0)))
+    body += struct.pack("<I", len(transitions))
+    for transition in transitions:
+        bounds = transition["bounds"]
+        spawn = transition["destinationSpawn"]
+        body += struct.pack("<Q", stable_id64(transition["id"]))
+        body += utf8(transition["id"])
+        body += utf8(transition["sourceRoom"])
+        body += struct.pack("<ffff", float(bounds["minX"]), float(bounds["maxX"]),
+                            float(bounds["minY"]), float(bounds["maxY"]))
+        body += utf8(transition["destinationRoom"])
+        body += struct.pack("<ffff", float(spawn.get("x", 0.0)), float(spawn.get("y", 0.0)),
+                            float(spawn.get("z", 0.0)), float(transition.get("destinationYaw", 0.0)))
+        body += utf8(transition.get("unavailableMessage", "Route unavailable."))
+    body += struct.pack("<I", len(routes))
+    for route in routes:
+        body += struct.pack("<Q", stable_id64(route["npcRef"]))
+        body += utf8(route["room"])
+        points = route["points"]
+        body += struct.pack("<I", len(points))
+        for point in points:
+            body += struct.pack("<fff", float(point.get("x", 0.0)),
+                                float(point.get("y", 0.0)), float(point.get("z", 0.0)))
+    out = out_dir / "scenes" / (json_path.stem + ".bin")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(body)
+    print(f"scene: {json_path.name} -> {out.name} ({len(body)} bytes)")
 
 
 def compile_room(json_path: Path, out_dir: Path, npc_registry, storylet_registry):
@@ -518,7 +761,10 @@ def _compile_all(data_dir: Path, out_dir: Path):
     fact_files = sorted(data_dir.glob("facts/*.json"))
     storylet_files = sorted(data_dir.glob("storylets/*.json"))
     npc_files = sorted(data_dir.glob("npcs/*.json"))
+    scene_files = sorted(data_dir.glob("scenes/*.json"))
     room_ids = {path.stem for path in room_files}
+    text_ids = load_text_resource_ids(data_dir)
+    validate_storylet_text_refs(storylet_files, text_ids)
 
     npc_ids = set()
     for path in npc_files:
@@ -543,6 +789,8 @@ def _compile_all(data_dir: Path, out_dir: Path):
         compile_facts(path, out_dir)
     for path in storylet_files:
         compile_storylets(path, out_dir, fact_registry)
+    for path in scene_files:
+        compile_scene(path, out_dir, room_ids, npc_registry)
     if not ERRORS:
         compile_npc_profiles(npc_files, out_dir)
 

@@ -1,8 +1,9 @@
 #pragma once
 // Terminal render contract. Glyphs are char32_t code points internally;
 // 3D layer is single-width characters only; CJK lives in the HUD compositor
-// layer. Terminals do NOT ack SGR sequences, so capability probing is
-// HEURISTIC (env/known-host), not an "acceptance probe" (M-014 closure).
+// layer. Environment markers are hints only. On Windows the platform backend
+// performs an actual ENABLE_VIRTUAL_TERMINAL_PROCESSING negotiation and
+// records the result in TerminalProbe before the quality preset is selected.
 // Char aspect is a default + manual first-run calibration, never promised as
 // automatic measurement.
 
@@ -47,13 +48,17 @@ public:
     virtual const char* Name() const = 0;
 };
 
-// Heuristic probe results (no fake terminal "acceptance").
+// Probe results. The marker fields are hints; vt_probe_succeeded is populated
+// only after the platform backend has attempted a real VT mode negotiation.
 struct TerminalProbe {
-    bool is_windows_terminal = false;   // WT_SESSION present
-    bool is_conemu = false;             // ConEmuANSI present
-    bool vt_enabled = false;            // TERM/xterm-256color or known host
+    bool is_windows_terminal = false;   // WT_SESSION/TERM_PROGRAM hint
+    bool is_conemu = false;             // ConEmuANSI hint
+    bool vt_enabled = false;            // environment hint or negotiated VT
+    bool vt_probe_succeeded = false;    // actual platform mode negotiation
+    bool true_color_verified = false;   // bounded capability result
     int max_width = 0;
     int max_height = 0;
+    std::string capability_reason;
 };
 
 TerminalProbe ProbeTerminalEnv();
@@ -63,7 +68,7 @@ QualityPreset SuggestPreset(const TerminalProbe& probe, int refresh_hint_hz);
 // Factory: picks ANSI TrueColor when VT is available, else Win32
 // WriteConsoleOutputW. Implementation in src/platform/windows/.
 std::unique_ptr<ITerminalBackend> CreateTerminalBackend(int width, int height,
-                                                        const TerminalProbe& probe);
+                                                        TerminalProbe& probe);
 
 // --- Glyph helpers (render layer) ---
 std::string CharCellToUtf8(char32_t cp);

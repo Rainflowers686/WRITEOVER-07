@@ -9,6 +9,7 @@
 #include "writeover/player/combat.h"
 #include "writeover/systemic/systemic.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <functional>
 #include <utility>
@@ -36,6 +37,19 @@ struct RuntimeNpc {
     NPCInstance instance;
     RoomId room;
     bool player_observed = false;
+    // Runtime-only motor state.  Authored routes are bounded inputs; the
+    // deterministic path is rebuilt from the current position after load.
+    std::vector<Vec3> navigation_path;
+    size_t navigation_cursor = 0;
+    std::vector<Vec3> patrol_points;
+    size_t patrol_index = 0;
+    Vec3 navigation_goal;
+    bool has_navigation_goal = false;
+    uint8_t navigation_task = 0; // 1 patrol, 2 investigate, 3 body, 4 combat
+    uint64_t navigation_hold_until_frame = 0;
+    uint64_t next_attack_frame = 0;
+    uint64_t next_speech_frame = 0;
+    bool route_failed = false;
 };
 
 struct ShotFeedback {
@@ -58,6 +72,11 @@ public:
         player_position_ = position;
         player_eye_z_ = eye_z;
     }
+    void SetPlayerTargetActive(bool active) { player_target_active_ = active; }
+    void SetPlayerVisibility(float visibility) {
+        player_visibility_ = std::clamp(visibility, 0.0f, 1.0f);
+    }
+    bool SetPatrolRoute(NpcId npc, const std::vector<Vec3>& points);
 
     bool AddNpc(const NPCInstance& npc, RoomId room);
     bool ConfigureBodyDiscovery(NpcId cleaner, EntityId body,
@@ -79,6 +98,7 @@ public:
     const std::vector<AutonomousReceipt>& Receipts() const { return receipts_; }
     size_t AutonomousLoopCount() const { return autonomous_loop_count_; }
     size_t DiscoveryResponseCount() const { return discovery_response_count_; }
+    size_t GuardAttackCount() const { return guard_attack_count_; }
 
     void Save(Serializer& serializer) const;
     bool Load(Deserializer& deserializer);
@@ -91,6 +111,14 @@ private:
                               const PerceptionResult& perception,
                               uint64_t frame);
     bool TryBodyDiscovery(uint64_t frame);
+    void UpdateMotor(uint64_t frame);
+    void RunDecision(uint64_t frame);
+    void UpdateGuardCombat(uint64_t frame);
+    bool PlanRoute(RuntimeNpc& runtime, const Vec3& target);
+    bool MoveAlongRoute(RuntimeNpc& runtime, float delta_seconds);
+    bool CanSeePlayer(const RuntimeNpc& runtime) const;
+    void SetNavigationGoal(RuntimeNpc& runtime, const Vec3& target,
+                           uint8_t task);
     NpcId FindNpcByEntity(EntityId entity) const;
     RuntimeNpc* FindRuntimeNpc(NpcId id);
     const RuntimeNpc* FindRuntimeNpc(NpcId id) const;
@@ -103,11 +131,15 @@ private:
     RoomId active_room_;
     Vec3 player_position_;
     float player_eye_z_ = kEyeStand;
+    float player_visibility_ = 1.0f;
+    bool player_target_active_ = true;
     std::vector<NoiseSource> noises_;
     std::vector<RuntimeNpc> npcs_;
     std::vector<AutonomousReceipt> receipts_;
     size_t autonomous_loop_count_ = 0;
     size_t discovery_response_count_ = 0;
+    size_t guard_attack_count_ = 0;
+    uint64_t last_motor_frame_ = 0;
 
     NpcId cleaner_npc_;
     EntityId discovery_body_;

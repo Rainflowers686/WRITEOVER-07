@@ -175,6 +175,8 @@ writeover_configure_target(writeover_platform)
 add_executable(writeover_app
     src/app/game_main.cpp
     src/app/composition_root.cpp
+    src/app/interaction_runtime.cpp
+    src/app/scene_runtime.cpp
     src/app/runtime_paths.cpp
 )
 target_include_directories(writeover_app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

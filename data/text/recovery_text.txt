@@ -1,0 +1,6 @@
+# Bounded player-facing text resources for the current recovery slice.
+# Format: stable content id<TAB>natural-language UTF-8 display text.
+text_r1_01	The weapon is real. The building will remember that you touched it.
+text_r1_02	The checkpoint is listening. Decide what you want it to learn.
+text_r1_narr_01	You have a gun now. That does not make this place yours.
+text_r1_narr_02	A door is only a promise until someone tests the lock.

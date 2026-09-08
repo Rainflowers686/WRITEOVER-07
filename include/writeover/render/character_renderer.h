@@ -8,6 +8,7 @@
 // and transparent character sprites.
 
 #include "writeover/common/types.h"
+#include "writeover/common/weapon_types.h"
 #include "writeover/render/raycaster.h"
 #include "writeover/render/terminal_backend.h"
 
@@ -71,8 +72,10 @@ enum class CharacterCellOpacity : uint8_t {
 struct CharacterArtAsset {
     CharacterSpriteKind sprite_kind = CharacterSpriteKind::SecurityGuard;
     CharacterLod lod = CharacterLod::Far;
+    CharacterFacing facing = CharacterFacing::Front;
     CharacterInk ink = CharacterInk::Prop;
     PistolFrame pistol_frame = PistolFrame::IdleA;
+    WeaponSlot weapon_slot = WeaponSlot::Pistol;
     bool is_pistol = false;
     std::vector<std::u32string> rows;
     std::vector<std::vector<CharacterCellOpacity>> opacity;
@@ -102,6 +105,11 @@ public:
 
     const CharacterArtAsset* Find(CharacterSpriteKind kind,
                                   CharacterLod lod) const;
+    const CharacterArtAsset* Find(CharacterSpriteKind kind,
+                                  CharacterLod lod,
+                                  CharacterFacing facing) const;
+    const CharacterArtAsset* FindWeapon(WeaponSlot slot,
+                                        PistolFrame frame) const;
     const CharacterArtAsset* FindPistol(PistolFrame frame) const;
 
 private:
@@ -126,6 +134,12 @@ struct CharacterSpriteInstance {
     // World-facing direction supplied by RuntimeNpc::yaw.  It is deliberately
     // not a camera-facing billboard orientation.
     float yaw = 0.0f;
+    // Optional per-instance state supplied by the runtime.  Keeping this
+    // outside the authored asset lets the renderer apply hysteresis without
+    // turning the art bank into a gameplay state store.
+    uint64_t stable_id = 0;
+    CharacterLod lod_hint = CharacterLod::Far;
+    bool has_lod_hint = false;
 };
 
 // Character-cell aspect convention: a terminal cell is treated as half as
@@ -134,6 +148,8 @@ struct CharacterSpriteInstance {
 inline constexpr float kCharacterCellAspect = 0.5f;
 
 CharacterLod SelectCharacterLod(float distance_meters);
+CharacterLod SelectCharacterLodHysteretic(float distance_meters,
+                                          CharacterLod previous);
 
 CharacterFacing SelectCharacterFacing(float actor_yaw,
                                       const Vec3& actor_position,
@@ -165,6 +181,14 @@ void DrawCharacterPortrait(CharCell* cells, int cell_w, int cell_h,
 void DrawPistolViewmodel(CharCell* cells, int cell_w, int cell_h,
                          const CharacterArtBank& art, PistolFrame frame,
                          float recoil_amount,
+                         const CharacterRenderOptions& options = {});
+
+// Draws the active authored first-person viewmodel.  The legacy pistol entry
+// point above remains as a compatibility wrapper for tests and tools; normal
+// runtime presentation uses the selected existing WeaponSlot explicitly.
+void DrawWeaponViewmodel(CharCell* cells, int cell_w, int cell_h,
+                         const CharacterArtBank& art, WeaponSlot slot,
+                         PistolFrame frame, float recoil_amount,
                          const CharacterRenderOptions& options = {});
 
 // Character-first effects: glyphs carry the event while colour/background

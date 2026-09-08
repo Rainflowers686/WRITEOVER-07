@@ -74,6 +74,13 @@ void HudRenderer::Draw(CharCell* buffer, int width, int height,
                           std::to_string(frame.grid_height);
         DrawRow(buffer, width, 2, dev);
     }
+    if (frame.objective != nullptr && frame.objective[0] != '\0') {
+        const int objective_row = frame.developer_overlay ? 3 : 2;
+        if (objective_row < height - 3) {
+            DrawRow(buffer, width, objective_row,
+                    std::string("OBJECTIVE: ") + frame.objective);
+        }
+    }
     if (width > 4 && height > 4) {
         CharCell& crosshair = buffer[static_cast<size_t>(height / 2) * width + width / 2];
         crosshair.code_point = U'·';

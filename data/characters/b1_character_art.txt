@@ -294,6 +294,193 @@ weapon pistol idle_a weapon
          ╱_____________________________________________╲
 end
 
+# Existing weapon slots use distinct authored character-art silhouettes. The
+# shared viewmodel compositor places the grip anchor consistently; these are
+# not HUD cards and are intentionally not interchangeable with pistol art.
+weapon smg idle_a weapon
+       ╭──────────────╮
+   ════╡▓▓▓▓▓▓▓▓▓▓▓▓▓▓╞════╗
+       ╰──────┬───────╯    ║
+              │  ╭──╮      ║
+              │  │░░│      ║
+              ╰──┴──┴──╮   ║
+                       │  ╱
+                       │ ╱
+                       ╰╱
+                      ╱
+                    ╱
+                  ╱
+                ╱
+             ╱╱
+           ╱╱
+         ╱╱
+       ╱╱
+     ╱╱
+    ╱╱
+   ╰──────────────╮
+                  ╰────────╮
+                           ╱│
+                          ╱ │
+                         ╱  │
+                        ╱   │
+                       ╱    │
+                      ╱     │
+                     ╱      │
+                    ╱       │
+                   ╱        │
+                  ╱         │
+                 ╱          │
+                ╱           │
+               ╱            │
+              ╱             │
+             ╱              │
+            ╱               │
+           ╱                │
+          ╱                 │
+         ╱                  │
+        ╱                   │
+       ╱                    │
+      ╰─────────────────────╯
+end
+
+weapon smg idle_b weapon
+       ╭──────────────╮
+   ════╡▓▓▓▓▓▓▓▓▓▓▓▓▓▓╞════╗
+       ╰──────┬───────╯    ║
+              │  ╭──╮      ║
+              │  │░░│      ║
+              ╰──┴──┴──╮   ║
+                       │  ╱
+                       │ ╱
+                       ╰╱
+                      ╱
+                    ╱
+                  ╱
+                ╱
+             ╱╱
+           ╱╱
+         ╱╱
+       ╱╱
+     ╱╱
+    ╱╱
+   ╰──────────────╮
+                  ╰────────╮
+                           ╱│
+                          ╱ │
+                         ╱  │
+                        ╱   │
+                       ╱    │
+                      ╱     │
+                     ╱      │
+                    ╱       │
+                   ╱        │
+                  ╱         │
+                 ╱          │
+                ╱           │
+               ╱            │
+              ╱             │
+             ╱              │
+            ╱               │
+           ╱                │
+          ╱                 │
+         ╱                  │
+        ╱                   │
+       ╱                    │
+      ╰─────────────────────╯
+end
+
+weapon smg fire weapon
+   ✦   ╭──────────────╮
+ *═══╡▓▓▓▓▓▓▓▓▓▓▓▓▓▓╞════╗
+       ╰──────┬───────╯    ║
+              │  ╭──╮      ║
+              │  │░░│      ║
+              ╰──┴──┴──╮   ║
+                       │  ╱
+                       │ ╱
+                       ╰╱
+                      ╱
+                    ╱
+                  ╱
+                ╱
+             ╱╱
+           ╱╱
+         ╱╱
+       ╱╱
+     ╱╱
+    ╱╱
+   ╰──────────────╮
+                  ╰────────╮
+                           ╱│
+                          ╱ │
+                         ╱  │
+                        ╱   │
+                       ╱    │
+                      ╱     │
+                     ╱      │
+                    ╱       │
+                   ╱        │
+                  ╱         │
+                 ╱          │
+                ╱           │
+               ╱            │
+              ╱             │
+             ╱              │
+            ╱               │
+           ╱                │
+          ╱                 │
+         ╱                  │
+        ╱                   │
+       ╱                    │
+      ╰─────────────────────╯
+end
+
+weapon smg reload weapon
+       ╭──────────────╮
+   ════╡▒▒▒▒▒▒▒▒▒▒▒▒▒▒╞════╗
+       ╰──────┬───────╯    ║
+              │  ╭──╮      ║
+              │  │▒▒│      ║
+              ╰──┴──┴──╮   ║
+                       │  ╱
+                       │ ╱
+                       ╰╱
+                      ╱
+                    ╱
+                  ╱
+                ╱
+             ╱╱
+           ╱╱
+         ╱╱
+       ╱╱
+     ╱╱
+    ╱╱
+   ╰──────────────╮
+                  ╰────────╮
+                           ╱│
+                          ╱ │
+                         ╱  │
+                        ╱   │
+                       ╱    │
+                      ╱     │
+                     ╱      │
+                    ╱       │
+                   ╱        │
+                  ╱         │
+                 ╱          │
+                ╱           │
+               ╱            │
+              ╱             │
+             ╱              │
+            ╱               │
+           ╱                │
+          ╱                 │
+         ╱                  │
+        ╱                   │
+       ╱                    │
+      ╰─────────────────────╯
+end
+
 weapon pistol idle_b weapon
     <═════╮
       ╲══════════════╪══╮
@@ -354,6 +541,391 @@ weapon pistol fire weapon
            ╱                                         ╲
           ╱                                           ╲
          ╱_____________________________________________╲
+end
+
+weapon stunner idle_a weapon
+       ╭──────────╮
+   ════╡  ◎  ◎   ╞════╗
+       ╰────┬─────╯   ║
+            │  ╭──╮    ║
+            │  │++│    ║
+            ╰──┴──┴─╮  ║
+                     │ ╱
+                    ╱│╱
+                   ╱ ╰
+                  ╱
+                ╱
+              ╱
+            ╱
+          ╱
+        ╱
+      ╱
+     ╱
+    ╰────────────╮
+                 ╰────────╮
+                          ╱│
+                         ╱ │
+                        ╱  │
+                       ╱   │
+                      ╱    │
+                     ╱     │
+                    ╱      │
+                   ╱       │
+                  ╱        │
+                 ╱         │
+                ╱          │
+               ╱           │
+              ╱            │
+             ╱             │
+            ╱              │
+           ╱               │
+          ╱                │
+         ╱                 │
+        ╱                  │
+       ╱                   │
+      ╰────────────────────╯
+end
+
+weapon stunner idle_b weapon
+       ╭──────────╮
+   ════╡  ◎  ◉   ╞════╗
+       ╰────┬─────╯   ║
+            │  ╭──╮    ║
+            │  │++│    ║
+            ╰──┴──┴─╮  ║
+                     │ ╱
+                    ╱│╱
+                   ╱ ╰
+                  ╱
+                ╱
+              ╱
+            ╱
+          ╱
+        ╱
+      ╱
+     ╱
+    ╰────────────╮
+                 ╰────────╮
+                          ╱│
+                         ╱ │
+                        ╱  │
+                       ╱   │
+                      ╱    │
+                     ╱     │
+                    ╱      │
+                   ╱       │
+                  ╱        │
+                 ╱         │
+                ╱          │
+               ╱           │
+              ╱            │
+             ╱             │
+            ╱              │
+           ╱               │
+          ╱                │
+         ╱                 │
+        ╱                  │
+       ╱                   │
+      ╰────────────────────╯
+end
+
+weapon stunner fire weapon
+   ✦   ╭──────────╮
+ *═══╡  ◎  ◎   ╞════╗
+       ╰────┬─────╯   ║
+            │  ╭──╮    ║
+            │  │++│    ║
+            ╰──┴──┴─╮  ║
+                     │ ╱
+                    ╱│╱
+                   ╱ ╰
+                  ╱
+                ╱
+              ╱
+            ╱
+          ╱
+        ╱
+      ╱
+     ╱
+    ╰────────────╮
+                 ╰────────╮
+                          ╱│
+                         ╱ │
+                        ╱  │
+                       ╱   │
+                      ╱    │
+                     ╱     │
+                    ╱      │
+                   ╱       │
+                  ╱        │
+                 ╱         │
+                ╱          │
+               ╱           │
+              ╱            │
+             ╱             │
+            ╱              │
+           ╱               │
+          ╱                │
+         ╱                 │
+        ╱                  │
+       ╱                   │
+      ╰────────────────────╯
+end
+
+weapon stunner reload weapon
+       ╭──────────╮
+   ════╡  ░  ░   ╞════╗
+       ╰────┬─────╯   ║
+            │  ╭──╮    ║
+            │  │++│    ║
+            ╰──┴──┴─╮  ║
+                     │ ╱
+                    ╱│╱
+                   ╱ ╰
+                  ╱
+                ╱
+              ╱
+            ╱
+          ╱
+        ╱
+      ╱
+     ╱
+    ╰────────────╮
+                 ╰────────╮
+                          ╱│
+                         ╱ │
+                        ╱  │
+                       ╱   │
+                      ╱    │
+                     ╱     │
+                    ╱      │
+                   ╱       │
+                  ╱        │
+                 ╱         │
+                ╱          │
+               ╱           │
+              ╱            │
+             ╱             │
+            ╱              │
+           ╱               │
+          ╱                │
+         ╱                 │
+        ╱                  │
+       ╱                   │
+      ╰────────────────────╯
+end
+
+# Directional world art. Front remains the established face direction; these
+# authored back and side silhouettes prevent a permanent front-facing billboard.
+sprite security_guard far security back
+ /#╲
+|[] |
+ ╲=╱
+ /│╲
+ / ╲
+end
+
+sprite security_guard far security side_right
+  /#
+ /_o
+ |[=
+  /│
+  / ╲
+end
+
+sprite security_guard mid security back
+   /###╲
+  /_[]_╲
+ |  #   |
+ | [=]  |
+ | /│╲  |
+ |  │   |
+ | / ╲  |
+end
+
+sprite security_guard mid security side_right
+  /###╲
+ /_o__╱
+ |[=]|
+  /│╲
+  / │
+ /  ╲
+end
+
+sprite security_guard near security back
+      /######╲
+     /__[]___╲
+    |  ===   |
+   /│  [=]   |╲
+  | │  /│╲   | |
+  | │   │    | |
+  |_|  / ╲___|_|
+end
+
+sprite security_guard near security side_right
+     /######╲
+    /_o____╱
+   | [=]  |
+    ╲  __|
+   /│ /  ╲
+  | │╱    |
+  |_|     |
+  /  ╲___╱
+end
+
+sprite full_human far full back
+  ┌─┐
+ /##╲
+ │[]│
+  /│╲
+ / │ ╲
+  / ╲
+end
+
+sprite full_human far full side_right
+ ┌─╲
+ │# ╲
+ │[]│
+  /│
+ / ╲
+end
+
+sprite full_human mid full back
+   .──────.
+  /  ####  ╲
+ │  [__]   │
+  ╲       /
+   │════│
+ __│════│__
+/   │  │   ╲
+│   │  │   │
+│  /    ╲  │
+│_/      ╲_│
+ ╲        /
+  ╲  /╲  /
+   ╲/  ╲/
+  /      ╲
+ /________╲
+end
+
+sprite full_human mid full side_right
+    .───.
+   / ####╲
+  │ [__] │
+   ╲     ╲
+    │═══╲
+ ___│═══ ╲
+/   │  ╲ ╲
+│   │   ╲│
+│  /     ╲
+│_/       ╲
+ ╲        /
+  ╲      /
+   ╲____/
+end
+
+sprite full_human near full back
+        .─###─.
+      .'##### '.
+     /  [__]    ╲
+    │~~ ════ ~~ │
+     ╲         /
+      ╲_______/
+        ││││
+    ____││││____
+  _/     ││     ╲_
+ /       ││       ╲
+│     ___││___     │
+│    /    ││   ╲   │
+│   /     ││    ╲  │
+│  /      ││     ╲ │
+│ /       ││      ╲│
+ ╲        ││      /
+  ╲       ││     /
+   ╲______││____/
+   /      ││   ╲
+  /       ││    ╲
+ /________││_____╲
+    │____│  │____│
+   /_____/  ╲_____╱
+end
+
+sprite full_human near full side_right
+        .───.
+      .'#### ╲
+     /  [__]  ╲
+    │~~ ════ ~~│
+     ╲        /
+      ╲______/
+         ││╲
+     ____││ ╲__
+   _/    ││    ╲_
+  /      ││      ╲
+ /       ││       ╲
+│       /  ╲       │
+│      /    ╲      │
+ ╲    /      ╲    /
+  ╲__/        ╲__/
+    ╲            ╲
+     ╲___________/
+     /     /     /
+    /_____/_____/
+end
+
+sprite maintenance_worker far maintenance back
+ /#╲
+|[] |
+|= =|
+ /│╲
+ / ╲
+end
+
+sprite maintenance_worker far maintenance side_right
+  /#
+ /_o
+ |[=
+  /│
+  / ╲
+end
+
+sprite maintenance_worker mid maintenance back
+   /###╲
+  /_[]_╲
+ |  #   |
+ | [=]  |
+ | /│╲  |
+ |  │   |
+ | / ╲  |
+end
+
+sprite maintenance_worker mid maintenance side_right
+  /###╲
+ /_o__╱
+ |[=]|
+  /│╲
+  / │
+ /  ╲
+end
+
+sprite maintenance_worker near maintenance back
+      /######╲
+     /__[]___╲
+    |  [=]   |
+   /│  /│╲   |╲
+  | │   │    | |
+  | │  / ╲   | |
+  |_|_/____╲_|_|
+end
+
+sprite maintenance_worker near maintenance side_right
+     /######╲
+    /_o____╱
+   | [=]  |
+    ╲  __|
+   /│ /  ╲
+  | │╱    |
+  |_|     |
+  /  ╲___╱
 end
 
 weapon pistol reload weapon

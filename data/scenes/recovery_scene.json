@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "recovery_scene",
+  "entities": [
+    {"id":"b1_cleaning_cart","kind":"cart","room":"room_b1_revival","position":{"x":15.5,"y":7.5,"z":0.0},"yaw":0.0,"radius":1.15,"height":1.0,"visual":"crate","systemicId":9001,"linkId":0},
+    {"id":"b1_camera_04","kind":"camera","room":"room_b1_revival","position":{"x":14.0,"y":3.0,"z":2.2},"yaw":0.0,"radius":1.45,"height":0.55,"visual":"camera","systemicId":9004,"linkId":0},
+    {"id":"b1_calibration_terminal","kind":"terminal","room":"room_b1_revival","position":{"x":10.0,"y":7.0,"z":0.0},"yaw":0.0,"radius":1.55,"height":1.7,"visual":"terminal","systemicId":9003,"linkId":0},
+    {"id":"b1_service_reader","kind":"door_reader","room":"room_b1_revival","position":{"x":21.2,"y":8.5,"z":0.0},"yaw":0.0,"radius":1.15,"height":2.4,"visual":"door","systemicId":9101,"linkId":9101},
+    {"id":"b1_service_door","kind":"door","room":"room_b1_revival","position":{"x":21.0,"y":8.5,"z":0.0},"yaw":0.0,"radius":0.55,"height":2.4,"visual":"door","systemicId":9101,"linkId":9101},
+    {"id":"calibration_terminal","kind":"terminal","room":"room_01_calibration","position":{"x":7.5,"y":5.5,"z":0.0},"yaw":0.0,"radius":2.0,"height":1.4,"visual":"terminal","systemicId":0,"linkId":0},
+    {"id":"calibration_service_door","kind":"door","room":"room_01_calibration","position":{"x":11.5,"y":4.5,"z":0.0},"yaw":0.0,"radius":1.4,"height":1.0,"visual":"door","systemicId":0,"linkId":0},
+    {"id":"security_service_door","kind":"door","room":"room_1f_security","position":{"x":20.5,"y":8.5,"z":0.0},"yaw":0.0,"radius":1.4,"height":2.2,"visual":"door","systemicId":0,"linkId":0},
+    {"id":"medical_terminal","kind":"terminal","room":"room_service_medical","position":{"x":8.5,"y":5.5,"z":0.0},"yaw":0.0,"radius":1.4,"height":1.4,"visual":"terminal","systemicId":0,"linkId":0},
+    {"id":"staff_service_door","kind":"door","room":"room_restroom_staff","position":{"x":13.5,"y":5.5,"z":0.0},"yaw":0.0,"radius":1.4,"height":1.8,"visual":"door","systemicId":0,"linkId":0},
+    {"id":"elevator_restricted_door","kind":"door","room":"room_elevator_lobby","position":{"x":9.5,"y":5.5,"z":0.0},"yaw":0.0,"radius":1.4,"height":2.6,"visual":"door","systemicId":0,"linkId":0}
+  ],
+  "transitions": [
+    {"id":"b1_to_calibration","sourceRoom":"room_b1_revival","bounds":{"minX":21.4,"maxX":9999.0,"minY":7.5,"maxY":9.5},"destinationRoom":"room_01_calibration","destinationSpawn":{"x":1.5,"y":9.5,"z":0.0},"destinationYaw":0.0,"unavailableMessage":"Calibration route unavailable."},
+    {"id":"calibration_to_medical","sourceRoom":"room_01_calibration","bounds":{"minX":13.0,"maxX":9999.0,"minY":-9999.0,"maxY":9999.0},"destinationRoom":"room_service_medical","destinationSpawn":{"x":2.5,"y":7.5,"z":0.0},"destinationYaw":0.0,"unavailableMessage":"Service route unavailable."},
+    {"id":"security_to_medical_south","sourceRoom":"room_1f_security","bounds":{"minX":-9999.0,"maxX":22.0,"minY":12.0,"maxY":9999.0},"destinationRoom":"room_service_medical","destinationSpawn":{"x":2.5,"y":7.5,"z":0.0},"destinationYaw":0.0,"unavailableMessage":"Service route unavailable."},
+    {"id":"security_to_medical_east","sourceRoom":"room_1f_security","bounds":{"minX":20.0,"maxX":9999.0,"minY":-9999.0,"maxY":5.0},"destinationRoom":"room_service_medical","destinationSpawn":{"x":2.5,"y":7.5,"z":0.0},"destinationYaw":0.0,"unavailableMessage":"Service route unavailable."},
+    {"id":"medical_to_security","sourceRoom":"room_service_medical","bounds":{"minX":16.0,"maxX":9999.0,"minY":-9999.0,"maxY":9999.0},"destinationRoom":"room_1f_security","destinationSpawn":{"x":2.5,"y":13.5,"z":0.0},"destinationYaw":0.0,"unavailableMessage":"Security route unavailable."},
+    {"id":"medical_to_elevator","sourceRoom":"room_service_medical","bounds":{"minX":-9999.0,"maxX":9999.0,"minY":10.5,"maxY":9999.0},"destinationRoom":"room_elevator_lobby","destinationSpawn":{"x":2.5,"y":6.5,"z":0.0},"destinationYaw":0.0,"unavailableMessage":"Elevator route unavailable."},
+    {"id":"staff_to_elevator","sourceRoom":"room_restroom_staff","bounds":{"minX":16.0,"maxX":9999.0,"minY":-9999.0,"maxY":9999.0},"destinationRoom":"room_elevator_lobby","destinationSpawn":{"x":2.5,"y":6.5,"z":0.0},"destinationYaw":0.0,"unavailableMessage":"Elevator route unavailable."}
+  ],
+  "patrolRoutes": [
+    {"npcRef":"cleaner_b1","room":"room_b1_revival","points":[{"x":15.5,"y":4.0,"z":0.0},{"x":15.5,"y":5.5,"z":0.0},{"x":15.5,"y":7.5,"z":0.0},{"x":15.5,"y":5.5,"z":0.0}]},
+    {"npcRef":"guard_7","room":"room_1f_security","points":[{"x":15.5,"y":8.5,"z":0.0},{"x":18.5,"y":8.5,"z":0.0},{"x":18.5,"y":11.5,"z":0.0},{"x":15.5,"y":11.5,"z":0.0}]},
+    {"npcRef":"maintenance_tech","room":"room_b1_revival","points":[{"x":4.5,"y":4.5,"z":0.0},{"x":6.5,"y":4.5,"z":0.0},{"x":6.5,"y":7.5,"z":0.0}]}
+  ]
+}

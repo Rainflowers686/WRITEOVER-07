@@ -84,12 +84,18 @@ public:
         // decoded through the user's legacy OEM code page.
         const HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
         DWORD mode = 0;
-        if (output != nullptr && output != INVALID_HANDLE_VALUE &&
-            GetConsoleMode(output, &mode)) {
-            (void)SetConsoleMode(output, mode | ENABLE_PROCESSED_OUTPUT |
-                                           ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+        const bool console_output =
+            output != nullptr && output != INVALID_HANDLE_VALUE &&
+            GetConsoleMode(output, &mode) != FALSE;
+        const bool vt_output = console_output &&
+            SetConsoleMode(output, mode | ENABLE_PROCESSED_OUTPUT |
+                                      ENABLE_VIRTUAL_TERMINAL_PROCESSING) != FALSE;
+        if (vt_output) {
+            // Unicode glyphs are part of the production character-art path;
+            // changing the output code page is safe after VT negotiation.
+            (void)SetConsoleOutputCP(CP_UTF8);
         }
-        (void)SetConsoleOutputCP(CP_UTF8);
+        if (!vt_output) return false;
 #endif
         width_ = width;
         height_ = height;
@@ -209,22 +215,29 @@ private:
 } // namespace
 
 std::unique_ptr<ITerminalBackend> CreateTerminalBackend(int width, int height,
-                                                        const TerminalProbe& probe) {
-    if (probe.vt_enabled) {
+                                                        TerminalProbe& probe) {
+    // Try the real VT negotiation even when Explorer/direct launch did not
+    // preserve WT_SESSION.  Environment markers are not a capability gate.
+    {
         auto ansi = std::make_unique<AnsiTrueColorBackend>();
         if (ansi->Init(width, height)) {
+            probe.vt_enabled = true;
+            probe.vt_probe_succeeded = true;
+            probe.true_color_verified = true;
+            probe.capability_reason =
+                "GetConsoleMode + SetConsoleMode(ENABLE_VIRTUAL_TERMINAL_PROCESSING) succeeded";
             return ansi;
         }
     }
+    probe.vt_probe_succeeded = false;
+    probe.true_color_verified = false;
+    probe.capability_reason =
+        "VT negotiation failed; using Win32 WriteConsole fallback";
     auto win32 = std::make_unique<Win32WriteConsoleBackend>();
     if (win32->Init(width, height)) {
         return win32;
     }
-    // F-26 closure: last-resort fallback must be initialized too, so the
-    // backend is never used uninitialized.
-    auto ansi = std::make_unique<AnsiTrueColorBackend>();
-    ansi->Init(width, height);
-    return ansi;
+    return nullptr;
 }
 
 } // namespace writeover

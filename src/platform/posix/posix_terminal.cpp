@@ -97,7 +97,7 @@ private:
 } // namespace
 
 std::unique_ptr<ITerminalBackend> CreateTerminalBackend(int width, int height,
-                                                        const TerminalProbe&) {
+                                                        TerminalProbe&) {
     (void)width;
     (void)height;
     return std::make_unique<PosixAnsiBackend>();

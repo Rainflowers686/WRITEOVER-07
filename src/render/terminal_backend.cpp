@@ -18,6 +18,11 @@ TerminalProbe ProbeTerminalEnv() {
     TerminalProbe probe;
     probe.is_windows_terminal = HasEnv("WT_SESSION");
     probe.is_conemu = HasEnv("ConEmuANSI");
+    const char* term_program = std::getenv("TERM_PROGRAM");
+    if (term_program != nullptr &&
+        std::string(term_program).find("Windows_Terminal") != std::string::npos) {
+        probe.is_windows_terminal = true;
+    }
     const char* term = std::getenv("TERM");
     if (term != nullptr) {
         const std::string term_s(term);
@@ -28,10 +33,16 @@ TerminalProbe ProbeTerminalEnv() {
     }
     probe.vt_enabled = probe.vt_enabled || probe.is_windows_terminal ||
                        probe.is_conemu;
+    probe.capability_reason = probe.vt_enabled
+        ? "environment marker is a hint; awaiting platform negotiation"
+        : "no VT environment marker; platform negotiation still required";
     return probe;
 }
 
 const char* TerminalKindName(const TerminalProbe& probe) {
+    if (probe.vt_probe_succeeded) {
+        return probe.is_windows_terminal ? "windows-terminal-vt" : "vt-negotiated";
+    }
     if (probe.is_windows_terminal) {
         return "windows-terminal";
     }
@@ -45,10 +56,11 @@ const char* TerminalKindName(const TerminalProbe& probe) {
 }
 
 QualityPreset SuggestPreset(const TerminalProbe& probe, int refresh_hint_hz) {
-    if (probe.is_windows_terminal && refresh_hint_hz >= 120) {
+    if (probe.vt_probe_succeeded && probe.true_color_verified &&
+        refresh_hint_hz >= 120) {
         return QualityPreset::Ultra120;
     }
-    if (probe.is_windows_terminal) {
+    if (probe.vt_probe_succeeded && probe.true_color_verified) {
         return QualityPreset::HighRefresh;
     }
     if (refresh_hint_hz >= 90) {

@@ -13,7 +13,7 @@
 namespace writeover {
 
 struct SubtitleLine {
-    std::string text;          // UTF-8 display text or text id
+    std::string text;          // resolved UTF-8 display text
     uint32_t start_frame = 0;
     uint32_t ttl_frames = 0;
     NpcId speaker_id;          // or NarratorSpeakerId() special value

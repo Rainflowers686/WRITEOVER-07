@@ -10,6 +10,7 @@
 #include "writeover/world/grid.h"
 
 #include <array>
+#include <cmath>
 #include <cstring>
 
 namespace writeover {
@@ -185,7 +186,7 @@ bool AutonomousRuntimeRunsFivePhaseLoop() {
     // first dispatch advances them to the next tick by contract.
     WO_CHECK(events.PendingCount() == 0);
     WO_CHECK(runtime.Npcs().size() == 1);
-    WO_CHECK(runtime.Npcs().front().instance.state == NPCState::Alert);
+    WO_CHECK(runtime.Npcs().front().instance.state == NPCState::Combat);
 
     bool saw[5] = {false, false, false, false, false};
     for (const auto& receipt : runtime.Receipts()) {
@@ -221,6 +222,243 @@ int CountNpcSpeakEvents(const EventBus& events, NpcId npc) {
         if (speech != nullptr && speech->npc == npc) ++count;
     }
     return count;
+}
+
+int CountPlayerDamageEvents(const EventBus& events) {
+    int count = 0;
+    for (const auto& event : events.JournalSnapshot()) {
+        if (std::get_if<EventPlayerDamage>(&event.payload) != nullptr) ++count;
+    }
+    return count;
+}
+
+void DispatchDeferred(EventBus& events) {
+    events.Dispatch();
+    events.Dispatch();
+}
+
+bool AutonomousPatrolUsesGridRouteAndMotor() {
+    Grid grid = MakeViewGrid();
+    for (int32_t row = 1; row < 5; ++row) {
+        GridCell wall;
+        wall.flags = CellFlag_Solid;
+        grid.SetCell(3, row, wall);
+    }
+    GridWorldQuery query(&grid);
+    SystemicWorld systemic;
+    EventBus events;
+    DeterministicRNG rng(0x401);
+    AutonomousNpcSystem runtime;
+    runtime.Attach(&systemic, &events, &rng);
+    NPCInstance npc;
+    npc.id = NpcId::New(401);
+    npc.position = Vec3{1.5f, 2.5f, 0.0f};
+    npc.yaw = 0.0f;
+    npc.state = NPCState::Patrol;
+    WO_CHECK(runtime.AddNpc(npc, RoomId::New(1)));
+    runtime.SetWorldQuery(&query);
+    runtime.SetActiveRoom(RoomId::New(1));
+    runtime.SetPlayerPose(Vec3{1.5f, 5.5f, 0.0f}, kEyeStand);
+    WO_CHECK(runtime.SetPatrolRoute(npc.id,
+                                    {Vec3{5.5f, 2.5f, 0.0f},
+                                     Vec3{1.5f, 2.5f, 0.0f}}));
+
+    const Vec3 start = runtime.Npcs().front().instance.position;
+    for (uint64_t frame = 0; frame <= 720; ++frame) runtime.Tick(frame);
+    const Vec3 end = runtime.Npcs().front().instance.position;
+    WO_CHECK(std::fabs(end.x - start.x) > 0.25f || std::fabs(end.y - start.y) > 0.25f);
+    // The route must use the open row around the wall; no motor step may
+    // place the actor in a solid cell or teleport through the barrier.
+    WO_CHECK(end.y < 1.5f || end.y > 4.5f || end.x < 3.0f || end.x > 4.0f);
+    WO_CHECK(!query.AabbBlocked(AABB{{end.x - 0.42f, end.y - 0.42f, 0.0f},
+                                     {end.x + 0.42f, end.y + 0.42f, 1.8f}}));
+    return true;
+}
+
+bool AutonomousGuardCombatRepeatsAndHonoursLineOfSight() {
+    Grid grid = MakeViewGrid();
+    GridWorldQuery query(&grid);
+    SystemicWorld systemic;
+    ActorRecord actor;
+    actor.id = NpcId::New(402);
+    actor.role = Role::Guard;
+    actor.faction = Faction::Security;
+    actor.cognition = CognitionTier::SemiHuman;
+    WO_CHECK(systemic.AddActor(actor));
+    EventBus events;
+    DeterministicRNG rng(0x402);
+    AutonomousNpcSystem runtime;
+    runtime.Attach(&systemic, &events, &rng);
+    NPCInstance guard;
+    guard.id = NpcId::New(402);
+    guard.role = Role::Guard;
+    guard.faction = Faction::Security;
+    guard.position = Vec3{1.5f, 1.5f, 0.0f};
+    guard.yaw = 0.0f;
+    guard.health = 100;
+    WO_CHECK(runtime.AddNpc(guard, RoomId::New(1)));
+    runtime.SetWorldQuery(&query);
+    runtime.SetActiveRoom(RoomId::New(1));
+    runtime.SetPlayerPose(Vec3{4.5f, 1.5f, 0.0f}, kEyeStand);
+
+    runtime.Tick(12);
+    DispatchDeferred(events);
+    WO_CHECK_EQ(CountPlayerDamageEvents(events), 1);
+    runtime.Tick(24);
+    DispatchDeferred(events);
+    WO_CHECK_EQ(CountPlayerDamageEvents(events), 1);
+    runtime.Tick(72);
+    DispatchDeferred(events);
+    WO_CHECK_EQ(CountPlayerDamageEvents(events), 2);
+
+    GridCell wall;
+    wall.flags = CellFlag_Solid;
+    grid.SetCell(2, 1, wall);
+    runtime.Tick(84);
+    DispatchDeferred(events);
+    WO_CHECK_EQ(CountPlayerDamageEvents(events), 2);
+    grid.SetCell(2, 1, GridCell{});
+    runtime.Tick(132);
+    DispatchDeferred(events);
+    WO_CHECK_EQ(CountPlayerDamageEvents(events), 3);
+    WO_CHECK(runtime.GuardAttackCount() == 3);
+
+    // A dead/restarting player is not a valid combat target.  This is a
+    // counterfactual against the stale-pose failure mode: the guard may still
+    // have a previous Combat state, but it must not emit another attack.
+    runtime.SetPlayerTargetActive(false);
+    runtime.Tick(144);
+    DispatchDeferred(events);
+    WO_CHECK_EQ(CountPlayerDamageEvents(events), 3);
+    WO_CHECK(runtime.Npcs().front().instance.state == NPCState::Patrol);
+    return true;
+}
+
+bool AutonomousVisibilityChangesCombatCounterfactual() {
+    Grid grid = MakeViewGrid();
+    GridWorldQuery query(&grid);
+    SystemicWorld systemic;
+    ActorRecord actor;
+    actor.id = NpcId::New(403);
+    actor.role = Role::Guard;
+    actor.faction = Faction::Security;
+    actor.cognition = CognitionTier::SemiHuman;
+    WO_CHECK(systemic.AddActor(actor));
+    EventBus events;
+    DeterministicRNG rng(0x403);
+    AutonomousNpcSystem runtime;
+    runtime.Attach(&systemic, &events, &rng);
+    NPCInstance guard;
+    guard.id = NpcId::New(403);
+    guard.role = Role::Guard;
+    guard.faction = Faction::Security;
+    guard.position = Vec3{1.5f, 1.5f, 0.0f};
+    guard.yaw = 0.0f;
+    WO_CHECK(runtime.AddNpc(guard, RoomId::New(1)));
+    runtime.SetWorldQuery(&query);
+    runtime.SetActiveRoom(RoomId::New(1));
+    runtime.SetPlayerPose(Vec3{4.5f, 1.5f, 0.0f}, kEyeStand);
+
+    runtime.SetPlayerVisibility(0.12f); // crouched/still/dark equivalent
+    runtime.Tick(12);
+    DispatchDeferred(events);
+    WO_CHECK_EQ(CountPlayerDamageEvents(events), 0);
+    WO_CHECK(runtime.Npcs().front().instance.state == NPCState::Patrol);
+
+    runtime.SetPlayerVisibility(1.0f); // standing/running/bright equivalent
+    runtime.Tick(24);
+    DispatchDeferred(events);
+    WO_CHECK_EQ(CountPlayerDamageEvents(events), 1);
+    WO_CHECK(runtime.Npcs().front().instance.state == NPCState::Combat);
+    return true;
+}
+
+bool AutonomousInvestigateRoutesNoiseWithoutTeleporting() {
+    Grid grid(8, 7);
+    for (int32_t row = 0; row < grid.Height(); ++row) {
+        for (int32_t col = 0; col < grid.Width(); ++col) {
+            grid.SetCell(col, row, GridCell{});
+        }
+    }
+    for (int32_t row = 0; row < 6; ++row) {
+        GridCell wall;
+        wall.flags = CellFlag_Solid;
+        grid.SetCell(4, row, wall);
+    }
+    GridWorldQuery query(&grid);
+    SystemicWorld systemic;
+    EventBus events;
+    DeterministicRNG rng(0x404);
+    AutonomousNpcSystem runtime;
+    runtime.Attach(&systemic, &events, &rng);
+    NPCInstance npc;
+    npc.id = NpcId::New(404);
+    npc.position = Vec3{2.5f, 2.5f, 0.0f};
+    npc.yaw = 0.0f;
+    WO_CHECK(runtime.AddNpc(npc, RoomId::New(1)));
+    runtime.SetWorldQuery(&query);
+    runtime.SetActiveRoom(RoomId::New(1));
+    runtime.SetPlayerPose(Vec3{2.5f, 5.5f, 0.0f}, kEyeStand);
+    events.Post(EventWeaponFire{EntityId::New(1), WeaponSlot::Pistol,
+                                Vec3{7.5f, 2.5f, kEyeStand}, 0.0f, 0.0f,
+                                0.9f},
+                EventKind::Notification, EntityId::New(1), EntityId::Invalid(),
+                EventId::Invalid(), 12);
+    events.Dispatch();
+    events.Dispatch();
+
+    const Vec3 start = runtime.Npcs().front().instance.position;
+    runtime.Tick(12);
+    WO_CHECK(runtime.Npcs().front().instance.state == NPCState::Investigate);
+    const Vec3 first = runtime.Npcs().front().instance.position;
+    // The decision creates the route; the motor follows it on the next
+    // normal simulation tick. Investigation is not a due-frame teleport.
+    WO_CHECK(first.x == start.x && first.y == start.y);
+    runtime.Tick(24);
+    const Vec3 second = runtime.Npcs().front().instance.position;
+    WO_CHECK(second.x < 3.0f && second.x > start.x);
+    for (uint64_t frame = 36; frame <= 1200; ++frame) runtime.Tick(frame);
+    const Vec3 arrived = runtime.Npcs().front().instance.position;
+    WO_CHECK(arrived.x > 4.5f || arrived.y > 5.0f);
+    WO_CHECK(!query.AabbBlocked(AABB{{arrived.x - 0.42f, arrived.y - 0.42f, 0.0f},
+                                     {arrived.x + 0.42f, arrived.y + 0.42f, 1.8f}}));
+
+    // A fully sealed target has no valid route and therefore cannot cause a
+    // remote investigate/discovery jump.
+    Grid blocked(8, 7);
+    for (int32_t row = 0; row < blocked.Height(); ++row) {
+        for (int32_t col = 0; col < blocked.Width(); ++col) {
+            blocked.SetCell(col, row, GridCell{});
+        }
+    }
+    for (int32_t row = 0; row < blocked.Height(); ++row) {
+        GridCell wall;
+        wall.flags = CellFlag_Solid;
+        blocked.SetCell(4, row, wall);
+    }
+    GridWorldQuery blocked_query(&blocked);
+    EventBus blocked_events;
+    AutonomousNpcSystem blocked_runtime;
+    blocked_runtime.Attach(&systemic, &blocked_events, &rng);
+    NPCInstance blocked_npc = npc;
+    blocked_npc.id = NpcId::New(405);
+    WO_CHECK(blocked_runtime.AddNpc(blocked_npc, RoomId::New(1)));
+    blocked_runtime.SetWorldQuery(&blocked_query);
+    blocked_runtime.SetActiveRoom(RoomId::New(1));
+    blocked_runtime.SetPlayerPose(Vec3{2.5f, 5.5f, 0.0f}, kEyeStand);
+    blocked_events.Post(EventWeaponFire{EntityId::New(1), WeaponSlot::Pistol,
+                                        Vec3{7.5f, 2.5f, kEyeStand}, 0.0f, 0.0f,
+                                        0.9f},
+                        EventKind::Notification, EntityId::New(1),
+                        EntityId::Invalid(), EventId::Invalid(), 12);
+    blocked_events.Dispatch();
+    blocked_events.Dispatch();
+    for (uint64_t frame = 12; frame <= 600; frame += 12) {
+        blocked_runtime.Tick(frame);
+    }
+    const Vec3 blocked_end = blocked_runtime.Npcs().front().instance.position;
+    WO_CHECK(blocked_end.x < 3.0f);
+    return true;
 }
 
 bool AutonomousFullNpcSpeaksOnSightTransitionOnly() {
@@ -435,6 +673,89 @@ bool AutonomousCleanerBlockedCannotDiscoverOnDueFrame() {
     return true;
 }
 
+bool AutonomousCleanerDurableHistoryChangesDiscoveryResponse() {
+    const auto run_case = [](bool trusted_history, bool round_trip) {
+        Grid grid = MakeViewGrid();
+        GridWorldQuery query(&grid);
+        SystemicWorld systemic;
+        BodyRecord body;
+        body.id = EntityId::New(80);
+        body.npc = NpcId::New(81);
+        body.status = BodyStatus::Unconscious;
+        body.disposition = BodyDisposition::Exposed;
+        body.position = Vec3{1.5f, 1.5f, 0.0f};
+        body.room = RoomId::New(1);
+        HideableContainer cart;
+        cart.id = ContainerId::New(82);
+        cart.position = Vec3{4.5f, 1.5f, 0.0f};
+        cart.room = RoomId::New(1);
+        cart.accessibility = 80;
+        cart.capacity_volume = 1.0f;
+        cart.routine_tags.push_back(RoutineTag::Cleaner);
+        if (!systemic.AddBody(body) || !systemic.AddContainer(cart) ||
+            !systemic.HideBody(body.id, cart.id, 3)) {
+            return false;
+        }
+
+        const EntityId cleaner_entity = EntityId::New(83);
+        if (trusted_history) {
+            RelationshipRecord relation;
+            relation.a = cleaner_entity;
+            relation.b = EntityId::New(1);
+            relation.trust = 0.80f;
+            relation.debt = 0.70f;
+            if (!systemic.SetRelationship(relation)) return false;
+        }
+        if (round_trip) {
+            const std::vector<uint8_t> bytes = systemic.Serialize();
+            const Result<SystemicWorld> restored =
+                SystemicWorld::Deserialize(bytes.data(), bytes.size());
+            if (restored.IsError()) return false;
+            systemic = restored.Value();
+        }
+
+        EventBus events;
+        DeterministicRNG rng(0x83u + (trusted_history ? 1u : 0u));
+        AutonomousNpcSystem runtime;
+        runtime.Attach(&systemic, &events, &rng);
+        NPCInstance cleaner;
+        cleaner.id = NpcId::New(83);
+        cleaner.role = Role::Cleaner;
+        cleaner.cognition = CognitionTier::SemiHuman;
+        cleaner.position = Vec3{1.5f, 1.5f, 0.0f};
+        if (!runtime.AddNpc(cleaner, RoomId::New(1))) return false;
+        runtime.SetWorldQuery(&query);
+        runtime.SetActiveRoom(RoomId::New(1));
+        runtime.SetPlayerPose(Vec3{7.0f, 5.0f, 0.0f}, kEyeStand);
+        if (!runtime.ConfigureBodyDiscovery(cleaner.id, body.id, cart.id, 12)) {
+            return false;
+        }
+
+        for (uint64_t frame = 12; frame <= 600; frame += 12) {
+            runtime.Tick(frame);
+        }
+        if (runtime.DiscoveryResponseCount() != 1) return false;
+        bool saw_medical = false;
+        bool saw_cover_up = false;
+        for (const auto& event : systemic.SystemEvents()) {
+            saw_medical = saw_medical ||
+                event.type == SystemicEventType::MedicalCall &&
+                event.actor == cleaner_entity;
+            saw_cover_up = saw_cover_up ||
+                event.type == SystemicEventType::HelpCoverUp &&
+                event.actor == cleaner_entity;
+        }
+        return trusted_history ? saw_cover_up && !saw_medical
+                                : saw_medical && !saw_cover_up;
+    };
+
+    // Same present scene, different durable history: the cleaner's response
+    // changes after an explicit relationship has survived serialization.
+    WO_CHECK(run_case(false, false));
+    WO_CHECK(run_case(true, true));
+    return true;
+}
+
 bool AutonomousRepeatedGunshotsRefreshOneMemory() {
     Grid grid = MakeViewGrid();
     GridWorldQuery query(&grid);
@@ -608,10 +929,18 @@ void RegisterAiTests(TestHarness& test) {
              &AutonomousCleanerMustArriveBeforeDiscovery);
     test.Add("ai.cleaner_blocked_cannot_discover_on_due_frame",
              &AutonomousCleanerBlockedCannotDiscoverOnDueFrame);
+    test.Add("ai.cleaner_history_changes_discovery_response",
+             &AutonomousCleanerDurableHistoryChangesDiscoveryResponse);
     test.Add("ai.repeated_gunshots_refresh_one_memory",
              &AutonomousRepeatedGunshotsRefreshOneMemory);
     test.Add("ai.incapacitated_cleaner_cannot_witness",
              &AutonomousIncapacitatedCleanerCannotWitness);
+    test.Add("ai.patrol_grid_route_motor", &AutonomousPatrolUsesGridRouteAndMotor);
+    test.Add("ai.guard_combat_los_and_cadence",
+             &AutonomousGuardCombatRepeatsAndHonoursLineOfSight);
+    test.Add("ai.visibility_counterfactual", &AutonomousVisibilityChangesCombatCounterfactual);
+    test.Add("ai.investigate_routes_noise_without_teleporting",
+             &AutonomousInvestigateRoutesNoiseWithoutTeleporting);
     test.Add("ai.load_unknown_npc_is_atomic",
              &AutonomousLoadDoesNotPartiallyMutateOnUnknownNpc);
 }

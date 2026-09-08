@@ -848,6 +848,75 @@ bool CharacterArtPolishHasAuthoredResolution() {
     return true;
 }
 
+bool CharacterDirectionalAssetsAndLodHysteresis() {
+    CharacterArtBank bank;
+    WO_CHECK(LoadProductionCharacterArtBank(bank));
+    const CharacterSpriteKind kinds[] = {
+        CharacterSpriteKind::SecurityGuard,
+        CharacterSpriteKind::FullHuman,
+        CharacterSpriteKind::MaintenanceWorker,
+    };
+    const CharacterLod lods[] = {
+        CharacterLod::Far, CharacterLod::Mid, CharacterLod::Near,
+    };
+    for (const auto kind : kinds) {
+        for (const auto lod : lods) {
+            const CharacterArtAsset* front =
+                bank.Find(kind, lod, CharacterFacing::Front);
+            const CharacterArtAsset* back =
+                bank.Find(kind, lod, CharacterFacing::Back);
+            const CharacterArtAsset* side =
+                bank.Find(kind, lod, CharacterFacing::SideRight);
+            WO_CHECK(front != nullptr);
+            WO_CHECK(back != nullptr);
+            WO_CHECK(side != nullptr);
+            if (front == nullptr || back == nullptr || side == nullptr) continue;
+            // Directional art must be an authored lookup, not the old
+            // camera-facing asset with an eye suppression transform.
+            WO_CHECK(front->rows != back->rows || front->ink != back->ink);
+            WO_CHECK(front->rows != side->rows || front->ink != side->ink);
+        }
+    }
+
+    WO_CHECK(SelectCharacterLodHysteretic(4.2f, CharacterLod::Near) ==
+             CharacterLod::Near);
+    WO_CHECK(SelectCharacterLodHysteretic(4.6f, CharacterLod::Near) ==
+             CharacterLod::Mid);
+    WO_CHECK(SelectCharacterLodHysteretic(3.4f, CharacterLod::Mid) ==
+             CharacterLod::Near);
+    WO_CHECK(SelectCharacterLodHysteretic(12.2f, CharacterLod::Mid) ==
+             CharacterLod::Mid);
+    WO_CHECK(SelectCharacterLodHysteretic(12.6f, CharacterLod::Mid) ==
+             CharacterLod::Far);
+    WO_CHECK(SelectCharacterLodHysteretic(11.6f, CharacterLod::Far) ==
+             CharacterLod::Far);
+    WO_CHECK(SelectCharacterLodHysteretic(11.0f, CharacterLod::Far) ==
+             CharacterLod::Mid);
+    return true;
+}
+
+bool CharacterWeaponSlotsHaveDistinctAuthoredArt() {
+    CharacterArtBank bank;
+    WO_CHECK(LoadProductionCharacterArtBank(bank));
+    const auto frames = {PistolFrame::IdleA, PistolFrame::IdleB,
+                         PistolFrame::Fire, PistolFrame::Reload};
+    for (const auto frame : frames) {
+        const CharacterArtAsset* pistol =
+            bank.FindWeapon(WeaponSlot::Pistol, frame);
+        const CharacterArtAsset* smg = bank.FindWeapon(WeaponSlot::Smg, frame);
+        const CharacterArtAsset* stunner =
+            bank.FindWeapon(WeaponSlot::Stunner, frame);
+        WO_CHECK(pistol != nullptr);
+        WO_CHECK(smg != nullptr);
+        WO_CHECK(stunner != nullptr);
+        if (pistol == nullptr || smg == nullptr || stunner == nullptr) continue;
+        WO_CHECK(pistol->rows != smg->rows);
+        WO_CHECK(pistol->rows != stunner->rows);
+        WO_CHECK(smg->rows != stunner->rows);
+    }
+    return true;
+}
+
 bool CharacterPistolUsesSceneGripAnchor() {
     CharacterArtBank bank;
     WO_CHECK(LoadProductionCharacterArtBank(bank));
@@ -1562,6 +1631,10 @@ void RegisterRenderTests(TestHarness& test) {
     test.Add("character.assets_and_lod", &CharacterRendererAssetsAndLod);
     test.Add("character.art_polish_authored_resolution",
              &CharacterArtPolishHasAuthoredResolution);
+    test.Add("character.directional_assets_and_lod_hysteresis",
+             &CharacterDirectionalAssetsAndLodHysteresis);
+    test.Add("character.weapon_slots_have_distinct_art",
+             &CharacterWeaponSlotsHaveDistinctAuthoredArt);
     test.Add("character.pistol_scene_grip_anchor",
              &CharacterPistolUsesSceneGripAnchor);
     test.Add("character.sprite_projection_review_distances",

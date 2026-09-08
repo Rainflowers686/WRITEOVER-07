@@ -22,44 +22,41 @@
 537 MOUSEMOVE 1120 0
 538 W down
 850 W up
-850 MOUSEMOVE 917 0
+850 MOUSEMOVE 266 0
 851 F down
 852 F up
-1600 MOUSEMOVE -720 0
-1600 MOUSEMOVE 0 -200
-1601 W down
-1601 SHIFT down
-1735 W up
-1735 SHIFT up
-1736 MOUSEMOVE -905 0
-1737 F down
-1738 F up
-1800 MOUSEMOVE -137 0
-1801 W down
-1801 SHIFT down
-2080 W up
-2080 SHIFT up
-2081 F down
-2082 F up
-2083 F5 down
-2084 F5 up
-2090 F9 down
-2091 F9 up
-2083 W down
-2083 SHIFT down
-2125 W up
-2125 SHIFT up
-2126 MOUSEMOVE -573 0
-2127 W down
-2147 W up
-2148 MOUSEMOVE 573 0
-2149 W down
-2149 SHIFT down
-2175 W up
-2175 SHIFT up
-2175 A down
-2208 A up
-2208 W down
-2250 W up
-2251 F down
-2252 F up
+# Fire the selected pistol after the non-lethal/body route.  This is a real
+# gameplay fact transition used by the current recovery storylet, not a
+# direct narrative assertion.
+900 MOUSELEFT down
+901 MOUSELEFT up
+900 MOUSEMOVE -113 0
+901 W down
+901 SHIFT down
+1040 W up
+1040 SHIFT up
+1041 F down
+1042 F up
+1060 MOUSEMOVE 1058 0
+1061 W down
+1061 SHIFT down
+1308 W up
+1308 SHIFT up
+1309 F down
+1310 F up
+# Center on the one-cell service-door opening before advancing.  The player
+# collider must actually pass through the opening; opening the latch alone is
+# not the checkpoint.
+1315 D down
+1327 D up
+1330 W down
+1330 SHIFT down
+1400 W up
+1400 SHIFT up
+1401 MOUSEMOVE 1035 0
+1450 F down
+1451 F up
+1500 F5 down
+1501 F5 up
+1620 F9 down
+1621 F9 up
