@@ -215,7 +215,9 @@ spatial truth, not PRODUCT_GOLD or visual acceptance.
 
 ```text
 START_HEAD = 69b455a3d4a69eb97276a6936d368c3ff3712370
-FINAL_HEAD = 0fb969c477f48c52ad3b4aea30b508a81e39ba13
+IMPLEMENTATION_HEAD = 0fb969c477f48c52ad3b4aea30b508a81e39ba13
+EVIDENCE_HEAD = 7390bd6fb08c3f76c647749b70e843c9e719987e
+RECEIPT_HEAD = cb56c19c82bb906fd6feb6fe2307646f507db880
 BRANCH = main
 MAIN_ONLY = YES
 OLD_TAGS_OR_RELEASES_CHANGED = NO
@@ -228,9 +230,10 @@ FPS_INTERACTION_RAY = PASS
 BODY_WORLD_PRESENTATION = PASS
 REAL_SPATIAL_EVIDENCE = PASS
 REGRESSION = PASS
-REMOTE_CI = PENDING_PUSH
+REMOTE_CI_RUN = 34220791012
+REMOTE_CI = PASS
 
-FINAL_STATUS = NOT_READY_REMOTE_CI_PENDING
+FINAL_STATUS = READY_FOR_RAIN_SPATIAL_REVIEW
 ```
 
 The first execution of the pushed implementation/evidence commit encountered
@@ -242,13 +245,3 @@ Release benchmark measured `character_render_workload_240x67`
 `worst_1pct_avg_ms=3.776`, both within the declared budgets. The receipt commit
 that records this result is docs-only; the implementation/evidence tree tested
 by the rerun is `7390bd6fb08c3f76c647749b70e843c9e719987e`.
-
-```text
-REMOTE_CI_RUN = 34220085621
-REMOTE_CI_CONCLUSION = success
-REMOTE_CI_IMPLEMENTATION_HEAD = 7390bd6fb08c3f76c647749b70e843c9e719987e
-
-FINAL_HEAD = 7390bd6fb08c3f76c647749b70e843c9e719987e
-REMOTE_CI = PASS
-FINAL_STATUS = READY_FOR_RAIN_SPATIAL_REVIEW
-```
