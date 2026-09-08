@@ -63,7 +63,10 @@ PerceptionResult PerceptionSystem::Update(const NPCInstance& npc,
     const Vec3 npc_eye{npc.position.x, npc.position.y,
                        npc.position.z + GetPostureParams(Posture::Stand).eye_height};
     for (const auto& noise : noises) {
-        if (sim_frame - noise.sim_frame > 120) {
+        // A future-dated source is invalid rather than extremely recent.
+        // Checking the ordering first avoids unsigned wraparound turning a
+        // malformed/replayed timestamp into an audible event.
+        if (sim_frame < noise.sim_frame || sim_frame - noise.sim_frame > 120) {
             continue;  // stale after ~1 second
         }
         const float dx = noise.position.x - npc.position.x;

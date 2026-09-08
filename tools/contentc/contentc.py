@@ -348,7 +348,66 @@ def _scene_int(entry, key, path, default=0):
     return value
 
 
-def validate_scene_file(path: Path, room_ids, npc_registry):
+def _load_room_specs(room_paths):
+    """Load the small amount of room geometry needed for authoring checks.
+
+    This is compile-time validation only.  The runtime still consumes the
+    compiled room and scene binaries; the compiler uses the authored grid to
+    reject placements that could make a link or patrol point impossible.
+    """
+    specs = {}
+    for room_path in room_paths:
+        try:
+            data = json.loads(room_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        width = data.get("gridWidth")
+        height = data.get("gridHeight")
+        if (not isinstance(width, int) or isinstance(width, bool) or
+                not isinstance(height, int) or isinstance(height, bool) or
+                width <= 0 or height <= 0):
+            continue
+        cells = {}
+        for cell in data.get("cells", []):
+            if not isinstance(cell, dict):
+                continue
+            col = cell.get("col")
+            row = cell.get("row")
+            if (isinstance(col, int) and not isinstance(col, bool) and
+                    isinstance(row, int) and not isinstance(row, bool) and
+                    0 <= col < width and 0 <= row < height):
+                cells[(col, row)] = cell
+        specs[room_path.stem] = {
+            "width": width,
+            "height": height,
+            "cells": cells,
+        }
+    return specs
+
+
+def _scene_room_point_status(room_spec, point):
+    if room_spec is None:
+        return "unknown"
+    x, y, _ = point
+    if not (0.0 <= x < room_spec["width"] and
+            0.0 <= y < room_spec["height"]):
+        return "outside"
+    cell = room_spec["cells"].get((int(math.floor(x)), int(math.floor(y))), {})
+    flags = cell.get("flags", [])
+    if isinstance(flags, list) and ("solid" in flags or "door" in flags):
+        return "solid"
+    return "walkable"
+
+
+def _validate_scene_point(room_spec, point, path, label, require_walkable):
+    status = _scene_room_point_status(room_spec, point)
+    if status == "outside":
+        fail(path, f"{label} is outside room bounds")
+    elif status == "solid" and require_walkable:
+        fail(path, f"{label} is inside a solid cell")
+
+
+def validate_scene_file(path: Path, room_ids, npc_registry, room_specs=None):
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -388,7 +447,10 @@ def validate_scene_file(path: Path, room_ids, npc_registry):
             fail(p, "kind is not a supported scene entity kind")
         if entity.get("visual") not in SCENE_VISUALS:
             fail(p, "visual is not a supported character visual")
-        _scene_vec(entity.get("position"), p, "position")
+        position = _scene_vec(entity.get("position"), p, "position")
+        if room in room_ids and room_specs is not None:
+            _validate_scene_point(room_specs.get(room), position, p,
+                                  "position", False)
         for key in ("yaw", "radius", "height"):
             if not _finite_number(entity.get(key, 0.0)):
                 fail(p, f"{key} must be finite")
@@ -426,7 +488,21 @@ def validate_scene_file(path: Path, room_ids, npc_registry):
         if (_finite_number(bounds.get("minY")) and _finite_number(bounds.get("maxY")) and
                 float(bounds["minY"]) > float(bounds["maxY"])):
             fail(p, "bounds minY must not exceed maxY")
-        _scene_vec(transition.get("destinationSpawn"), p, "destinationSpawn")
+        spawn = _scene_vec(transition.get("destinationSpawn"), p,
+                           "destinationSpawn")
+        if source in room_ids and room_specs is not None:
+            source_spec = room_specs.get(source)
+            if source_spec is not None and all(
+                    _finite_number(bounds.get(key)) for key in
+                    ("minX", "maxX", "minY", "maxY")):
+                if (float(bounds["maxX"]) < 0.0 or
+                        float(bounds["minX"]) > source_spec["width"] or
+                        float(bounds["maxY"]) < 0.0 or
+                        float(bounds["minY"]) > source_spec["height"]):
+                    fail(p, "bounds do not intersect source room")
+        if dest in room_ids and room_specs is not None:
+            _validate_scene_point(room_specs.get(dest), spawn, p,
+                                  "destinationSpawn", True)
         if not _finite_number(transition.get("destinationYaw", 0.0)):
             fail(p, "destinationYaw must be finite")
     route_seen = set()
@@ -445,12 +521,17 @@ def validate_scene_file(path: Path, room_ids, npc_registry):
             fail(p, "points must contain 1..32 entries")
         else:
             for point_index, point in enumerate(points):
-                _scene_vec(point, f"{p}:points[{point_index}]", "point")
+                point_path = f"{p}:points[{point_index}]"
+                point_value = _scene_vec(point, point_path, "point")
+                if route.get("room") in room_ids and room_specs is not None:
+                    _validate_scene_point(room_specs.get(route["room"]),
+                                          point_value, point_path, "point", True)
     return data
 
 
-def compile_scene(json_path: Path, out_dir: Path, room_ids, npc_registry):
-    data = validate_scene_file(json_path, room_ids, npc_registry)
+def compile_scene(json_path: Path, out_dir: Path, room_ids, npc_registry,
+                  room_specs=None):
+    data = validate_scene_file(json_path, room_ids, npc_registry, room_specs)
     if data is None:
         return
     entities = sorted(data.get("entities", []), key=lambda item: item.get("id", ""))
@@ -763,6 +844,7 @@ def _compile_all(data_dir: Path, out_dir: Path):
     npc_files = sorted(data_dir.glob("npcs/*.json"))
     scene_files = sorted(data_dir.glob("scenes/*.json"))
     room_ids = {path.stem for path in room_files}
+    room_specs = _load_room_specs(room_files)
     text_ids = load_text_resource_ids(data_dir)
     validate_storylet_text_refs(storylet_files, text_ids)
 
@@ -790,7 +872,7 @@ def _compile_all(data_dir: Path, out_dir: Path):
     for path in storylet_files:
         compile_storylets(path, out_dir, fact_registry)
     for path in scene_files:
-        compile_scene(path, out_dir, room_ids, npc_registry)
+        compile_scene(path, out_dir, room_ids, npc_registry, room_specs)
     if not ERRORS:
         compile_npc_profiles(npc_files, out_dir)
 

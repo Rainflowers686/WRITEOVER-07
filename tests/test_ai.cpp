@@ -95,6 +95,21 @@ bool PerceptionWallMufflesNoise() {
     return result.hears_noise && result.noise_loudness < 0.2f;
 }
 
+bool PerceptionIgnoresFutureNoiseTimestamp() {
+    const Grid grid = MakeViewGrid();
+    GridWorldQuery query(&grid);
+    NPCInstance npc;
+    npc.id = NpcId::New(3);
+    npc.position = Vec3{1.5f, 1.5f, 0.0f};
+    npc.yaw = 0.0f;
+    const std::vector<NoiseSource> noises = {
+        NoiseSource{Vec3{2.5f, 1.5f, 0.0f}, 1.0f, 100}};
+    const auto result = PerceptionSystem{}.Update(
+        npc, query, Vec3{7.0f, 5.0f, 0.0f}, kEyeStand, noises, 10);
+    // A future timestamp must not wrap into a very old but audible sound.
+    return !result.hears_noise && result.noise_loudness == 0.0f;
+}
+
 bool GoapPlansSimpleChain() {
     FactStore facts;
     facts.Set(WorldFact{FactId::New(1), EntityId::New(0), PredicateType::State, false});
@@ -331,6 +346,53 @@ bool AutonomousGuardCombatRepeatsAndHonoursLineOfSight() {
     DispatchDeferred(events);
     WO_CHECK_EQ(CountPlayerDamageEvents(events), 3);
     WO_CHECK(runtime.Npcs().front().instance.state == NPCState::Patrol);
+    return true;
+}
+
+bool AutonomousGuardReplansWhenPlayerMovesOutsideRange() {
+    Grid grid(20, 6);
+    for (int32_t row = 0; row < grid.Height(); ++row) {
+        for (int32_t col = 0; col < grid.Width(); ++col) {
+            grid.SetCell(col, row, GridCell{});
+        }
+    }
+    GridWorldQuery query(&grid);
+    SystemicWorld systemic;
+    ActorRecord actor;
+    actor.id = NpcId::New(406);
+    actor.role = Role::Guard;
+    actor.faction = Faction::Security;
+    actor.cognition = CognitionTier::SemiHuman;
+    WO_CHECK(systemic.AddActor(actor));
+    EventBus events;
+    DeterministicRNG rng(0x406);
+    AutonomousNpcSystem runtime;
+    runtime.Attach(&systemic, &events, &rng);
+    NPCInstance guard;
+    guard.id = NpcId::New(406);
+    guard.role = Role::Guard;
+    guard.faction = Faction::Security;
+    guard.position = Vec3{1.5f, 1.5f, 0.0f};
+    guard.yaw = 0.0f;
+    guard.sight_range = 64.0f;
+    WO_CHECK(runtime.AddNpc(guard, RoomId::New(1)));
+    runtime.SetWorldQuery(&query);
+    runtime.SetActiveRoom(RoomId::New(1));
+    runtime.SetPlayerPose(Vec3{11.5f, 1.5f, 0.0f}, kEyeStand);
+    runtime.Tick(12);
+    WO_CHECK(runtime.Npcs().front().instance.state == NPCState::Combat);
+    const Vec3 first_goal_start = runtime.Npcs().front().instance.position;
+    for (uint64_t frame = 13; frame <= 180; ++frame) runtime.Tick(frame);
+    const Vec3 after_first_approach = runtime.Npcs().front().instance.position;
+    WO_CHECK(after_first_approach.x > first_goal_start.x + 0.5f);
+
+    // Move the same target materially.  The guard must continue approaching
+    // the new location instead of completing the old route and idling.
+    runtime.SetPlayerPose(Vec3{16.5f, 1.5f, 0.0f}, kEyeStand);
+    for (uint64_t frame = 181; frame <= 720; ++frame) runtime.Tick(frame);
+    const Vec3 final_position = runtime.Npcs().front().instance.position;
+    WO_CHECK(final_position.x > after_first_approach.x + 0.5f);
+    WO_CHECK(final_position.x < 16.5f);
     return true;
 }
 
@@ -916,6 +978,8 @@ void RegisterAiTests(TestHarness& test) {
     test.Add("ai.perception_blocked_wall", &PerceptionBlockedByWall);
     test.Add("ai.perception_hears_noise", &PerceptionHearsNoise);
     test.Add("ai.perception_wall_muffles_noise", &PerceptionWallMufflesNoise);
+    test.Add("ai.perception_future_noise_timestamp_rejected",
+             &PerceptionIgnoresFutureNoiseTimestamp);
     test.Add("ai.goap_plans_chain", &GoapPlansSimpleChain);
     test.Add("ai.goap_no_plan_impossible", &GoapNoPlanWhenImpossible);
     test.Add("ai.memory_recall_order", &MemoryRecallOrdered);
@@ -938,6 +1002,8 @@ void RegisterAiTests(TestHarness& test) {
     test.Add("ai.patrol_grid_route_motor", &AutonomousPatrolUsesGridRouteAndMotor);
     test.Add("ai.guard_combat_los_and_cadence",
              &AutonomousGuardCombatRepeatsAndHonoursLineOfSight);
+    test.Add("ai.guard_replans_moving_target",
+             &AutonomousGuardReplansWhenPlayerMovesOutsideRange);
     test.Add("ai.visibility_counterfactual", &AutonomousVisibilityChangesCombatCounterfactual);
     test.Add("ai.investigate_routes_noise_without_teleporting",
              &AutonomousInvestigateRoutesNoiseWithoutTeleporting);

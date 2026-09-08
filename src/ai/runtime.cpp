@@ -538,10 +538,16 @@ void AutonomousNpcSystem::UpdateGuardCombat(uint64_t frame) {
         const float distance = std::sqrt(dx * dx + dy * dy);
         if (distance > kGuardCombatRange) {
             runtime.instance.state = NPCState::Combat;
-            if (!runtime.has_navigation_goal) {
+            // Replan only when the target has moved materially.  This keeps
+            // the motor smooth while preventing a guard from finishing a
+            // stale route to the player's previous position.
+            const bool target_moved =
+                !runtime.has_navigation_goal ||
+                runtime.navigation_task != kNavigationCombat ||
+                std::fabs(runtime.navigation_goal.x - player_position_.x) > 0.75f ||
+                std::fabs(runtime.navigation_goal.y - player_position_.y) > 0.75f;
+            if (target_moved) {
                 SetNavigationGoal(runtime, player_position_, kNavigationCombat);
-            } else {
-                runtime.navigation_goal = player_position_;
             }
             continue;
         }
@@ -886,6 +892,10 @@ bool AutonomousNpcSystem::Load(Deserializer& deserializer) {
         runtime->route_failed = false;
         runtime->next_attack_frame = 0;
     }
+    // Motor cadence is runtime-only.  A loaded checkpoint starts with a
+    // fresh cadence sample instead of integrating from an unrelated frame
+    // in the previous session.
+    last_motor_frame_ = 0;
     cleaner_npc_ = cleaner;
     discovery_body_ = body;
     discovery_container_ = container;

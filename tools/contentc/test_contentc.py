@@ -23,7 +23,8 @@ def check(name, ok):
         FAILURES.append(name)
 
 
-def compile_to(tmp, room_json, facts_json=None, storylets_json=None, npcs_json=None):
+def compile_to(tmp, room_json, facts_json=None, storylets_json=None,
+               npcs_json=None, scene_json=None):
     """Writes authoring JSON into tmp and runs _compile_all; returns False if
     any compile error was recorded."""
     rooms = tmp / "rooms"
@@ -34,6 +35,8 @@ def compile_to(tmp, room_json, facts_json=None, storylets_json=None, npcs_json=N
     storylets.mkdir(parents=True, exist_ok=True)
     npcs = tmp / "npcs"
     npcs.mkdir(parents=True, exist_ok=True)
+    scenes = tmp / "scenes"
+    scenes.mkdir(parents=True, exist_ok=True)
     text = tmp / "text"
     text.mkdir(parents=True, exist_ok=True)
     # _compile_all validates the same required production text table used by
@@ -51,6 +54,8 @@ def compile_to(tmp, room_json, facts_json=None, storylets_json=None, npcs_json=N
         (storylets / "s1.json").write_text(json.dumps(storylets_json), encoding="utf-8")
     if npcs_json is not None:
         (npcs / "n1.json").write_text(json.dumps(npcs_json), encoding="utf-8")
+    if scene_json is not None:
+        (scenes / "scene.json").write_text(json.dumps(scene_json), encoding="utf-8")
     cc.ERRORS = []
     cc._compile_all(tmp, tmp)
     return len(cc.ERRORS) == 0, list(cc.ERRORS)
@@ -228,6 +233,33 @@ def test_npc_profile_binary_emitted():
               ok and parsed == (cc.NPC_MAGIC, cc.NPC_VERSION, 1))
 
 
+def test_scene_spatial_validation():
+    scene = {
+        "schemaVersion": 1,
+        "entities": [{
+            "id": "terminal", "kind": "terminal", "room": "r1",
+            "position": {"x": 0.5, "y": 0.5, "z": 0.0},
+            "radius": 1.0, "height": 1.0, "visual": "terminal",
+        }],
+        "transitions": [{
+            "id": "exit", "sourceRoom": "r1",
+            "bounds": {"minX": 0.0, "maxX": 1.0, "minY": 0.0, "maxY": 1.0},
+            "destinationRoom": "r1",
+            "destinationSpawn": {"x": 1.5, "y": 1.5, "z": 0.0},
+        }],
+        "patrolRoutes": [],
+    }
+    room = {
+        "schemaVersion": 1, "gridWidth": 2, "gridHeight": 2,
+        "cells": [{"col": 1, "row": 1, "flags": ["solid"]}],
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        ok, errs = compile_to(Path(tmp), room, scene_json=scene)
+        check("scene_spatial_validation",
+              not ok and any("destinationSpawn is inside a solid cell" in e
+                             for e in errs))
+
+
 if __name__ == "__main__":
     test_light_zero_preserved()
     test_stable_ids_survive_insertion()
@@ -236,5 +268,6 @@ if __name__ == "__main__":
     test_hash_collision_detected()
     test_invalid_npc_profile_rejected()
     test_npc_profile_binary_emitted()
-    print(f"{7 - len(FAILURES)}/7 content tests passed")
+    test_scene_spatial_validation()
+    print(f"{8 - len(FAILURES)}/8 content tests passed")
     sys.exit(1 if FAILURES else 0)
