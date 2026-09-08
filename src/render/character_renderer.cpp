@@ -23,6 +23,14 @@ constexpr int kFarCharacterScreenCap = 24;
 constexpr size_t kMaxArtAssets = 64;
 constexpr size_t kMaxArtRows = 32;
 constexpr size_t kMaxArtColumns = 64;
+// The authored pistol is a held viewmodel: its grip/hand is the stable
+// screen-space anchor, while the muzzle remains several cells inward toward
+// the gameplay centre.  These normalized values are intentionally local to
+// the existing pistol path rather than a general viewmodel framework.
+constexpr float kPistolGripAnchorU = 0.86f;
+constexpr float kPistolGripAnchorV = 0.82f;
+constexpr float kPistolGripScreenU = 0.82f;
+constexpr float kPistolGripScreenV = 0.92f;
 
 struct InkPalette {
     Color base;
@@ -442,6 +450,24 @@ float WallSurfaceCoordinate(const CharacterView& view, const RayConfig& ray,
     return edge_x <= edge_y ? hit_y : hit_x;
 }
 
+Color ApplyFullHumanForegroundFloor(const CharacterArtAsset& asset,
+                                     float distance, const Color& color) {
+    // Keep the accepted environment palette unchanged while preventing the
+    // authored Full Human lower silhouette from disappearing into B1's dark
+    // walls at MID/NEAR range.  This is a local foreground floor, not a
+    // global outline or scene-brightening pass.
+    if (asset.ink == CharacterInk::FullHuman &&
+        asset.lod != CharacterLod::Far && distance < 12.0f) {
+        const float luma = 0.2126f * color.r + 0.7152f * color.g +
+                           0.0722f * color.b;
+        const float floor = distance < 4.0f ? 76.0f : 66.0f;
+        if (luma > 0.0f && luma < floor) {
+            return ScaleColor(color, floor / luma, 220);
+        }
+    }
+    return color;
+}
+
 Color SpriteForeground(const CharacterArtAsset& asset, char32_t glyph,
                        float distance, uint8_t light,
                        const CharacterRenderOptions& options) {
@@ -453,16 +479,19 @@ Color SpriteForeground(const CharacterArtAsset& asset, char32_t glyph,
                                     210);
     if (glyph == U'o' || glyph == U'O' || glyph == U'@' || glyph == U'=' ||
         glyph == U'[' || glyph == U']') {
-        return ScaleColor(palette.highlight, depth * light_level, 235);
+        return ApplyFullHumanForegroundFloor(
+            asset, distance, ScaleColor(palette.highlight, depth * light_level, 235));
     }
     if (glyph == U'!' || glyph == U'*' || glyph == U'+' || glyph == U'>' ||
         glyph == U'<' || glyph == U'╳') {
-        return ScaleColor(palette.accent, depth * light_level, 240);
+        return ApplyFullHumanForegroundFloor(
+            asset, distance, ScaleColor(palette.accent, depth * light_level, 240));
     }
     if (glyph == U'_' || glyph == U'.' || glyph == U'/' || glyph == U'\\') {
-        return ScaleColor(palette.shadow, depth * light_level, 150);
+        return ApplyFullHumanForegroundFloor(
+            asset, distance, ScaleColor(palette.shadow, depth * light_level, 150));
     }
-    return shaded;
+    return ApplyFullHumanForegroundFloor(asset, distance, shaded);
 }
 
 void SetEffectCell(CharCell* cells, int width, int height, int x, int y,
@@ -882,17 +911,19 @@ void DrawPistolViewmodel(CharCell* cells, int cell_w, int cell_h,
     if (asset == nullptr || asset->Width() <= 0 || asset->Height() <= 0) return;
     const int source_width = asset->Width();
     const int source_height = asset->Height();
-    const int max_width = std::max(8, static_cast<int>(cell_w * 0.30f));
-    const int max_height = std::max(5, static_cast<int>(cell_h * 0.34f));
+    const int max_width = std::max(8, static_cast<int>(cell_w * 0.32f));
+    const int max_height = std::max(5, static_cast<int>(cell_h * 0.43f));
     const float scale = std::min(static_cast<float>(max_width) / source_width,
                                  static_cast<float>(max_height) / source_height);
     const int dst_w = std::max(1, static_cast<int>(std::floor(source_width * scale)));
     const int dst_h = std::max(1, static_cast<int>(std::floor(source_height * scale)));
-    const int right_safe = cell_w >= 200 ? 12 : std::max(2, cell_w / 20);
-    const int bottom_safe = cell_h >= 60 ? 6 : std::max(2, cell_h / 12);
-    const int base_x = cell_w - right_safe - dst_w;
-    const int base_y = cell_h - bottom_safe - dst_h -
-                       static_cast<int>(std::lround(Saturate(recoil_amount) * 2.0f));
+    const float grip_screen_x = static_cast<float>(cell_w) * kPistolGripScreenU;
+    const float grip_screen_y = static_cast<float>(cell_h) * kPistolGripScreenV;
+    const int base_x = static_cast<int>(std::lround(
+        grip_screen_x - kPistolGripAnchorU * static_cast<float>(dst_w)));
+    const int base_y = static_cast<int>(std::lround(
+        grip_screen_y - kPistolGripAnchorV * static_cast<float>(dst_h) -
+        Saturate(recoil_amount) * 2.0f));
     const InkPalette palette = Palette(CharacterInk::Weapon);
     for (int dy = 0; dy < dst_h; ++dy) {
         const int source_y = std::clamp(static_cast<int>(dy * source_height /

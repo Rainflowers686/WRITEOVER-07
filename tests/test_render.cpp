@@ -810,6 +810,85 @@ bool CharacterRendererAssetsAndLod() {
     return true;
 }
 
+bool LoadProductionCharacterArtBank(CharacterArtBank& bank) {
+    std::filesystem::path root = std::filesystem::current_path();
+    for (int level = 0; level < 7; ++level) {
+        if (bank.Load((root / "data/characters/b1_character_art.txt").string())) {
+            return true;
+        }
+        if (root == root.root_path()) break;
+        root = root.parent_path();
+    }
+    const std::filesystem::path source_root =
+        std::filesystem::path(__FILE__).parent_path().parent_path();
+    return bank.Load(
+        (source_root / "data/characters/b1_character_art.txt").string());
+}
+
+bool CharacterArtPolishHasAuthoredResolution() {
+    CharacterArtBank bank;
+    WO_CHECK(LoadProductionCharacterArtBank(bank));
+    const CharacterArtAsset* mid =
+        bank.Find(CharacterSpriteKind::FullHuman, CharacterLod::Mid);
+    const CharacterArtAsset* near =
+        bank.Find(CharacterSpriteKind::FullHuman, CharacterLod::Near);
+    WO_CHECK(mid != nullptr);
+    WO_CHECK(near != nullptr);
+    WO_CHECK(mid->Height() >= 14 && mid->Height() <= 18);
+    WO_CHECK(near->Height() >= 22 && near->Height() <= 28);
+
+    for (const auto frame : {PistolFrame::IdleA, PistolFrame::IdleB,
+                             PistolFrame::Fire, PistolFrame::Reload}) {
+        const CharacterArtAsset* pistol = bank.FindPistol(frame);
+        WO_CHECK(pistol != nullptr);
+        WO_CHECK(pistol->Height() >= 24 && pistol->Height() <= 28);
+        WO_CHECK(pistol->Width() >= 50);
+    }
+    return true;
+}
+
+bool CharacterPistolUsesSceneGripAnchor() {
+    CharacterArtBank bank;
+    WO_CHECK(LoadProductionCharacterArtBank(bank));
+    constexpr int width = 240;
+    constexpr int height = 67;
+    std::vector<CharCell> frame(static_cast<size_t>(width) * height);
+    for (auto& cell : frame) {
+        cell.code_point = U' ';
+        cell.bg_r = 5;
+        cell.bg_g = 9;
+        cell.bg_b = 14;
+    }
+    DrawPistolViewmodel(frame.data(), width, height, bank, PistolFrame::IdleA,
+                        0.0f);
+    int first_x = width;
+    int last_x = -1;
+    int first_y = height;
+    int last_y = -1;
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (frame[static_cast<size_t>(y) * width + x].code_point == U' ') {
+                continue;
+            }
+            first_x = std::min(first_x, x);
+            last_x = std::max(last_x, x);
+            first_y = std::min(first_y, y);
+            last_y = std::max(last_y, y);
+        }
+    }
+    std::printf("PISTOL_VIEWMODEL_BOUNDS x=%d..%d y=%d..%d\n",
+                first_x, last_x, first_y, last_y);
+    // The grip/hand anchor places the full authored pose inward from the
+    // lower-right edge.  The old right-rectangle placement would start near
+    // the 80% width line and leave the muzzle detached from the scene centre.
+    WO_CHECK(first_x >= 135 && first_x <= 168);
+    WO_CHECK(last_x >= 190 && last_x <= 212);
+    WO_CHECK(first_y >= 35 && first_y <= 44);
+    WO_CHECK(last_y >= 64 && last_y < height);
+    WO_CHECK(last_x - first_x >= 40);
+    return true;
+}
+
 struct CharacterProjectionMeasurement {
     CharacterLod lod = CharacterLod::Far;
     float raw_scale = 0.0f;
@@ -1109,6 +1188,10 @@ void RegisterRenderTests(TestHarness& test) {
     test.Add("production.half_block_frame", &ProductionHalfBlockFrame);
     test.Add("character.semantic_cells", &CharacterRendererUsesSemanticCells);
     test.Add("character.assets_and_lod", &CharacterRendererAssetsAndLod);
+    test.Add("character.art_polish_authored_resolution",
+             &CharacterArtPolishHasAuthoredResolution);
+    test.Add("character.pistol_scene_grip_anchor",
+             &CharacterPistolUsesSceneGripAnchor);
     test.Add("character.sprite_projection_review_distances",
              &CharacterSpriteProjectionAtReviewDistances);
     test.Add("character.wall_pattern_world_anchor",
