@@ -34,6 +34,16 @@ def compile_to(tmp, room_json, facts_json=None, storylets_json=None, npcs_json=N
     storylets.mkdir(parents=True, exist_ok=True)
     npcs = tmp / "npcs"
     npcs.mkdir(parents=True, exist_ok=True)
+    text = tmp / "text"
+    text.mkdir(parents=True, exist_ok=True)
+    # _compile_all validates the same required production text table used by
+    # the runtime.  Keep the fixture self-contained instead of accidentally
+    # testing every content case against a missing shared resource.
+    (text / "recovery_text.txt").write_text(
+        "t1\tFixture storylet text.\n"
+        "n1\tFixture narrator text.\n",
+        encoding="utf-8",
+    )
     (rooms / "r1.json").write_text(json.dumps(room_json), encoding="utf-8")
     if facts_json is not None:
         (facts / "f1.json").write_text(json.dumps(facts_json), encoding="utf-8")
