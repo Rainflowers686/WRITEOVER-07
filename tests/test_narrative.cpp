@@ -180,6 +180,44 @@ bool WorldCommandActionRoundTrip() {
     return !p1.powered;
 }
 
+bool StoryletLoadRejectsDuplicateAndInvalidRecords() {
+    const auto write_empty_storylet = [](Serializer& s, StoryletId id) {
+        WriteId(s, id);
+        s.WriteString("bounded");
+        s.WriteU16(1);
+        s.WriteU8(1);
+        s.WriteU32(0);  // conditions
+        s.WriteU32(0);  // actions
+    };
+
+    std::vector<uint8_t> duplicate_bytes;
+    Serializer duplicate_serializer(duplicate_bytes);
+    duplicate_serializer.WriteU32(2);
+    write_empty_storylet(duplicate_serializer, StoryletId::New(77));
+    write_empty_storylet(duplicate_serializer, StoryletId::New(77));
+    Deserializer duplicate_deserializer(duplicate_bytes.data(),
+                                        duplicate_bytes.size());
+    StoryletEngine duplicate_engine;
+    duplicate_engine.Load(duplicate_deserializer);
+    WO_CHECK(duplicate_deserializer.HasError());
+
+    std::vector<uint8_t> invalid_bytes;
+    Serializer invalid_serializer(invalid_bytes);
+    invalid_serializer.WriteU32(1);
+    WriteId(invalid_serializer, StoryletId::New(78));
+    invalid_serializer.WriteString("bad_state");
+    invalid_serializer.WriteU16(1);
+    invalid_serializer.WriteU8(1);
+    invalid_serializer.WriteU32(1);  // one condition
+    invalid_serializer.WriteU8(2);   // NpcStateCondition
+    WriteId(invalid_serializer, NpcId::New(7));
+    invalid_serializer.WriteU8(0xFF);
+    Deserializer invalid_deserializer(invalid_bytes.data(), invalid_bytes.size());
+    StoryletEngine invalid_engine;
+    invalid_engine.Load(invalid_deserializer);
+    return invalid_deserializer.HasError();
+}
+
 bool EndingQuadrantsAndHiddenLoop() {
     GlobalPlayerState state;
     state.truth_exposure = 0.2f;
@@ -213,6 +251,8 @@ void RegisterNarrativeTests(TestHarness& test) {
     test.Add("dialog.queue_expiry", &DialogQueueExpiry);
     test.Add("judge.checkpoint_basics", &JudgeCheckpointBasics);
     test.Add("storylet.world_command_round_trip", &WorldCommandActionRoundTrip);
+    test.Add("storylet.load_rejects_duplicate_and_invalid_records",
+             &StoryletLoadRejectsDuplicateAndInvalidRecords);
     test.Add("ending.quadrants_and_hidden_loop", &EndingQuadrantsAndHiddenLoop);
 }
 

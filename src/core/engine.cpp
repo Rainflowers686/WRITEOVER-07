@@ -33,7 +33,8 @@ int Engine::Run(uint64_t max_frames) {
         }
 
         bool stepped = false;
-        while (accumulator.count() >= fixed_dt_ms) {
+        while (accumulator.count() >= fixed_dt_ms &&
+               (max_frames == 0 || sim_ticks < max_frames)) {
             if (context_.clock != nullptr) {
                 for (const auto module : modules_) {
                     module->SimTick(*context_.clock);
@@ -64,9 +65,16 @@ int Engine::Run(uint64_t max_frames) {
             }
         }
 
-        const float alpha = static_cast<float>(
-            accumulator.count() / fixed_dt_ms);
-        if (render_ != nullptr) {
+        // The fixed simulation is the presentation cadence for this small
+        // terminal client.  Do not render the same simulation snapshot once
+        // before and once after every tick: duplicate presentation calls
+        // make render-owned effect timers advance faster than gameplay and
+        // produce stale-frame evidence.  A stepped iteration always emits
+        // the newest snapshot; the final stepped iteration also covers
+        // finite smoke/replay runs.
+        if (stepped && render_ != nullptr) {
+            const float alpha = static_cast<float>(
+                accumulator.count() / fixed_dt_ms);
             render_->RenderFrame(sim_ticks, alpha < 1.0f ? alpha : 0.0f);
         }
     }

@@ -45,9 +45,12 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -125,6 +128,84 @@ const char* QualityPresetName(QualityPreset preset) {
     return "UNKNOWN";
 }
 
+WeaponSlot ValidWeaponSlot(const CombatState* combat) {
+    if (combat == nullptr ||
+        static_cast<size_t>(combat->slot) >= kWeaponSlotCount) {
+        return WeaponSlot::Pistol;
+    }
+    return combat->slot;
+}
+
+const char* WeaponSlotName(WeaponSlot slot) {
+    switch (slot) {
+    case WeaponSlot::Pistol: return "PISTOL";
+    case WeaponSlot::Smg: return "SMG";
+    case WeaponSlot::Stunner: return "STUNNER";
+    case WeaponSlot::Count: break;
+    }
+    return "UNKNOWN";
+}
+
+uint64_t StableContentId(std::string_view value) {
+    uint64_t hash = 0xCBF29CE484222325ull;
+    for (const unsigned char byte : value) {
+        hash ^= byte;
+        hash *= 0x100000001B3ull;
+    }
+    return hash;
+}
+
+FactId RuntimeFactId(std::string_view value) {
+    return FactId::New(StableContentId(value));
+}
+
+// The scheduler keeps its fixed 120 Hz cadence, while gameplay time is
+// frozen by the player pause gate.  This private composition seam avoids
+// changing the frozen public EngineContext/SimClock contract.
+class RuntimeTimeGate {
+public:
+    void ObserveSchedulerFrame(uint64_t scheduler_frame) {
+        if (!observed_) {
+            observed_ = true;
+            last_scheduler_frame_ = scheduler_frame;
+            return;
+        }
+        if (scheduler_frame <= last_scheduler_frame_) return;
+        if (!paused_) game_frame_ += scheduler_frame - last_scheduler_frame_;
+        last_scheduler_frame_ = scheduler_frame;
+    }
+
+    void SetPaused(bool paused) { paused_ = paused; }
+    bool Paused() const { return paused_; }
+    uint64_t GameFrame() const { return game_frame_; }
+
+private:
+    uint64_t last_scheduler_frame_ = 0;
+    uint64_t game_frame_ = 0;
+    bool observed_ = false;
+    bool paused_ = false;
+};
+
+// The recovery slice needs one placement source for its small set of visible
+// interactables. This is intentionally private app wiring, not a general ECS
+// or a second world model.
+enum class SceneEntityKind : uint8_t {
+    Cart,
+    Camera,
+    Terminal,
+    DoorReader,
+    Door,
+    Crate,
+};
+
+struct SceneEntity {
+    SceneEntityKind kind = SceneEntityKind::Crate;
+    Vec3 position;
+    float radius = 1.0f;
+    float height = 1.0f;
+    CharacterSpriteKind visual = CharacterSpriteKind::Crate;
+};
+
 } // namespace
 
 class AiModule final : public IEngineModule {
@@ -135,9 +216,12 @@ public:
     }
     void Shutdown() override {}
     void SimTick(const SimClock& clock) override {
+        if (pause_source_ && pause_source_()) return;
+        const uint64_t frame = game_frame_source_
+            ? game_frame_source_() : clock.FrameCount();
         if (player_position_source_) runtime_.SetPlayerPose(
             player_position_source_(), player_eye_source_ ? player_eye_source_() : kEyeStand);
-        runtime_.Tick(clock.FrameCount());
+        runtime_.Tick(frame);
     }
     void AttachSystemic(SystemicWorld* systemic) {
         systemic_ = systemic;
@@ -150,6 +234,12 @@ public:
     }
     void SetPlayerEyeSource(std::function<float()> source) {
         player_eye_source_ = std::move(source);
+    }
+    void SetPauseSource(std::function<bool()> source) {
+        pause_source_ = std::move(source);
+    }
+    void SetGameFrameSource(std::function<uint64_t()> source) {
+        game_frame_source_ = std::move(source);
     }
     bool AddNpc(const NPCInstance& npc, RoomId room) { return runtime_.AddNpc(npc, room); }
     bool ConfigureBodyDiscovery(NpcId cleaner, EntityId body, ContainerId container,
@@ -179,6 +269,8 @@ private:
     AutonomousNpcSystem runtime_;
     std::function<Vec3()> player_position_source_;
     std::function<float()> player_eye_source_;
+    std::function<bool()> pause_source_;
+    std::function<uint64_t()> game_frame_source_;
 };
 
 class WorldModule final : public IEngineModule {
@@ -228,6 +320,9 @@ public:
     const IWorldQuery& Query() const { return *query_; }
     FactStore& Facts() { return facts_; }
     InfrastructureSystem& Infra() { return infra_; }
+    void SetBooleanFact(FactId id, EntityId subject, bool value) {
+        facts_.Set(WorldFact{id, subject, PredicateType::State, value});
+    }
     void SaveState(Serializer& serializer) const {
         serializer.WriteU32(1);
         infra_.Save(serializer);
@@ -286,11 +381,21 @@ public:
     }
 
     void SimTick(const SimClock& clock) override {
-        const uint64_t frame = clock.FrameCount();
+        if (pause_source_ && pause_source_()) return;
+        const uint64_t frame = game_frame_source_
+                                   ? game_frame_source_()
+                                   : clock.FrameCount();
         for (auto& cmd : commands_) {
             ApplyCommand(cmd, frame);
         }
         commands_.clear();
+    }
+
+    void SetPauseSource(std::function<bool()> source) {
+        pause_source_ = std::move(source);
+    }
+    void SetGameFrameSource(std::function<uint64_t()> source) {
+        game_frame_source_ = std::move(source);
     }
 
     const char* Name() const override { return "world"; }
@@ -352,6 +457,8 @@ private:
     FactStore facts_;
     InfrastructureSystem infra_;
     std::vector<WorldCommand> commands_;
+    std::function<bool()> pause_source_;
+    std::function<uint64_t()> game_frame_source_;
 };
 
 class PlayerModule final : public IEngineModule {
@@ -400,11 +507,17 @@ public:
     }
 
     void SimTick(const SimClock& clock) override {
-        const uint64_t frame = clock.FrameCount();
+        if (time_gate_ != nullptr) {
+            time_gate_->ObserveSchedulerFrame(clock.FrameCount());
+        }
+        const uint64_t frame = time_gate_ != nullptr
+                                   ? time_gate_->GameFrame()
+                                   : clock.FrameCount();
         current_frame_ = frame;
 
         if (input_.action_pressed[static_cast<size_t>(GameAction::Pause)]) {
             paused_ = !paused_;
+            if (time_gate_ != nullptr) time_gate_->SetPaused(paused_);
             if (pause_callback_) pause_callback_();
         }
         if (paused_) return;
@@ -489,6 +602,7 @@ public:
 
         combat_.aiming = input_.action_down[static_cast<size_t>(GameAction::AimDownSights)] &&
                          !dragging;
+        const WeaponSlot slot_before_switch = combat_.slot;
         if (!dragging && !weapon_restricted) {
             if (input_.action_pressed[static_cast<size_t>(GameAction::WeaponSlot1)]) {
                 combat_.slot = WeaponSlot::Pistol;
@@ -498,9 +612,18 @@ public:
                 combat_.slot = WeaponSlot::Stunner;
             }
         }
+        // Reload is bound to the weapon that started it.  A slot switch
+        // cancels that transaction instead of allowing AdvanceReload() to
+        // complete against the newly selected magazine.
+        if (combat_.slot != slot_before_switch && combat_.reload_frames_left > 0) {
+            combat_.reload_frames_left = 0;
+        }
 
+        const bool smg_held_fire = combat_.slot == WeaponSlot::Smg &&
+                                   input_.action_down[static_cast<size_t>(GameAction::Fire)];
         if (!weapon_restricted &&
-            input_.action_pressed[static_cast<size_t>(GameAction::Fire)]) {
+            (input_.action_pressed[static_cast<size_t>(GameAction::Fire)] ||
+             smg_held_fire)) {
             const size_t slot = static_cast<size_t>(combat_.slot);
             const WeaponDef& weapon = DefaultWeapons()[slot];
             FireRequest fire_request;
@@ -572,6 +695,7 @@ public:
     void SetSaveCallback(std::function<void()> cb) { save_callback_ = std::move(cb); }
     void SetLoadCallback(std::function<void()> cb) { load_callback_ = std::move(cb); }
     void SetPauseCallback(std::function<void()> cb) { pause_callback_ = std::move(cb); }
+    void SetTimeGate(RuntimeTimeGate* gate) { time_gate_ = gate; }
     void SetMeleeCallback(std::function<void()> cb) { melee_callback_ = std::move(cb); }
     void SetFireCallback(std::function<void(const FireRequest&, const WeaponDef&)> cb) {
         fire_callback_ = std::move(cb);
@@ -602,6 +726,7 @@ private:
     uint16_t health_ = 100;
     bool dead_ = false;
     uint64_t current_frame_ = 0;
+    RuntimeTimeGate* time_gate_ = nullptr;
 };
 
 class NarrativeModule final : public IEngineModule {
@@ -623,24 +748,94 @@ public:
     StoryletEngine& Storylets() { return engine_; }
     DialogueQueue& Subtitles() { return queue_; }
     CausalityLedger& Ledger() { return ledger_; }
+    void SetWorldCommandSink(std::function<void(const WorldCommand&)> sink) {
+        world_command_sink_ = std::move(sink);
+    }
+
+    void SaveState(Serializer& serializer) const {
+        serializer.WriteU32(1);
+        engine_.Save(serializer);
+        queue_.Save(serializer);
+        ledger_.Save(serializer);
+    }
+
+    bool LoadState(Deserializer& deserializer) {
+        const uint32_t version = deserializer.ReadU32();
+        if (deserializer.HasError() || version != 1) {
+            deserializer.MarkError();
+            return false;
+        }
+        StoryletEngine restored_engine;
+        DialogueQueue restored_queue;
+        CausalityLedger restored_ledger;
+        restored_engine.Load(deserializer);
+        restored_queue.Load(deserializer);
+        restored_ledger.Load(deserializer);
+        if (deserializer.HasError() || !deserializer.AtEnd()) {
+            deserializer.MarkError();
+            return false;
+        }
+        engine_ = std::move(restored_engine);
+        queue_ = std::move(restored_queue);
+        ledger_ = std::move(restored_ledger);
+        return true;
+    }
+
+    void SetPauseSource(std::function<bool()> source) {
+        pause_source_ = std::move(source);
+    }
+    void SetGameFrameSource(std::function<uint64_t()> source) {
+        game_frame_source_ = std::move(source);
+    }
 
     void SimTick(const SimClock& clock) override {
         if (facts_ == nullptr) return;
-        const uint64_t frame = clock.FrameCount();
+        if (pause_source_ && pause_source_()) return;
+        const uint64_t frame = game_frame_source_
+                                   ? game_frame_source_()
+                                   : clock.FrameCount();
         const Storylet* s = engine_.SelectEligible(
             *facts_, {}, {}, {}, 1, frame);
         if (s != nullptr) {
             engine_.MarkFired(s->id);
-            SubtitleLine line;
-            line.text = "storylet-fired:" + s->text_id;
-            line.start_frame = static_cast<uint32_t>(frame);
-            line.ttl_frames = 240;
-            line.speaker_id = NarratorSpeakerId();
-            line.persona = 1;
-            queue_.Push(line);
+            const Storylet selected = *s;
+            const EventId trigger_event = ctx_.events != nullptr
+                ? ctx_.events->Post(EventStoryletTrigger{
+                                        selected.id, EntityId::New(1)},
+                                    EventKind::Notification, EntityId::New(1),
+                                    EntityId::Invalid(), EventId::Invalid(), frame)
+                : EventId::Invalid();
+            for (const auto& action : selected.actions) {
+                std::visit([&](const auto& value) {
+                    using Action = std::decay_t<decltype(value)>;
+                    if constexpr (std::is_same_v<Action, NarratorLineAction>) {
+                        queue_.Push(SubtitleLine{value.text_id,
+                                                  static_cast<uint32_t>(frame),
+                                                  240, NarratorSpeakerId(),
+                                                  value.persona, 0});
+                    } else if constexpr (std::is_same_v<Action, DialogAction>) {
+                        queue_.Push(SubtitleLine{value.text_id,
+                                                  static_cast<uint32_t>(frame),
+                                                  240, NpcId{}, 0, 0});
+                    } else if constexpr (std::is_same_v<Action, WorldCommandAction>) {
+                        if (world_command_sink_) world_command_sink_(value.command);
+                    } else if constexpr (std::is_same_v<Action, EndGameCommand>) {
+                        // Endgame is intentionally not present in the current
+                        // recovery storylet content. If authored later, emit
+                        // the typed fact and let the owning game flow decide
+                        // whether the slice has reached an ending.
+                        if (ctx_.events != nullptr) {
+                            ctx_.events->Post(EventGameOver{value.ending_index},
+                                              EventKind::Notification,
+                                              EntityId::New(1), EntityId::Invalid(),
+                                              trigger_event, frame);
+                        }
+                    }
+                }, action);
+            }
             // Real causality: the ledger entry references the storylet event.
             ledger_.Push(CausalityEntry{
-                EventId::New(s->id.GetValue()),
+                trigger_event,
                 EventId::Invalid(),  // root of a causality chain
                 frame, EventKind::Notification});
         }
@@ -657,6 +852,9 @@ private:
     DialogueQueue queue_;
     CausalityLedger ledger_;
     const FactStore* facts_ = nullptr;
+    std::function<bool()> pause_source_;
+    std::function<uint64_t()> game_frame_source_;
+    std::function<void(const WorldCommand&)> world_command_sink_;
 };
 
 class RenderModule final : public IRenderModule {
@@ -678,7 +876,19 @@ public:
     void SetCombatSource(const CombatState* combat) { combat_ = combat; }
     void SetHealthSource(const uint16_t* health) { health_ = health; }
     void SetNpcSource(const std::vector<RuntimeNpc>* npcs) { npcs_ = npcs; }
+    void SetSystemicSource(const SystemicWorld* systemic) { systemic_ = systemic; }
+    void SetDialogueSource(const DialogueQueue* dialogue) { dialogue_ = dialogue; }
+    void SetSceneEntities(const std::vector<SceneEntity>* entities) {
+        scene_entities_ = entities;
+    }
     void SetSettingsSource(const Settings* settings) { settings_ = settings; }
+    void SetPauseSource(std::function<bool()> source) {
+        pause_source_ = std::move(source);
+    }
+    void SetGameFrameSource(std::function<uint64_t()> source) {
+        game_frame_source_ = std::move(source);
+    }
+    void SetActiveRoom(RoomId room) { active_room_ = room; }
     void SetSceneId(const std::string& id, uint64_t frame = 0) {
         scene_id_ = id;
         scene_enter_frame_ = frame;
@@ -727,6 +937,10 @@ public:
 
     void RenderFrame(uint64_t frame_index, float alpha) override {
         (void)alpha;
+        const uint64_t game_frame = game_frame_source_
+                                        ? game_frame_source_()
+                                        : frame_index;
+        const bool paused = pause_source_ && pause_source_();
         std::fill(body_.begin(), body_.end(), CharCell{});
         if (!camera_override_ && locomotion_ != nullptr) {
             player_pos_ = locomotion_->position;
@@ -764,7 +978,9 @@ public:
             if (scene_id_ == "room_b1_revival") {
                 if (npcs_ != nullptr) {
                     for (const auto& runtime : *npcs_) {
-                        if (runtime.instance.state == NPCState::Dead) continue;
+                        if (runtime.room != active_room_ ||
+                            runtime.instance.state == NPCState::Dead ||
+                            runtime.instance.state == NPCState::Stunned) continue;
                         CharacterSpriteKind kind = CharacterSpriteKind::SecurityGuard;
                         if (runtime.instance.cognition == CognitionTier::Full) {
                             kind = CharacterSpriteKind::FullHuman;
@@ -778,59 +994,78 @@ public:
                             kind});
                     }
                 }
-                // The B1 wake bay is a deliberately small visual target: a
-                // readable service terminal in the mid distance and a
-                // marked service door at the end of the sight line.
-                sprites.push_back({Vec3{10.0f, 7.0f, 0.0f}, 1.7f,
-                                   CharacterSpriteKind::Terminal});
-                sprites.push_back({Vec3{21.5f, 8.5f, 0.0f}, 2.4f,
-                                   CharacterSpriteKind::Door});
-                sprites.push_back({Vec3{14.0f, 3.0f, 2.2f}, 0.55f,
-                                   CharacterSpriteKind::Camera});
-                 sprites.push_back({Vec3{15.5f, 7.5f, 0.0f}, 1.0f,
-                                    CharacterSpriteKind::Crate});
-            } else if (scene_id_ == "room_01_calibration") {
-                sprites.push_back({Vec3{7.5f, 5.5f, 0.0f}, 1.4f,
-                                   CharacterSpriteKind::Terminal});
-                sprites.push_back({Vec3{11.5f, 4.5f, 0.0f}, 1.0f,
-                                   CharacterSpriteKind::Door});
+                // An incapacitated actor has one visual authority: the
+                // exposed BodyRecord.  Never draw a standing NPC and its
+                // floor body at the same time, and never let a hidden body
+                // leak into the scene.
+                if (systemic_ != nullptr) {
+                    for (const auto& body : systemic_->Bodies()) {
+                        if (body.room != active_room_ ||
+                            body.disposition == BodyDisposition::HiddenInContainer ||
+                            body.status == BodyStatus::Alive) {
+                            continue;
+                        }
+                        CharacterSpriteKind body_kind = CharacterSpriteKind::MaintenanceWorker;
+                        const ActorRecord* actor = systemic_->GetActor(
+                            NpcId::New(body.npc.GetValue()));
+                        if (actor != nullptr && actor->cognition == CognitionTier::Full) {
+                            body_kind = CharacterSpriteKind::FullHuman;
+                        } else if (actor != nullptr && actor->role == Role::Guard) {
+                            body_kind = CharacterSpriteKind::SecurityGuard;
+                        }
+                        sprites.push_back({body.position, 0.70f, body_kind});
+                    }
+                }
             } else if (scene_id_ == "room_1f_security") {
-                sprites.push_back({Vec3{15.5f, 8.5f, 0.0f}, 1.5f,
-                                   CharacterSpriteKind::SecurityGuard});
-                sprites.push_back({Vec3{20.5f, 8.5f, 0.0f}, 2.2f,
-                                   CharacterSpriteKind::Door});
-            } else if (scene_id_ == "room_service_medical") {
-                sprites.push_back({Vec3{8.5f, 5.5f, 0.0f}, 1.4f,
-                                   CharacterSpriteKind::Terminal});
-            } else if (scene_id_ == "room_restroom_staff") {
-                sprites.push_back({Vec3{13.5f, 5.5f, 0.0f}, 1.8f,
-                                   CharacterSpriteKind::Door});
-            } else if (scene_id_ == "room_elevator_lobby") {
-                sprites.push_back({Vec3{9.5f, 5.5f, 0.0f}, 2.6f,
-                                   CharacterSpriteKind::Door});
+                if (npcs_ != nullptr) {
+                    for (const auto& runtime : *npcs_) {
+                        if (runtime.room == active_room_ &&
+                            runtime.instance.role == Role::Guard &&
+                            runtime.instance.state != NPCState::Dead &&
+                            runtime.instance.state != NPCState::Stunned) {
+                            sprites.push_back({runtime.instance.position, 1.8f,
+                                               CharacterSpriteKind::SecurityGuard});
+                        }
+                    }
+                }
+            }
+            if (scene_entities_ != nullptr) {
+                for (const auto& entity : *scene_entities_) {
+                    sprites.push_back({entity.position, entity.height, entity.visual});
+                }
             }
             DrawCharacterSprites(view, sprites, character_art_, grid_cells_, grid_w_,
                                  grid_h_, body_.data(), width_, height_, focal,
                                  render_options);
+            const WeaponSlot active_slot = ValidWeaponSlot(combat_);
             int vm_state = 0;
             float recoil = 0.0f;
-            if (combat_ != nullptr && frame_index >= combat_->last_shot_frame &&
-                frame_index - combat_->last_shot_frame < 4) {
+            if (active_slot == WeaponSlot::Pistol && combat_ != nullptr &&
+                game_frame >= combat_->last_shot_frame &&
+                game_frame - combat_->last_shot_frame < 4) {
                 vm_state = 1;
-                recoil = 1.0f - static_cast<float>(frame_index - combat_->last_shot_frame) / 4.0f;
+                recoil = 1.0f - static_cast<float>(game_frame - combat_->last_shot_frame) / 4.0f;
             }
-            if (combat_ != nullptr && combat_->aiming) vm_state = 2;
-            const PistolFrame weapon_frame = vm_state == 1 ? PistolFrame::Fire
-                : (combat_ != nullptr && combat_->reload_frames_left > 0
-                       ? PistolFrame::Reload
-                       : (frame_index % 96 < 48 ? PistolFrame::IdleA
-                                                : PistolFrame::IdleB));
-            DrawPistolViewmodel(body_.data(), width_, height_, character_art_,
-                                weapon_frame, recoil, render_options);
-            DrawVisualEffects(frame_index);
+            if (active_slot == WeaponSlot::Pistol && combat_ != nullptr &&
+                combat_->aiming) vm_state = 2;
+            if (active_slot == WeaponSlot::Pistol) {
+                const PistolFrame weapon_frame = vm_state == 1 ? PistolFrame::Fire
+                    : (combat_ != nullptr && combat_->reload_frames_left > 0
+                           ? PistolFrame::Reload
+                           : (game_frame % 96 < 48 ? PistolFrame::IdleA
+                                                   : PistolFrame::IdleB));
+                // The character bank currently authors a pistol viewmodel only.
+                // Do not render pistol art while another slot is selected.
+                DrawPistolViewmodel(body_.data(), width_, height_, character_art_,
+                                    weapon_frame, recoil, render_options);
+            }
+            const bool advance_visual_time =
+                !paused && (!has_rendered_game_frame_ ||
+                            game_frame != last_render_game_frame_);
+            DrawVisualEffects(game_frame, advance_visual_time);
         }
-        const uint64_t scene_frame = frame_index >= scene_enter_frame_
-                                         ? frame_index - scene_enter_frame_ : 0;
+        const uint64_t scene_frame = game_frame >= scene_enter_frame_
+                                         ? game_frame - scene_enter_frame_ : 0;
         if (scene_frame < 300 && scene_id_ == "room_b1_revival") {
             subtitle_ = "SYS/07: Wake cycle verified. B1 anomaly detected. Proceed to calibration.";
         } else if (scene_frame < 180 && scene_id_ == "room_01_calibration") {
@@ -844,15 +1079,32 @@ public:
         } else {
             subtitle_ = "";
         }
-        const float npc_dx = player_pos_.x - 10.5f;
-        const float npc_dy = player_pos_.y - 5.5f;
-        if (scene_id_ == "room_b1_revival" &&
-            (npc_dx * npc_dx + npc_dy * npc_dy) < 9.0f) {
-            subtitle_ = "Maintenance: 07... you are not scheduled to be here.";
+        if (scene_id_ == "room_b1_revival" && npcs_ != nullptr) {
+            for (const auto& runtime : *npcs_) {
+                if (runtime.room != active_room_ ||
+                    (runtime.instance.role != Role::Cleaner &&
+                     runtime.instance.role != Role::Technician) ||
+                    runtime.instance.state == NPCState::Dead ||
+                    runtime.instance.state == NPCState::Stunned) {
+                    continue;
+                }
+                const float npc_dx = player_pos_.x - runtime.instance.position.x;
+                const float npc_dy = player_pos_.y - runtime.instance.position.y;
+                if ((npc_dx * npc_dx + npc_dy * npc_dy) < 9.0f) {
+                    subtitle_ = "Maintenance: 07... you are not scheduled to be here.";
+                    break;
+                }
+            }
+        }
+        if (dialogue_ != nullptr) {
+            const auto active_lines = dialogue_->ActiveLines(
+                static_cast<uint32_t>(std::min<uint64_t>(
+                    game_frame, std::numeric_limits<uint32_t>::max())));
+            if (!active_lines.empty()) subtitle_ = active_lines.back().text;
         }
         if (subtitle_override_remaining_ > 0) {
             subtitle_ = subtitle_override_;
-            --subtitle_override_remaining_;
+            if (!paused) --subtitle_override_remaining_;
         }
         if (debug_overlay_) {
             subtitle_ = "F3 DEBUG | pos " + std::to_string(player_pos_.x) + "," +
@@ -861,7 +1113,7 @@ public:
         HudFrame hud;
         hud.health = health_ != nullptr ? *health_ : 100;
         if (combat_ != nullptr) {
-            const size_t slot = static_cast<size_t>(combat_->slot);
+            const size_t slot = static_cast<size_t>(ValidWeaponSlot(combat_));
             hud.ammo_mag = combat_->ammo_in_mag[slot];
             hud.ammo_reserve = combat_->reserve[slot];
         } else {
@@ -877,7 +1129,7 @@ public:
         } else {
             hud.preset_name = "PRESENTATION60";
         }
-        hud.weapon_name = "PISTOL";
+        hud.weapon_name = WeaponSlotName(ValidWeaponSlot(combat_));
         hud.grid_width = grid_w_;
         hud.grid_height = grid_h_;
         hud.developer_overlay = debug_overlay_;
@@ -897,9 +1149,11 @@ public:
             const uint64_t elapsed = narrator_intrusion_total_ > narrator_intrusion_remaining_
                                          ? narrator_intrusion_total_ - narrator_intrusion_remaining_ : 0;
             DrawNarratorTypography(elapsed, reduce_flicker, reduce_shake);
-            --narrator_intrusion_remaining_;
+            if (!paused) --narrator_intrusion_remaining_;
         }
         backend_->Submit(body_.data(), width_, height_);
+        last_render_game_frame_ = game_frame;
+        has_rendered_game_frame_ = true;
     }
 
     const char* Name() const override { return "render"; }
@@ -1009,13 +1263,13 @@ private:
                             cell.bg_b = 24;
                             cell.flags = 0x01;
                         }
-                    }
-                }
+            }
             }
         }
     }
+    }
 
-    void DrawVisualEffects(uint64_t frame_index) {
+    void DrawVisualEffects(uint64_t frame_index, bool advance_timers) {
         const bool reduce_flicker = settings_ != nullptr && settings_->reduce_flicker;
         const bool reduce_shake = settings_ != nullptr && settings_->reduce_camera_shake;
         DrawCharacterEffects(body_.data(), width_, height_, frame_index,
@@ -1023,10 +1277,12 @@ private:
                              hit_flash_remaining_ > 0,
                              explosion_remaining_ > 0,
                              reduce_flicker, reduce_shake);
-        if (shot_flash_remaining_ > 0) --shot_flash_remaining_;
-        if (hit_flash_remaining_ > 0) --hit_flash_remaining_;
-        if (explosion_remaining_ > 0) --explosion_remaining_;
-        if (shake_remaining_ > 0) --shake_remaining_;
+        if (advance_timers) {
+            if (shot_flash_remaining_ > 0) --shot_flash_remaining_;
+            if (hit_flash_remaining_ > 0) --hit_flash_remaining_;
+            if (explosion_remaining_ > 0) --explosion_remaining_;
+            if (shake_remaining_ > 0) --shake_remaining_;
+        }
     }
 
     std::unique_ptr<ITerminalBackend> backend_;
@@ -1045,6 +1301,9 @@ private:
     const CombatState* combat_ = nullptr;
     const uint16_t* health_ = nullptr;
     const std::vector<RuntimeNpc>* npcs_ = nullptr;
+    const SystemicWorld* systemic_ = nullptr;
+    const DialogueQueue* dialogue_ = nullptr;
+    const std::vector<SceneEntity>* scene_entities_ = nullptr;
     const Settings* settings_ = nullptr;
     bool debug_overlay_ = false;
     std::string subtitle_override_;
@@ -1061,6 +1320,11 @@ private:
     std::string subtitle_;
     std::string scene_id_ = "room_b1_revival";
     uint64_t scene_enter_frame_ = 0;
+    RoomId active_room_;
+    std::function<bool()> pause_source_;
+    std::function<uint64_t()> game_frame_source_;
+    uint64_t last_render_game_frame_ = 0;
+    bool has_rendered_game_frame_ = false;
 };
 
 struct GameServices {
@@ -1409,6 +1673,17 @@ int RunComposition(const GameConfig& config) {
         return 8;
     }
     GameServices services = std::move(build_result.Value());
+    RuntimeTimeGate time_gate;
+    services.player->SetTimeGate(&time_gate);
+    services.world->SetPauseSource([&time_gate] { return time_gate.Paused(); });
+    services.world->SetGameFrameSource([&time_gate] { return time_gate.GameFrame(); });
+    services.ai->SetPauseSource([&time_gate] { return time_gate.Paused(); });
+    services.ai->SetGameFrameSource([&time_gate] { return time_gate.GameFrame(); });
+    services.narrative->SetPauseSource([&time_gate] { return time_gate.Paused(); });
+    services.narrative->SetGameFrameSource([&time_gate] { return time_gate.GameFrame(); });
+    services.narrative->SetWorldCommandSink([&](const WorldCommand& command) {
+        services.world->PushCommand(command);
+    });
     if (!services.world->HasLoadedRoom()) {
         std::fprintf(stderr,
                      "Missing game data: expected a compiled room under %s relative to the player executable.\n",
@@ -1463,8 +1738,8 @@ int RunComposition(const GameConfig& config) {
     Engine engine;
     engine.SetContext(ctx);
     engine.RegisterModule(input_module.get());
-    engine.RegisterModule(services.world.get());
     engine.RegisterModule(services.player.get());
+    engine.RegisterModule(services.world.get());
     engine.RegisterModule(services.ai.get());
     engine.RegisterModule(services.narrative.get());
 
@@ -1496,9 +1771,11 @@ int RunComposition(const GameConfig& config) {
                                                                        : "UNKNOWN",
                  TerminalKindName(probe));
     auto render = std::make_unique<RenderModule>(std::move(backend),
-                                                 config.terminal_w,
-                                                 config.terminal_h);
+                                                  config.terminal_w,
+                                                  config.terminal_h);
     render->SetSettingsSource(&settings);
+    render->SetPauseSource([&time_gate] { return time_gate.Paused(); });
+    render->SetGameFrameSource([&time_gate] { return time_gate.GameFrame(); });
     render->SetSceneId(config.room_id.empty() ? "room_b1_revival" : config.room_id);
     const bool character_art_loaded = render->LoadCharacterArt(
         (data_root / "characters" / "b1_character_art.txt").string());
@@ -1516,6 +1793,8 @@ int RunComposition(const GameConfig& config) {
     render->SetLocomotionSource(&services.player->Locomotion());
     render->SetCombatSource(&services.player->Combat());
     render->SetHealthSource(&services.player->Health());
+    render->SetSystemicSource(services.systemic.get());
+    render->SetDialogueSource(&services.narrative->Subtitles());
 
     // PVS-01 owns a deliberately small authored interaction set. These are
     // real systemic records shared by the callbacks below; they are not a
@@ -1551,6 +1830,52 @@ int RunComposition(const GameConfig& config) {
         bool gate_open = false;
         bool gate_crossed = false;
     } slice;
+    std::vector<SceneEntity> scene_entities;
+    const auto configure_scene_entities = [&](const std::string& room) {
+        scene_entities.clear();
+        if (room == "room_b1_revival") {
+            scene_entities.push_back({SceneEntityKind::Cart,
+                                      Vec3{15.5f, 7.5f, 0.0f}, 1.15f, 1.0f,
+                                      CharacterSpriteKind::Crate});
+            scene_entities.push_back({SceneEntityKind::Camera,
+                                      Vec3{14.0f, 3.0f, 2.2f}, 1.45f, 0.55f,
+                                      CharacterSpriteKind::Camera});
+            scene_entities.push_back({SceneEntityKind::Terminal,
+                                      Vec3{10.0f, 7.0f, 0.0f}, 1.55f, 1.7f,
+                                      CharacterSpriteKind::Terminal});
+            scene_entities.push_back({SceneEntityKind::DoorReader,
+                                      Vec3{21.2f, 8.5f, 0.0f}, 1.15f, 2.4f,
+                                      CharacterSpriteKind::Door});
+        } else if (room == "room_01_calibration") {
+            scene_entities.push_back({SceneEntityKind::Terminal,
+                                      Vec3{7.5f, 5.5f, 0.0f}, 2.0f, 1.4f,
+                                      CharacterSpriteKind::Terminal});
+            scene_entities.push_back({SceneEntityKind::Door,
+                                      Vec3{11.5f, 4.5f, 0.0f}, 1.4f, 1.0f,
+                                      CharacterSpriteKind::Door});
+        } else if (room == "room_1f_security") {
+            scene_entities.push_back({SceneEntityKind::Door,
+                                      Vec3{20.5f, 8.5f, 0.0f}, 1.4f, 2.2f,
+                                      CharacterSpriteKind::Door});
+        } else if (room == "room_service_medical") {
+            scene_entities.push_back({SceneEntityKind::Terminal,
+                                      Vec3{8.5f, 5.5f, 0.0f}, 1.4f, 1.4f,
+                                      CharacterSpriteKind::Terminal});
+        } else if (room == "room_restroom_staff") {
+            scene_entities.push_back({SceneEntityKind::Door,
+                                      Vec3{13.5f, 5.5f, 0.0f}, 1.4f, 1.8f,
+                                      CharacterSpriteKind::Door});
+        } else if (room == "room_elevator_lobby") {
+            scene_entities.push_back({SceneEntityKind::Door,
+                                      Vec3{9.5f, 5.5f, 0.0f}, 1.4f, 2.6f,
+                                      CharacterSpriteKind::Door});
+        }
+    };
+    configure_scene_entities(services.player->CurrentRoom().empty()
+                                 ? (config.room_id.empty()
+                                        ? "room_b1_revival" : config.room_id)
+                                 : services.player->CurrentRoom());
+    render->SetSceneEntities(&scene_entities);
     std::vector<std::string> replay_route;
     bool replay_save_attempted = false;
     bool replay_load_attempted = false;
@@ -1569,7 +1894,9 @@ int RunComposition(const GameConfig& config) {
                                         : "IMPACT. Health is now authoritative.",
                                     services.player->Dead() ? 240 : 90);
         });
-    if (services.world->HasLoadedRoom()) slice.b1_room = services.world->LoadedRoom().id;
+    if (services.world->HasLoadedRoom() && services.world->IsB1Loaded()) {
+        slice.b1_room = services.world->LoadedRoom().id;
+    }
     for (const auto& actor : services.systemic->Actors()) {
         if (actor.role == Role::Guard && !slice.guard_npc.IsValid()) {
             slice.guard_npc = actor.id;
@@ -1631,13 +1958,21 @@ int RunComposition(const GameConfig& config) {
             std::fprintf(stderr, "pvs slice systemic setup rejected\n");
             return 9;
         }
+        (void)services.systemic->TransitionQuest(
+            slice.opening_quest, QuestStatus::Accepted, 0,
+            "B1 recovery route accepted");
+        (void)services.systemic->TransitionQuest(
+            slice.opening_quest, QuestStatus::Active, 0,
+            "Reach the security checkpoint");
     }
+    services.world->SetBooleanFact(RuntimeFactId("fact_player_has_gun"),
+                                    slice.player, false);
 
     // Bind authored identity records to a small real runtime population. The
     // incapacitated badge owner remains a body, while the other seed actors
     // receive their authored binary profile and use the same perception,
     // memory, decision, and event path as production play.
-    if (slice.b1_room.IsValid()) {
+    if (services.world->HasLoadedRoom()) {
         const auto profiles = LoadNpcProfiles(ctx.data_dir + "/npcs/npcs.bin");
         if (profiles.IsError()) {
             std::fprintf(stderr, "npc profile startup failed: %s\n",
@@ -1650,16 +1985,14 @@ int RunComposition(const GameConfig& config) {
                 std::fprintf(stderr, "npc profile has no systemic actor\n");
                 return 10;
             }
-            if (profile.spawn_room != slice.b1_room) {
-                continue;
-            }
             // The authored B1 profile places the background administrator on
             // the same cell as officer_davis.  Keeping both runtime collision
             // targets makes a deterministic hitscan choose the wrong person
             // for the badge/body slice.  The administrator remains a systemic
             // actor; this bounded recovery scene does not instantiate that
             // overlapping background target.
-            if (actor->role == Role::Administrator && profile.id != slice.guard_npc) {
+            if (profile.spawn_room == slice.b1_room &&
+                actor->role == Role::Administrator && profile.id != slice.guard_npc) {
                 continue;
             }
             NPCInstance npc;
@@ -1676,13 +2009,13 @@ int RunComposition(const GameConfig& config) {
             npc.sight_range = profile.sight_range;
             npc.sight_fov_rad = profile.sight_fov_rad;
             npc.hearing_range = profile.hearing_range;
-            if (!services.ai->AddNpc(npc, slice.b1_room)) {
+            if (!services.ai->AddNpc(npc, profile.spawn_room)) {
                 std::fprintf(stderr, "pvs runtime npc setup rejected\n");
                 return 10;
             }
         }
         services.ai->SetWorldQuery(&services.world->Query());
-        services.ai->SetActiveRoom(slice.b1_room);
+        services.ai->SetActiveRoom(services.world->LoadedRoom().id);
         services.ai->SetPlayerPositionSource([&] {
             return services.player->Locomotion().position;
         });
@@ -1694,7 +2027,7 @@ int RunComposition(const GameConfig& config) {
             [&](const RuntimeNpc& runtime) {
                 return runtime.instance.id == slice.cleaner_npc;
             });
-        if (slice.cleaner_npc.IsValid() && cleaner_present &&
+        if (slice.b1_room.IsValid() && slice.cleaner_npc.IsValid() && cleaner_present &&
             !services.ai->ConfigureBodyDiscovery(slice.cleaner_npc, slice.body,
                                                  slice.cart, 0)) {
             std::fprintf(stderr, "pvs body-discovery runtime setup rejected\n");
@@ -1702,7 +2035,8 @@ int RunComposition(const GameConfig& config) {
         }
     }
     PlayerActorWorldQuery player_world_query(
-        &services.world->Query(), &services.ai->Npcs(), slice.b1_room);
+        &services.world->Query(), &services.ai->Npcs(),
+        services.world->LoadedRoom().id);
     services.player->SetWorldQuery(&player_world_query);
     render->SetNpcSource(&services.ai->Npcs());
     bool debug_overlay = false;
@@ -1752,15 +2086,27 @@ int RunComposition(const GameConfig& config) {
         render->TriggerShotFeedback(feedback);
         sync_body_from_feedback(feedback);
     });
+    const EventBus::ConsumerId speech_consumer = events.Register(
+        [&](const WorldEvent& event) {
+            const auto* speech = std::get_if<EventNpcSpeak>(&event.payload);
+            if (speech == nullptr) return;
+            const std::string text = speech->line == StringId::New(0xB1003)
+                ? "SECURITY: Stop. Identify yourself."
+                : "NPC: communication received.";
+            render->SetSubtitleOnce(text, 150);
+        });
     services.player->SetFireCallback([&](const FireRequest& request,
                                           const WeaponDef& weapon) {
         const ShotFeedback feedback = services.ai->HandlePlayerShot(
             request, weapon, services.player->CurrentFrame());
         slice.shot_hit = slice.shot_hit || feedback.target_was_npc;
         slice.nonlethal_hit = slice.nonlethal_hit || feedback.target_stunned;
+        services.world->SetBooleanFact(RuntimeFactId("fact_player_has_gun"),
+                                        slice.player, true);
     });
 
-    auto switch_room = [&](const std::string& id, const Vec3& spawn_point) -> bool {
+    auto switch_room = [&](const std::string& id, const Vec3& spawn_point,
+                           float destination_yaw = std::numeric_limits<float>::quiet_NaN()) -> bool {
         if (!services.world->LoadRoomById(id)) return false;
         player_world_query.SetStaticQuery(&services.world->Query());
         player_world_query.SetActiveRoom(services.world->LoadedRoom().id);
@@ -1768,10 +2114,15 @@ int RunComposition(const GameConfig& config) {
         services.ai->SetWorldQuery(&services.world->Query());
         services.player->Locomotion().position = spawn_point;
         services.player->Locomotion().velocity = Vec3{};
+        const float room_yaw = services.world->LoadedRoom().spawn_yaw;
+        services.player->Locomotion().yaw = std::isfinite(destination_yaw)
+                                                ? destination_yaw : room_yaw;
         services.player->SetCurrentRoom(id);
         services.ai->SetActiveRoom(services.world->LoadedRoom().id);
         const Room& room = services.world->LoadedRoom();
         render->SetGridData(room.grid.Data().data(), room.grid.Width(), room.grid.Height());
+        render->SetActiveRoom(room.id);
+        configure_scene_entities(id);
         render->SetPlayerView(spawn_point, services.player->Locomotion().yaw);
         render->SetSceneId(id, services.player->CurrentFrame());
         if (!config.replay_path.empty() &&
@@ -1779,6 +2130,62 @@ int RunComposition(const GameConfig& config) {
             replay_route.push_back(id);
         }
         return true;
+    };
+
+    // The recovery slice has a deliberately small, explicit portal table.
+    // Room changes are spatial facts, not global-frame side effects.  The
+    // bounds retain the existing authored routes while making their source,
+    // destination, spawn, and facing explicit in one place.
+    struct RoomPortal {
+        const char* source_room = "";
+        float min_x = std::numeric_limits<float>::lowest();
+        float max_x = std::numeric_limits<float>::max();
+        float min_y = std::numeric_limits<float>::lowest();
+        float max_y = std::numeric_limits<float>::max();
+        const char* destination_room = "";
+        Vec3 destination_spawn;
+        float destination_yaw = 0.0f;
+        const char* unavailable_message = "Route unavailable.";
+    };
+    const std::array<RoomPortal, 6> room_portals = {{
+        {"room_01_calibration", 13.0f, std::numeric_limits<float>::max(),
+         std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(),
+         "room_service_medical", Vec3{2.5f, 7.5f, 0.0f}, 0.0f,
+         "Service route unavailable."},
+        {"room_1f_security", std::numeric_limits<float>::lowest(), 22.0f,
+         12.0f, std::numeric_limits<float>::max(), "room_service_medical",
+         Vec3{2.5f, 7.5f, 0.0f}, 0.0f, "Service route unavailable."},
+        {"room_1f_security", 20.0f, std::numeric_limits<float>::max(),
+         std::numeric_limits<float>::lowest(), 5.0f, "room_service_medical",
+         Vec3{2.5f, 7.5f, 0.0f}, 0.0f, "Service route unavailable."},
+        {"room_service_medical", 16.0f, std::numeric_limits<float>::max(),
+         std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(),
+         "room_1f_security", Vec3{2.5f, 13.5f, 0.0f}, 0.0f,
+         "Security route unavailable."},
+        {"room_service_medical", std::numeric_limits<float>::lowest(),
+         std::numeric_limits<float>::max(), 10.5f, std::numeric_limits<float>::max(),
+         "room_elevator_lobby", Vec3{2.5f, 6.5f, 0.0f}, 0.0f,
+         "Elevator route unavailable."},
+        {"room_restroom_staff", 16.0f, std::numeric_limits<float>::max(),
+         std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(),
+         "room_elevator_lobby", Vec3{2.5f, 6.5f, 0.0f}, 0.0f,
+         "Elevator route unavailable."},
+    }};
+    const auto try_room_portal = [&](const Vec3& position) {
+        const std::string& current_room = services.player->CurrentRoom();
+        for (const RoomPortal& portal : room_portals) {
+            if (current_room != portal.source_room ||
+                position.x < portal.min_x || position.x > portal.max_x ||
+                position.y < portal.min_y || position.y > portal.max_y) {
+                continue;
+            }
+            if (!switch_room(portal.destination_room, portal.destination_spawn,
+                             portal.destination_yaw)) {
+                render->SetSubtitleOnce(portal.unavailable_message, 120);
+            }
+            return true;
+        }
+        return false;
     };
 
     auto serialize_player = [&]() {
@@ -1815,7 +2222,7 @@ int RunComposition(const GameConfig& config) {
         pl_b = serialize_player();
         { Serializer s(w_b); services.world->SaveState(s); }
         { Serializer s(ai_b); services.ai->Save(s); }
-        { Serializer s(n_b); services.narrative->Storylets().Save(s); }
+        { Serializer s(n_b); services.narrative->SaveState(s); }
         sy_b = services.systemic->Serialize();
         if (sy_b.empty()) {
             render->SetSubtitleOnce("Save failed: systemic state invalid.", 180);
@@ -1878,6 +2285,11 @@ int RunComposition(const GameConfig& config) {
         uint16_t restored_health = 100;
         bool restored_dead = false;
         SystemicWorld restored_systemic;
+        WorldModule restored_world;
+        EventBus restored_events;
+        DeterministicRNG restored_rng;
+        NarrativeModule restored_narrative;
+        AutonomousNpcSystem restored_ai;
         auto fail_load = [&](const char* text) {
             render->SetSubtitleOnce(text, 180);
         };
@@ -1949,14 +2361,12 @@ int RunComposition(const GameConfig& config) {
             restored_systemic = std::move(restored.Value());
         }
         {
-            WorldModule restored_world;
             Deserializer d(world_section->data.data(), world_section->data.size());
             if (!restored_world.LoadState(d) || d.HasError() || !d.AtEnd()) {
                 fail_load("Load failed: world state rejected."); return;
             }
         }
         {
-            EventBus restored_events;
             Deserializer d(events_section->data.data(), events_section->data.size());
             restored_events.Load(d);
             if (d.HasError() || !d.AtEnd()) {
@@ -1964,7 +2374,6 @@ int RunComposition(const GameConfig& config) {
             }
         }
         {
-            DeterministicRNG restored_rng;
             Deserializer d(rng_section->data.data(), rng_section->data.size());
             restored_rng.Load(d);
             if (d.HasError() || !d.AtEnd() ||
@@ -1973,15 +2382,41 @@ int RunComposition(const GameConfig& config) {
             }
         }
         {
-            StoryletEngine restored_narrative;
             Deserializer d(narrative_section->data.data(), narrative_section->data.size());
-            restored_narrative.Load(d);
-            if (d.HasError() || !d.AtEnd()) {
+            if (!restored_narrative.LoadState(d) || d.HasError() || !d.AtEnd()) {
                 fail_load("Load failed: narrative state rejected."); return;
+            }
+        }
+        {
+            // AI identities are preflighted against a staged runtime before
+            // any live section is committed. This closes the partial-load
+            // failure where an unknown later NPC left earlier NPCs restored.
+            restored_ai.Attach(&restored_systemic, &restored_events, &restored_rng);
+            for (const auto& runtime : services.ai->Npcs()) {
+                if (!restored_ai.AddNpc(runtime.instance, runtime.room)) {
+                    fail_load("Load failed: AI runtime setup rejected."); return;
+                }
+            }
+            Deserializer ai_d(ai_section->data.data(), ai_section->data.size());
+            if (!restored_ai.Load(ai_d) || ai_d.HasError() || !ai_d.AtEnd()) {
+                fail_load("Load failed: AI state rejected."); return;
             }
         }
         if (restored_room.empty()) {
             fail_load("Load failed: incomplete player room."); return;
+        }
+        {
+            // Loading a serialized world state does not itself load room
+            // geometry. Probe the exact authored room before touching the
+            // live room/query/player state; fallback rooms are not accepted.
+            WorldModule room_probe;
+            room_probe.SetRoomOverride(restored_room);
+            room_probe.Init(ctx);
+            if (!room_probe.HasLoadedRoom() ||
+                room_probe.LoadedRoom().id !=
+                    RoomId::New(StableContentId(restored_room))) {
+                fail_load("Load failed: saved room unavailable."); return;
+            }
         }
         if (!switch_room(restored_room, restored_loco.position)) {
             fail_load("Load failed: saved room unavailable.");
@@ -1998,7 +2433,9 @@ int RunComposition(const GameConfig& config) {
         *services.systemic = std::move(restored_systemic);
         events.Load(events_d);
         sim_rng.Load(rng_d);
-        services.narrative->Storylets().Load(narrative_d);
+        if (!services.narrative->LoadState(narrative_d)) {
+            fail_load("Load failed: narrative state commit rejected."); return;
+        }
         if (!services.ai->Load(ai_d) || ai_d.HasError() || !ai_d.AtEnd() ||
             events_d.HasError() || !events_d.AtEnd() || rng_d.HasError() || !rng_d.AtEnd() ||
             narrative_d.HasError() || !narrative_d.AtEnd()) {
@@ -2059,7 +2496,19 @@ int RunComposition(const GameConfig& config) {
         const Vec3& p = services.player->Locomotion().position;
         const uint64_t frame = services.player->CurrentFrame();
         const EntityId player = slice.player;
-        const EntityId guard = EntityId::New(slice.guard_npc.GetValue());
+        NpcId interaction_guard_npc = slice.guard_npc;
+        Vec3 interaction_guard_position{15.5f, 8.5f, 0.0f};
+        if (services.player->CurrentRoom() == "room_1f_security") {
+            for (const auto& runtime : services.ai->Npcs()) {
+                if (runtime.room == services.world->LoadedRoom().id &&
+                    runtime.instance.role == Role::Guard) {
+                    interaction_guard_npc = runtime.instance.id;
+                    interaction_guard_position = runtime.instance.position;
+                    break;
+                }
+            }
+        }
+        const EntityId guard = EntityId::New(interaction_guard_npc.GetValue());
 
         if (services.player->CurrentRoom() == "room_b1_revival") {
             enum class B1TargetKind : uint8_t {
@@ -2069,24 +2518,42 @@ int RunComposition(const GameConfig& config) {
                 B1TargetKind kind = B1TargetKind::None;
                 Vec3 position;
                 float radius = 0.0f;
+                float height = 1.8f;
                 NpcId npc;
             };
             B1Target focused;
             float focused_distance = 1000000.0f;
             const Vec3 eye = services.player->Locomotion().EyePosition();
-            const float forward_x = std::cos(services.player->Locomotion().yaw);
-            const float forward_y = std::sin(services.player->Locomotion().yaw);
             const auto consider = [&](B1Target candidate, bool requires_sight) {
                 const float dx = candidate.position.x - p.x;
                 const float dy = candidate.position.y - p.y;
                 const float distance = std::sqrt(dx * dx + dy * dy);
                 if (distance > candidate.radius || distance >= focused_distance) return;
-                if (distance > 0.05f &&
-                    (dx * forward_x + dy * forward_y) / distance < 0.15f) return;
+                const Vec3 target_center{
+                    candidate.position.x, candidate.position.y,
+                    candidate.position.z + candidate.height * 0.5f};
+                const Vec3 to_target{target_center.x - eye.x,
+                                     target_center.y - eye.y,
+                                     target_center.z - eye.z};
+                const float horizontal_distance = std::sqrt(
+                    to_target.x * to_target.x + to_target.y * to_target.y);
+                if (!std::isfinite(horizontal_distance)) return;
+                const float cos_yaw = std::cos(services.player->Locomotion().yaw);
+                const float sin_yaw = std::sin(services.player->Locomotion().yaw);
+                // Interaction is a bounded world-space target, not a pixel
+                // under the reticle.  Use the horizontal body cone for
+                // selection so a close, waist-height cart is still reachable
+                // while the 3-D segment below remains the occlusion check.
+                if (horizontal_distance > 0.05f) {
+                    const float facing = (to_target.x * cos_yaw +
+                                          to_target.y * sin_yaw) / horizontal_distance;
+                    const float angular_radius = std::atan2(
+                        candidate.radius, std::max(0.05f, horizontal_distance));
+                    if (facing < std::cos(std::min(1.45f, angular_radius))) return;
+                }
                 if (requires_sight &&
                     !services.world->Query().LineOfSight(
-                        eye, Vec3{candidate.position.x, candidate.position.y, 1.0f},
-                        eye.z)) return;
+                        eye, target_center, target_center.z)) return;
                 focused = candidate;
                 focused_distance = distance;
             };
@@ -2094,18 +2561,33 @@ int RunComposition(const GameConfig& config) {
                 if (const BodyRecord* body = services.systemic->GetBody(slice.body)) {
                     if (body->room == slice.b1_room &&
                         body->disposition == BodyDisposition::Exposed) {
-                        consider(B1Target{B1TargetKind::Body, body->position, 1.5f, {}}, true);
+                        consider(B1Target{B1TargetKind::Body, body->position, 1.5f,
+                                          1.8f, {}}, true);
                     }
                 }
             }
-            consider(B1Target{B1TargetKind::Cart, Vec3{15.5f, 7.5f, 0.0f}, 1.15f, {}}, true);
-            consider(B1Target{B1TargetKind::Camera, Vec3{14.0f, 3.0f, 2.2f}, 1.45f, {}}, true);
-            consider(B1Target{B1TargetKind::Terminal, Vec3{10.0f, 7.0f, 0.0f}, 1.55f, {}}, true);
-            consider(B1Target{B1TargetKind::Gate, Vec3{21.2f, 8.5f, 0.0f}, 1.15f, {}}, false);
+            for (const auto& entity : scene_entities) {
+                    B1TargetKind kind = B1TargetKind::None;
+                    bool requires_sight = true;
+                    switch (entity.kind) {
+                    case SceneEntityKind::Cart: kind = B1TargetKind::Cart; break;
+                    case SceneEntityKind::Camera: kind = B1TargetKind::Camera; break;
+                    case SceneEntityKind::Terminal: kind = B1TargetKind::Terminal; break;
+                    case SceneEntityKind::DoorReader:
+                        kind = B1TargetKind::Gate;
+                        requires_sight = false;
+                        break;
+                    default: break;
+                    }
+                    if (kind != B1TargetKind::None) {
+                        consider(B1Target{kind, entity.position, entity.radius,
+                                          entity.height, {}}, requires_sight);
+                    }
+            }
             for (const auto& runtime : services.ai->Npcs()) {
                 if (runtime.room == slice.b1_room && runtime.instance.state != NPCState::Dead) {
                     consider(B1Target{B1TargetKind::Npc, runtime.instance.position, 1.25f,
-                                      runtime.instance.id}, true);
+                                      1.8f, runtime.instance.id}, true);
                 }
             }
 
@@ -2138,8 +2620,15 @@ int RunComposition(const GameConfig& config) {
                         render->SetSubtitleOnce("ACCESS GRANTED. B1 service door unlocked.", 180);
                     }
                 } else if (p.x > 21.4f) {
-                    slice.gate_crossed = true;
-                    if (!switch_room("room_01_calibration", Vec3{1.5f, 9.5f, 0.0f})) {
+                    if (switch_room("room_01_calibration", Vec3{1.5f, 9.5f, 0.0f}, 0.0f)) {
+                        slice.gate_crossed = true;
+                        services.world->SetBooleanFact(
+                            RuntimeFactId("fact_r1_checkpoint_reached"),
+                            player, true);
+                        (void)services.systemic->TransitionQuest(
+                            slice.opening_quest, QuestStatus::Completed, frame,
+                            "B1 service checkpoint reached");
+                    } else {
                         render->SetSubtitleOnce("Calibration room unavailable.", 120);
                     }
                 } else {
@@ -2254,10 +2743,7 @@ int RunComposition(const GameConfig& config) {
             return dx * dx + dy * dy <= radius * radius;
         };
         if (services.player->CurrentRoom() == "room_01_calibration") {
-            if (p.x > 13.0f) {
-                if (!switch_room("room_service_medical", Vec3{2.5f, 7.5f, 0.0f})) {
-                    render->SetSubtitleOnce("Service route unavailable.", 120);
-                }
+            if (try_room_portal(p)) {
                 return;
             }
             if (near(7.5f, 5.5f, 2.0f)) {
@@ -2275,7 +2761,7 @@ int RunComposition(const GameConfig& config) {
             const bool has_badge = slice.badge.IsValid() &&
                 services.systemic->ItemHeldBy(slice.badge, player) &&
                 services.systemic->ReaderAcceptsItem(slice.badge, 2);
-            if (near(15.5f, 8.5f, 2.2f)) {
+            if (near(interaction_guard_position.x, interaction_guard_position.y, 2.2f)) {
                 if (has_badge) {
                     render->SetSubtitleOnce("ACCESS GRANTED. Security checkpoint logged you.", 180);
                 } else if (!slice.bribe_done && slice.cash.IsValid() &&
@@ -2300,10 +2786,7 @@ int RunComposition(const GameConfig& config) {
                 }
                 return;
             }
-            if (p.y > 12.0f && p.x < 22.0f) {
-                if (!switch_room("room_service_medical", Vec3{2.5f, 7.5f, 0.0f})) {
-                    render->SetSubtitleOnce("Service route unavailable.", 120);
-                }
+            if (try_room_portal(p)) {
                 return;
             }
             if (p.x < 8.0f && p.y < 5.0f) {
@@ -2319,29 +2802,19 @@ int RunComposition(const GameConfig& config) {
                 render->SetSubtitleOnce("STAFF ROUTE: maintenance shift change at 02:10.", 180);
                 return;
             }
-            if (p.x > 20.0f && p.y < 5.0f) {
-                switch_room("room_service_medical", Vec3{2.5f, 7.5f, 0.0f});
-                return;
-            }
             render->SetSubtitleOnce("1F: checkpoint, staff route, or maintenance access.", 100);
             return;
         }
 
         if (services.player->CurrentRoom() == "room_service_medical") {
-            if (p.x > 16.0f) {
-                switch_room("room_1f_security", Vec3{2.5f, 13.5f, 0.0f});
-            } else if (p.y > 10.5f) {
-                switch_room("room_elevator_lobby", Vec3{2.5f, 6.5f, 0.0f});
-            } else {
+            if (!try_room_portal(p)) {
                 render->SetSubtitleOnce("MEDICAL: supplies are logged before they are used.", 160);
             }
             return;
         }
 
         if (services.player->CurrentRoom() == "room_restroom_staff") {
-            if (p.x > 16.0f) {
-                switch_room("room_elevator_lobby", Vec3{2.5f, 6.5f, 0.0f});
-            } else {
+            if (!try_room_portal(p)) {
                 render->SetSubtitleOnce("STAFF ROUTE: a service door stands open.", 140);
             }
             return;
@@ -2390,11 +2863,13 @@ int RunComposition(const GameConfig& config) {
         const Room& room = services.world->LoadedRoom();
         render->SetGridData(room.grid.Data().data(),
                             room.grid.Width(), room.grid.Height());
+        render->SetActiveRoom(room.id);
     }
     engine.SetRenderModule(render.get());
 
     const int result = engine.Run(config.max_frames);
     events.Unregister(player_damage_consumer);
+    events.Unregister(speech_consumer);
 
     // Discovery is an event-ledger fact, not an inference from the cleaner's
     // loop count.  Derive the slice receipts from the events that actually
@@ -2586,7 +3061,7 @@ int RunComposition(const GameConfig& config) {
         }
         {
             Serializer s(narrative_bytes);
-            services.narrative->Storylets().Save(s);
+            services.narrative->SaveState(s);
         }
         sections.push_back({SaveSectionId::Player, std::move(player_bytes)});
         sections.push_back({SaveSectionId::World, std::move(world_bytes)});
@@ -2680,9 +3155,8 @@ int RunComposition(const GameConfig& config) {
             if (sec.id == SaveSectionId::Narrative) {
                 found_narrative = true;
                 Deserializer d(sec.data.data(), sec.data.size());
-                StoryletEngine restored_narrative;
-                restored_narrative.Load(d);
-                if (d.HasError() || !d.AtEnd()) {
+                NarrativeModule restored_narrative;
+                if (!restored_narrative.LoadState(d) || d.HasError() || !d.AtEnd()) {
                     std::fprintf(stderr, "narrative section restore failed\n");
                     return 5;
                 }

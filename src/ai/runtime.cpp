@@ -134,12 +134,15 @@ bool AutonomousNpcSystem::AddObservationMemory(const RuntimeNpc& runtime,
                                         : MemoryKind::EventRecall;
     const KnowledgeSource source = sees_player ? KnowledgeSource::DirectWitness
                                                : KnowledgeSource::HeardSound;
-    const char* semantic_tag = sees_player ? "player_observed" : "gunshot_heard";
+    const char* semantic_tag = sees_player ? "player_observed"
+                                           : "gunshot_heard_unknown";
     const float salience = sees_player ? 0.85f : 0.55f;
     const float confidence = sees_player ? perception.sight_confidence
                                         : std::clamp(perception.noise_loudness, 0.0f, 1.0f);
     const EntityId npc = EntityId::New(runtime.instance.id.GetValue());
-    const EntityId player = EntityId::New(1);
+    // Hearing a shot supplies a location/stimulus, not attribution.  Only a
+    // sight observation may name the player as the observed subject.
+    const EntityId subject = sees_player ? EntityId::New(1) : EntityId::Invalid();
 
     // Perception runs at 10 Hz, but a continuous sight/noise stimulus is one
     // semantic fact. Refresh the existing record for a bounded window instead
@@ -148,8 +151,8 @@ bool AutonomousNpcSystem::AddObservationMemory(const RuntimeNpc& runtime,
     for (auto it = prior.rbegin(); it != prior.rend(); ++it) {
         const bool same_tag = std::find(it->tags.begin(), it->tags.end(), semantic_tag) !=
                               it->tags.end();
-        if (it->kind == kind && it->source == source && it->subject == player &&
-            it->target == player && it->room == runtime.room && same_tag &&
+        if (it->kind == kind && it->source == source && it->subject == subject &&
+            it->target == subject && it->room == runtime.room && same_tag &&
             frame >= it->frame && frame - it->frame <= kMemoryRefreshWindowFrames) {
             return systemic_->RefreshMemory(it->id, frame,
                                              std::max(it->confidence, confidence),
@@ -161,8 +164,8 @@ bool AutonomousNpcSystem::AddObservationMemory(const RuntimeNpc& runtime,
     memory.id = MemoryId::New(NextMemoryId(*systemic_));
     memory.npc = npc;
     memory.kind = kind;
-    memory.subject = EntityId::New(1);
-    memory.target = EntityId::New(1);
+    memory.subject = subject;
+    memory.target = subject;
     memory.room = runtime.room;
     memory.frame = frame;
     memory.salience = salience;
@@ -547,12 +550,16 @@ bool AutonomousNpcSystem::Load(Deserializer& deserializer) {
         deserializer.MarkError();
         return false;
     }
+    // Preflight every identity before applying any live runtime mutation.
+    // A corrupt later record must not leave earlier NPCs half-restored.
     for (const auto& value : saved) {
-        RuntimeNpc* runtime = FindRuntimeNpc(value.id);
-        if (runtime == nullptr) {
+        if (FindRuntimeNpc(value.id) == nullptr) {
             deserializer.MarkError();
             return false;
         }
+    }
+    for (const auto& value : saved) {
+        RuntimeNpc* runtime = FindRuntimeNpc(value.id);
         runtime->room = value.room;
         runtime->instance.position = value.position;
         runtime->instance.yaw = value.yaw;

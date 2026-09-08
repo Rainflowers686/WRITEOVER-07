@@ -34,6 +34,13 @@ bool StoryletEngine::HasFired(StoryletId id) const {
 void StoryletEngine::MarkFired(StoryletId id) { fired_.insert(id); }
 
 namespace {
+
+constexpr size_t kMaxStoryletString = 4096;
+
+bool IsNpcState(uint8_t value) {
+    return value < static_cast<uint8_t>(NPCState::Count);
+}
+
 bool EvalCondition(const StoryletCondition& condition,
                    const FactStore& facts,
                    const std::vector<RoomId>& visited_rooms,
@@ -161,16 +168,32 @@ void StoryletEngine::Load(Deserializer& d) {
     storylets_.clear();
     fired_.clear();
     const uint32_t storylet_count = d.ReadU32();
+    if (storylet_count > 512) {
+        d.MarkError();
+        return;
+    }
     for (uint32_t i = 0; i < storylet_count; ++i) {
         Storylet storylet;
         storylet.id = ReadId<StoryletId>(d);
         storylet.text_id = d.ReadString();
         storylet.priority = d.ReadU16();
-        storylet.once = d.ReadU8() != 0;
+        const uint8_t once = d.ReadU8();
+        if (d.HasError() || !storylet.id.IsValid() ||
+            storylet.text_id.size() > kMaxStoryletString || once > 1) {
+            d.MarkError();
+            return;
+        }
+        storylet.once = once != 0;
+        for (const auto& prior : storylets_) {
+            if (prior.id == storylet.id) {
+                d.MarkError();
+                return;
+            }
+        }
         const uint32_t condition_count = d.ReadU32();
         if (condition_count > 64) {
-            d.ReadU64();
-            continue;
+            d.MarkError();
+            return;
         }
         for (uint32_t j = 0; j < condition_count; ++j) {
             const uint8_t index = d.ReadU8();
@@ -179,19 +202,32 @@ void StoryletEngine::Load(Deserializer& d) {
                 FactEqualsCondition c;
                 c.fact = ReadId<FactId>(d);
                 c.equals = d.ReadU8() != 0;
+                if (!c.fact.IsValid()) {
+                    d.MarkError();
+                    return;
+                }
                 storylet.conditions.push_back(c);
                 break;
             }
             case 1: {
                 RoomVisitedCondition c;
                 c.room = ReadId<RoomId>(d);
+                if (!c.room.IsValid()) {
+                    d.MarkError();
+                    return;
+                }
                 storylet.conditions.push_back(c);
                 break;
             }
             case 2: {
                 NpcStateCondition c;
                 c.npc = ReadId<NpcId>(d);
-                c.state = static_cast<NPCState>(d.ReadU8());
+                const uint8_t state = d.ReadU8();
+                if (!c.npc.IsValid() || !IsNpcState(state)) {
+                    d.MarkError();
+                    return;
+                }
+                c.state = static_cast<NPCState>(state);
                 storylet.conditions.push_back(c);
                 break;
             }
@@ -211,18 +247,22 @@ void StoryletEngine::Load(Deserializer& d) {
             case 5: {
                 FlagCondition c;
                 c.flag = d.ReadString();
+                if (c.flag.size() > kMaxStoryletString) {
+                    d.MarkError();
+                    return;
+                }
                 storylet.conditions.push_back(c);
                 break;
             }
             default:
-                d.ReadU64();
-                break;
+                d.MarkError();
+                return;
             }
         }
         const uint32_t action_count = d.ReadU32();
         if (action_count > 32) {
-            d.ReadU64();
-            continue;
+            d.MarkError();
+            return;
         }
         for (uint32_t j = 0; j < action_count; ++j) {
             const uint8_t index = d.ReadU8();
@@ -231,12 +271,20 @@ void StoryletEngine::Load(Deserializer& d) {
                 NarratorLineAction a;
                 a.text_id = d.ReadString();
                 a.persona = d.ReadU8();
+                if (a.text_id.size() > kMaxStoryletString) {
+                    d.MarkError();
+                    return;
+                }
                 storylet.actions.push_back(a);
                 break;
             }
             case 1: {
                 DialogAction a;
                 a.text_id = d.ReadString();
+                if (a.text_id.size() > kMaxStoryletString) {
+                    d.MarkError();
+                    return;
+                }
                 storylet.actions.push_back(a);
                 break;
             }
@@ -253,8 +301,8 @@ void StoryletEngine::Load(Deserializer& d) {
                 break;
             }
             default:
-                d.ReadU64();
-                break;
+                d.MarkError();
+                return;
             }
         }
         storylets_.push_back(std::move(storylet));
@@ -270,9 +318,15 @@ void StoryletEngine::Load(Deserializer& d) {
     // may only contain definitions). This fixes F-08.
     if (d.Remaining() >= 4) {
         const uint32_t fired_count = d.ReadU32();
-        if (d.Remaining() >= fired_count * 8) {  // StoryletId is 8 bytes
-            for (uint32_t i = 0; i < fired_count; ++i) {
-                fired_.insert(ReadId<StoryletId>(d));
+        if (fired_count > d.Remaining() / 8) {  // StoryletId is 8 bytes
+            d.MarkError();
+            return;
+        }
+        for (uint32_t i = 0; i < fired_count; ++i) {
+            const StoryletId id = ReadId<StoryletId>(d);
+            if (d.HasError() || !id.IsValid() || !fired_.insert(id).second) {
+                d.MarkError();
+                return;
             }
         }
     }
@@ -291,7 +345,7 @@ Result<void> StoryletEngine::LoadBinary(const std::string& path) {
     // the payload with the shared Load format.
     Deserializer d(bytes.data() + 8, bytes.size() - 8);
     Load(d);
-    if (d.HasError()) {
+    if (d.HasError() || !d.AtEnd()) {
         return Result<void>::Err(301, "storylet content corrupted: " + path);
     }
     return Result<void>::Ok();

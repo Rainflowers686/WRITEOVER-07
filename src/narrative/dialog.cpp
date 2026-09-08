@@ -48,6 +48,12 @@ void DialogueQueue::Save(Serializer& s) const {
 void DialogueQueue::Load(Deserializer& d) {
     queue_.clear();
     const uint32_t count = d.ReadU32();
+    constexpr uint32_t kMaxDialogueLines = 512;
+    constexpr size_t kMaxDialogueText = 4096;
+    if (d.HasError() || count > kMaxDialogueLines) {
+        d.MarkError();
+        return;
+    }
     for (uint32_t i = 0; i < count; ++i) {
         SubtitleLine line;
         line.text = d.ReadString();
@@ -56,6 +62,10 @@ void DialogueQueue::Load(Deserializer& d) {
         line.speaker_id = ReadId<NpcId>(d);
         line.persona = d.ReadU8();
         line.tag = d.ReadU32();
+        if (d.HasError() || line.text.size() > kMaxDialogueText) {
+            d.MarkError();
+            return;
+        }
         queue_.push_back(line);
     }
 }

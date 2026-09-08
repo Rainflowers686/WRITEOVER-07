@@ -51,6 +51,7 @@ void CausalityLedger::Load(Deserializer& d) {
     count_ = 0;
     const uint32_t count = d.ReadU32();
     if (count > kCausalityLedgerCapacity) {
+        d.MarkError();
         return;
     }
     for (uint32_t i = 0; i < count; ++i) {
@@ -58,7 +59,13 @@ void CausalityLedger::Load(Deserializer& d) {
         e.event_id = ReadId<EventId>(d);
         e.parent_event_id = ReadId<EventId>(d);
         e.sim_frame = d.ReadU64();
-        e.kind = static_cast<EventKind>(d.ReadU8());
+        const uint8_t kind = d.ReadU8();
+        if (d.HasError() || !e.event_id.IsValid() ||
+            kind > static_cast<uint8_t>(EventKind::Notification)) {
+            d.MarkError();
+            return;
+        }
+        e.kind = static_cast<EventKind>(kind);
         ring_[i] = e;
         ++count_;
     }

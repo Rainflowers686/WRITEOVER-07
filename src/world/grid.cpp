@@ -80,12 +80,20 @@ bool GridWorldQuery::AabbBlocked(const AABB& box) const {
 bool GridWorldQuery::LineOfSight(const Vec3& a, const Vec3& b, float eye_z) const {
     const Vec3 delta = b - a;
     const float distance = std::sqrt(delta.x * delta.x + delta.y * delta.y);
+    if (!std::isfinite(a.z) || !std::isfinite(b.z) || !std::isfinite(eye_z)) {
+        return false;
+    }
     const float step = 0.5f;
     const int steps = static_cast<int>(distance / step);
     for (int i = 0; i <= steps; ++i) {
         const float t = distance > 0.0f ? static_cast<float>(i) * step / distance : 0.0f;
         const float x = a.x + delta.x * t;
         const float y = a.y + delta.y * t;
+        // The legacy eye_z parameter remains as a compatibility fallback for
+        // callers that provide a degenerate endpoint, but normal sight and
+        // interaction now validate the complete 3-D segment.
+        const float sample_z = (std::fabs(delta.z) > kEpsPosition)
+                                   ? a.z + delta.z * t : eye_z;
         const int32_t col = static_cast<int32_t>(std::floor(x));
         const int32_t row = static_cast<int32_t>(std::floor(y));
         if (!grid_->InBounds(col, row)) {
@@ -95,8 +103,8 @@ bool GridWorldQuery::LineOfSight(const Vec3& a, const Vec3& b, float eye_z) cons
         if (cell.IsSolid()) {
             return false;
         }
-        if (cell.floor_height > eye_z + kEpsPosition ||
-            cell.ceiling_height < eye_z - kEpsPosition) {
+        if (cell.floor_height > sample_z + kEpsPosition ||
+            cell.ceiling_height < sample_z - kEpsPosition) {
             return false;
         }
     }

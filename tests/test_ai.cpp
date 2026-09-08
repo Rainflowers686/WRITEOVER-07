@@ -10,6 +10,7 @@
 #include "writeover/world/grid.h"
 
 #include <array>
+#include <cstring>
 
 namespace writeover {
 
@@ -69,6 +70,28 @@ bool PerceptionHearsNoise() {
     const auto result = system.Update(npc, query, Vec3{10.0f, 10.0f, 0.0f},
                                       1.0f, noises, 10);
     return result.hears_noise;
+}
+
+bool PerceptionWallMufflesNoise() {
+    Grid grid = MakeViewGrid();
+    for (int32_t row = 0; row < grid.Height(); ++row) {
+        GridCell wall;
+        wall.flags = CellFlag_Solid;
+        grid.SetCell(4, row, wall);
+    }
+    GridWorldQuery query(&grid);
+    NPCInstance npc;
+    npc.id = NpcId::New(2);
+    npc.position = Vec3{1.5f, 3.5f, 0.0f};
+    npc.yaw = 0.0f;
+    PerceptionSystem system;
+    const std::vector<NoiseSource> noises = {
+        NoiseSource{Vec3{6.5f, 3.5f, kEyeStand}, 0.9f, 9}};
+    const auto result = system.Update(npc, query, Vec3{7.0f, 5.0f, 0.0f},
+                                      kEyeStand, noises, 10);
+    // The noise remains potentially audible, but its confidence is reduced
+    // by the intervening wall rather than treating hearing as omniscient.
+    return result.hears_noise && result.noise_loudness < 0.2f;
 }
 
 bool GoapPlansSimpleChain() {
@@ -459,6 +482,11 @@ bool AutonomousRepeatedGunshotsRefreshOneMemory() {
     WO_CHECK(systemic.MemoryCount() == 1);
     const auto first = systemic.MemoriesOf(EntityId::New(13));
     WO_CHECK(first.size() == 1 && first.front().frame == 24);
+    // A sound heard without line-of-sight is a real observation, but it does
+    // not prove who fired.  Attribution must wait for a visual/provenance
+    // event rather than being smuggled in as a player memory.
+    WO_CHECK(first.front().source == KnowledgeSource::HeardSound &&
+             !first.front().subject.IsValid() && !first.front().target.IsValid());
 
     // After the refresh window, the same sound semantic is a new event.
     post_gunshot(636);
@@ -515,12 +543,58 @@ bool AutonomousIncapacitatedCleanerCannotWitness() {
     return true;
 }
 
+bool AutonomousLoadDoesNotPartiallyMutateOnUnknownNpc() {
+    SystemicWorld systemic;
+    EventBus events;
+    DeterministicRNG rng(0x8642);
+    AutonomousNpcSystem source;
+    source.Attach(&systemic, &events, &rng);
+
+    NPCInstance first;
+    first.id = NpcId::New(71);
+    first.position = Vec3{1.5f, 1.5f, 0.0f};
+    NPCInstance second;
+    second.id = NpcId::New(72);
+    second.position = Vec3{3.5f, 1.5f, 0.0f};
+    WO_CHECK(source.AddNpc(first, RoomId::New(1)));
+    WO_CHECK(source.AddNpc(second, RoomId::New(1)));
+
+    std::vector<uint8_t> bytes;
+    Serializer serializer(bytes);
+    source.Save(serializer);
+    // v2 runtime records are 45 bytes each after the version/count header.
+    // Replace only the second ID with a valid-but-unregistered identity.
+    constexpr size_t kSecondNpcIdOffset = 8 + 45;
+    WO_CHECK(bytes.size() >= kSecondNpcIdOffset + sizeof(uint64_t));
+    const uint64_t unknown_id = 0x72000000000003E7ull;
+    for (size_t i = 0; i < sizeof(unknown_id); ++i) {
+        bytes[kSecondNpcIdOffset + i] =
+            static_cast<uint8_t>((unknown_id >> (i * 8)) & 0xffu);
+    }
+
+    AutonomousNpcSystem target;
+    target.Attach(&systemic, &events, &rng);
+    first.position = Vec3{9.5f, 9.5f, 0.0f};
+    WO_CHECK(target.AddNpc(first, RoomId::New(1)));
+    WO_CHECK(target.AddNpc(second, RoomId::New(1)));
+    const Vec3 before = target.Npcs().front().instance.position;
+    Deserializer deserializer(bytes.data(), bytes.size());
+    WO_CHECK(!target.Load(deserializer));
+    WO_CHECK(deserializer.HasError());
+    WO_CHECK(target.Npcs().front().instance.position.x == before.x &&
+             target.Npcs().front().instance.position.y == before.y);
+    WO_CHECK(target.Npcs()[1].instance.position.x == second.position.x &&
+             target.Npcs()[1].instance.position.y == second.position.y);
+    return true;
+}
+
 } // namespace
 
 void RegisterAiTests(TestHarness& test) {
     test.Add("ai.perception_sees_open", &PerceptionSeesInOpen);
     test.Add("ai.perception_blocked_wall", &PerceptionBlockedByWall);
     test.Add("ai.perception_hears_noise", &PerceptionHearsNoise);
+    test.Add("ai.perception_wall_muffles_noise", &PerceptionWallMufflesNoise);
     test.Add("ai.goap_plans_chain", &GoapPlansSimpleChain);
     test.Add("ai.goap_no_plan_impossible", &GoapNoPlanWhenImpossible);
     test.Add("ai.memory_recall_order", &MemoryRecallOrdered);
@@ -538,6 +612,8 @@ void RegisterAiTests(TestHarness& test) {
              &AutonomousRepeatedGunshotsRefreshOneMemory);
     test.Add("ai.incapacitated_cleaner_cannot_witness",
              &AutonomousIncapacitatedCleanerCannotWitness);
+    test.Add("ai.load_unknown_npc_is_atomic",
+             &AutonomousLoadDoesNotPartiallyMutateOnUnknownNpc);
 }
 
 } // namespace writeover

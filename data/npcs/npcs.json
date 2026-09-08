@@ -7,7 +7,7 @@
       "cognition": "SemiHuman",
       "faction": "Security",
       "role": "Guard",
-      "spawn": {"room": "room_b1_revival", "x": 8.5, "y": 5.5, "yaw": 2.11},
+      "spawn": {"room": "room_1f_security", "x": 15.5, "y": 8.5, "yaw": 2.61},
       "health": 100,
       "isCritical": false,
       "perception": {"sightRange": 12.0, "sightFovRad": 2.09, "hearingRange": 8.0}

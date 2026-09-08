@@ -60,6 +60,8 @@ PerceptionResult PerceptionSystem::Update(const NPCInstance& npc,
                                     ? npc.hearing_range
                                     : 8.0f;
     float best_loudness = 0.0f;
+    const Vec3 npc_eye{npc.position.x, npc.position.y,
+                       npc.position.z + GetPostureParams(Posture::Stand).eye_height};
     for (const auto& noise : noises) {
         if (sim_frame - noise.sim_frame > 120) {
             continue;  // stale after ~1 second
@@ -67,8 +69,13 @@ PerceptionResult PerceptionSystem::Update(const NPCInstance& npc,
         const float dx = noise.position.x - npc.position.x;
         const float dy = noise.position.y - npc.position.y;
         const float d = std::sqrt(dx * dx + dy * dy) + 0.001f;
-        const float loud = noise.loudness *
-                           std::max(0.0f, 1.0f - d / hearing_range);
+        float loud = noise.loudness *
+                     std::max(0.0f, 1.0f - d / hearing_range);
+        // A wall muffles a sound instead of making the listener omniscient.
+        // This remains a bounded perception rule, not a full acoustic model.
+        if (!world.LineOfSight(npc_eye, noise.position, npc_eye.z)) {
+            loud *= 0.2f;
+        }
         if (loud > best_loudness) {
             best_loudness = loud;
             result.hears_noise = true;

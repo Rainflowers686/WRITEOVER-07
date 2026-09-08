@@ -1,5 +1,6 @@
 #include "tests/test_harness.h"
 
+#include "writeover/core/engine.h"
 #include "writeover/core/profile.h"
 #include "writeover/core/save.h"
 #include "writeover/core/settings.h"
@@ -161,6 +162,36 @@ bool ProfileRoundTrip() {
     return out.death_count == 3 && out.load_count == 1 && out.endings_seen == 2;
 }
 
+class CountingModule final : public IEngineModule {
+public:
+    void Init(const EngineContext&) override {}
+    void Shutdown() override {}
+    void SimTick(const SimClock&) override { ++ticks; }
+    const char* Name() const override { return "test"; }
+    int ticks = 0;
+};
+
+class CountingRender final : public IRenderModule {
+public:
+    void RenderFrame(uint64_t, float) override { ++frames; }
+    const char* Name() const override { return "test-render"; }
+    int frames = 0;
+};
+
+bool EnginePresentsOncePerFixedStep() {
+    SimClock clock;
+    EngineContext context;
+    context.clock = &clock;
+    Engine engine;
+    engine.SetContext(context);
+    CountingModule module;
+    CountingRender render;
+    engine.RegisterModule(&module);
+    engine.SetRenderModule(&render);
+    WO_CHECK_EQ(engine.Run(1), 0);
+    return module.ticks == 1 && render.frames == 1;
+}
+
 } // namespace
 
 void RegisterCoreTests(TestHarness& test) {
@@ -173,6 +204,7 @@ void RegisterCoreTests(TestHarness& test) {
     test.Add("settings.context_bindings_round_trip", &SettingsContextBindingsRoundTrip);
     test.Add("settings.legacy_binding_migrates_to_gameplay", &SettingsLegacyBindingMigratesToGameplay);
     test.Add("profile.round_trip", &ProfileRoundTrip);
+    test.Add("engine.presents_once_per_fixed_step", &EnginePresentsOncePerFixedStep);
 }
 
 } // namespace writeover
