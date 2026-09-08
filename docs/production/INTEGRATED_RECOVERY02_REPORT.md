@@ -250,6 +250,28 @@ finding ledger and post-implementation disposition are in
   pushes trigger CI. `.github/workflows/release.yml` is gated by `v*` tags or
   explicit manual dispatch, so a normal main push does not create a release.
 
+### Post-push receipt
+
+The focused implementation and report commits were pushed normally.  The
+remote receipt for the implementation/report checkpoint is:
+
+```text
+PUSHED_HEAD=eef4a62260eaa1a14f308de4e366c2f4d88e7403
+REMOTE_MAIN=eef4a62260eaa1a14f308de4e366c2f4d88e7403
+REMOTE_CI_RUN=34199575169
+REMOTE_CI=SUCCESS
+REPOSITORY=https://github.com/Rainflowers686/WRITEOVER-07
+DEFAULT_BRANCH=main
+REPOSITORY_VISIBILITY=PUBLIC (unchanged; not modified by this task)
+RELEASE_LIST=v0.1.0-pvs01-gold only; no new release created
+OLD_TAG_SHA=2286129141c0155e6b5a7e81c4db23984efe8e00 (unchanged)
+```
+
+The current local worktree remains dirty only because pre-existing visual
+evidence, the earlier visual report, and settings files were intentionally
+preserved outside these focused commits.  No current-task source or report
+file is left unstaged in that preserved set.
+
 ## Verdict
 
 `READY_FOR_RAIN_SYSTEM_REVIEW`
