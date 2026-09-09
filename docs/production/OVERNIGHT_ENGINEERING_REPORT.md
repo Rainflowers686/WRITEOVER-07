@@ -147,4 +147,23 @@ ALPHA03_LOCAL_REGRESSION = PASS
 ALPHA03_REMOTE_CI = PASS (run 34374763958; final head a4ad377e7330a4413c49da4078ee2999a3468f83; all five jobs)
 AUDIT02B = NOT_COMPLETE
 FINAL_STATUS = NOT_READY
+
+## Alpha-04 continuation addendum — current-head truth
+
+Audit-02B has since completed its mechanical coverage gate and was reconciled
+against implementation checkpoint `71d2aa01efea5e6b7f08035bd66146956eb5bcd1`.
+The complete 29-record ledger is
+`docs/audit/CHAPTER01_AUDIT02B_REMEDIATION.md`; it contains 0 unclassified
+records, 0 current Fatal, and 0 current P0. The current Alpha-04 engineering
+receipt is `docs/production/ALPHA04_CHAPTER01_NEAR_BETA_REPORT.md`.
+
+Fresh local receipts at this implementation content are Debug/Release build
+and CTest, 208/208 direct tests in each configuration, content 13/13,
+systemic schema 10/10, invalid seed, static audit COUNT=0, contract, Debug/
+Release smoke, 19/19 replay gate, 36-row scenario classification, 8/8 save
+fault rollback probes, package positive/negative smoke, and Release benchmark.
+The implementation checkpoint adds only focused runtime/test/package/contract
+closure; it does not claim complete enemy combat AI or manual visual
+acceptance. The normal `main` push and final-head remote CI receipt are still
+pending at this pre-push addendum.
 ```

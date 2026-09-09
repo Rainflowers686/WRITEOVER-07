@@ -226,3 +226,57 @@ GitHub Actions run `34374763958` completed `success` for final head
 `a4ad377e7330a4413c49da4078ee2999a3468f83`; all five configured jobs passed,
 including the Windows 18-case replay gate, clean package smoke and benchmark.
 This remote receipt does not change the incomplete Audit-02B coverage status.
+
+## Alpha-04 continuation — Audit-02B remediation current-head receipt
+
+This is an additive current-head receipt. Earlier Alpha-01/02/03 sections are
+historical records and are not rewritten here.
+
+```text
+IMPLEMENTATION_HEAD = 71d2aa01efea5e6b7f08035bd66146956eb5bcd1
+ORIGIN_MAIN_AT_START = 29a13aa03f50c1c67de32e198490300a4969d849
+AUDIT02B_COVERAGE = PASS
+AUDIT02B_FINDINGS = 29
+AUDIT02B_UNCLASSIFIED = 0
+AUDIT02B_CURRENT_CLASSIFICATION = 8 CONFIRMED_CURRENT / 11 ALREADY_FIXED_BY_PARALLEL_WORK / 2 STALE_AFTER_CHANGE / 4 FUTURE_SCOPE / 4 FALSE_POSITIVE
+NORMAL_PLAYER_QUIT = VERIFIED_BOUNDED
+PUBLIC_HEADER_COMPILE_GATE = VERIFIED
+SYSTEMIC_SAVE_FAILURE_PROPAGATION = VERIFIED_BOUNDED
+PACKAGE_RUNTIME_ASSETS = VERIFIED_BOUNDED
+PACKAGE_SMOKE_RESOURCE_GATE = VERIFIED
+REPLAY_GATE = 19/19
+SCENARIO_MATRIX = 36 rows / 18 authored executions PASS / 18 INVALID_SETUP
+SAVE_FAULT_MATRIX = 8/8 expected rollback probes
+COMPLETE_ENEMY_COMBAT = NOT_CLAIMED
+MANUAL_PLAY = PENDING_MANUAL
+FRONTEND_TERMINAL_ACCEPTANCE = PENDING_MANUAL
+REMOTE_CI = PENDING_PUSH
+```
+
+| Capability | Alpha-04 current status | Evidence / boundary |
+|---|---|---|
+| `TERMINAL_NORMAL_LAUNCH` | `VERIFIED_BOUNDED` | The production quit path now consumes the existing paused `Q` affordance, requests engine stop, and shuts down registered modules. Non-foreground probes still honestly report the Win32 compatibility fallback; foreground Windows Terminal acceptance is manual and pending. |
+| `SCENE_ENTITY_AUTHORED` | `VERIFIED_BOUNDED` | The existing authored `SceneRuntime` records remain the shared source for current B1/Chapter One interaction and rendering; no new scene content was added in this remediation. |
+| `ROOM_LINK_AUTHORED` | `VERIFIED_BOUNDED` | Existing authored links and bounded transition predicates remain the Chapter One route authority; no new transition architecture was introduced. |
+| `GENERAL_NAVIGATION` | `VERIFIED_BOUNDED` | Existing bounded grid/motor path is covered by current AI and Chapter One replay evidence; this receipt does not claim a general navmesh or crowd system. |
+| `PATROL_RUNTIME` | `VERIFIED_BOUNDED` | Existing patrol motor/decision path is exercised by current Chapter One runtime and scenario receipts. |
+| `INVESTIGATE_RUNTIME` | `VERIFIED_BOUNDED` | Existing reachable noise/body investigation path is exercised; no teleport-on-arrival claim is made. |
+| `GUARD_COMBAT` | `VERIFIED_BOUNDED` | Active-room, LOS, range, cadence and health/death proof are current. This remains bounded Chapter One combat proof, not complete enemy combat AI. |
+| `STEALTH_COUNTERFACTUAL` | `VERIFIED_BOUNDED` | Existing posture/movement/light/distance visibility counterfactual remains covered by tests; no larger stealth framework is claimed. |
+| `MEMORY_BEHAVIORAL_USE` | `VERIFIED` | Cleaner relationship/history changes later discovery response and survives save/load in current replay evidence. |
+| `PISTOL_PRESENTATION` | `VERIFIED_BOUNDED` | Existing Character-Art pistol path is preserved; no new art or visual-gold claim is made here. |
+| `SMG_TRUTH` | `DEFER_ASTRA` | Existing slot is outside the bounded Alpha-04 core route; no new SMG content is claimed. |
+| `STUNNER_TRUTH` | `VERIFIED` | Existing non-lethal route reaches unconscious body/search/drag/hide semantics. |
+| `ADS` | `DISABLED_BY_DESIGN` | Release-facing text no longer advertises active ADS. A future ADS feature needs a separate contract. |
+| `DIRECTIONAL_ART` | `VERIFIED_BOUNDED` | Existing authored/meaningfully distinct directional path remains bounded; final art acceptance is manual. |
+| `LOD_HYSTERESIS` | `VERIFIED_BOUNDED` | Existing visual-state LOD behavior remains outside this audit remediation; no new renderer was introduced. |
+| `NARRATIVE_TEXT` | `VERIFIED_BOUNDED` | Packaged authored text is present and the current replay route resolves natural-language text; missing-resource package probes fail closed. |
+| `NARRATIVE_VISIBLE_ACTION` | `VERIFIED_BOUNDED` | Current replay receipts assert visible authored action/text, separate from diagnostic identifiers. |
+| `QUEST_PRESENTATION` | `VERIFIED_BOUNDED` | Current receipts distinguish objective presentation during the active route from a completed quest clearing its active objective. |
+| `TRANSACTIONAL_FINAL_COMMIT` | `VERIFIED` | All eight final-commit fault stages preserve rollback semantics in the current save fault matrix. |
+| `HISTORY_SAVE_LOAD` | `VERIFIED_BOUNDED` | Mid-route save/load and Cleaner history replay receipts pass; this is not a claim for every future content combination. |
+| `PACKAGE_RUNTIME_ASSETS` | `VERIFIED_BOUNDED` | Clean package includes required binaries plus authored character/text resources and keeps user data outside the package resource root. |
+| `PACKAGE_SMOKE_RESOURCE_GATE` | `VERIFIED` | Positive package smoke passes; a derived archive with required authored art removed fails as an expected negative probe. |
+| `FULL_REPLAY_GATE` | `VERIFIED` | Current Release gate runs 19 cases: the 5 Recovery cases, 4 Alpha cases, 6 Chapter One cases, 3 current regression fixtures, and the normal-quit case. Each separates process exit, input consumption, expected state, and replay result. |
+| `SCENARIO_MATRIX` | `VERIFIED_BOUNDED` | 36 rows are classified; 18 valid authored fixtures execute and pass (11 success, 5 denial, 2 failure/recovery), while 18 are explicitly `INVALID_SETUP`. |
+| `FRONTEND_TERMINAL_ACCEPTANCE` | `PENDING_MANUAL` | Current automated non-foreground output reports its fallback honestly; no foreground visual acceptance is fabricated from pipe/replay output. |

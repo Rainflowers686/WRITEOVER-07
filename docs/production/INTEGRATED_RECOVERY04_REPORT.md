@@ -265,3 +265,15 @@ head is `a4ad377e7330a4413c49da4078ee2999a3468f83`; GitHub Actions run
 `34374763958` completed successfully for all five jobs, including the Windows
 18-case replay/package/benchmark path and the Linux/macOS/ARM gates. No release,
 tag or Steam action was invoked.
+
+## Alpha-04 continuation note
+
+The supplemental Audit-02B coverage gate is now mechanically complete and its
+29 findings are reconciled at current implementation checkpoint
+`71d2aa01efea5e6b7f08035bd66146956eb5bcd1` in
+`docs/audit/CHAPTER01_AUDIT02B_REMEDIATION.md`. The focused checkpoint closes
+normal quit/module shutdown, public-header compilation, Systemic failure
+propagation, and the current 19-case replay receipt while preserving the
+bounded Chapter One scope. Local current-head regression is recorded in
+`docs/production/ALPHA04_CHAPTER01_NEAR_BETA_REPORT.md`; normal push and
+final-head remote CI are intentionally not claimed until performed.
