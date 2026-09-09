@@ -144,7 +144,7 @@ findings handoff. Consequently:
 
 ```text
 ALPHA03_LOCAL_REGRESSION = PASS
-ALPHA03_REMOTE_CI = NOT_RUN (implementation not pushed at this receipt)
+ALPHA03_REMOTE_CI = PASS (run 34374763958; final head a4ad377e7330a4413c49da4078ee2999a3468f83; all five jobs)
 AUDIT02B = NOT_COMPLETE
 FINAL_STATUS = NOT_READY
 ```

@@ -28,8 +28,8 @@ added. Historical user visual evidence, settings and the pre-existing dirty
 ```text
 START_HEAD = 4c809a8b0340808b1db287db3f71a340bcc28ea4
 IMPLEMENTATION_HEAD = 2efde27325dd26baeb2fdc33b584acdfa81c6911
-FINAL_HEAD = 2efde27325dd26baeb2fdc33b584acdfa81c6911 (validated code head; documentation commit follows)
-ORIGIN_MAIN_AT_REPORT = 4c809a8b0340808b1db287db3f71a340bcc28ea4 (not pushed yet)
+FINAL_HEAD = a4ad377e7330a4413c49da4078ee2999a3468f83 (documentation head; implementation parent is validated above)
+ORIGIN_MAIN = a4ad377e7330a4413c49da4078ee2999a3468f83
 BRANCH = main
 ```
 
@@ -164,7 +164,7 @@ are in `docs/audit/CHAPTER01_AUDIT02B_REMEDIATION.md`.
 
 ```text
 LOCAL_REGRESSION = PASS
-REMOTE_CI = NOT_RUN (main has not been pushed)
+REMOTE_CI = PASS (GitHub Actions run 34374763958; final head a4ad377e7330a4413c49da4078ee2999a3468f83; all five jobs)
 TEMP_CLEANUP = PARTIAL (task probe/package/unit logs are disposable; audit roots and recovery checkpoint retained)
 DEFER_ASTRA = subjective art/prose/audio and foreground-terminal manual acceptance only; no objective defect is hidden here
 OPEN_FATAL = 0
