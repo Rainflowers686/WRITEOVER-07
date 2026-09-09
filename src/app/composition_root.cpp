@@ -2541,24 +2541,8 @@ int RunComposition(const GameConfig& config) {
 
     // Chapter links are authored SceneTransition records.  The policy is
     // assigned after the camera helper below so it can use the same durable
-    // facts as objectives and interactions, while this position-only helper
-    // remains available for the established B1 doorway seam.
+    // facts as objectives and interactions.
     std::function<bool(const SceneTransition&)> transition_allowed;
-    const auto try_room_portal = [&](const Vec3& position) {
-        const std::string& current_room = services.player->CurrentRoom();
-        const SceneTransition* portal = FindSceneTransitionAt(
-            scene_runtime, current_room, position);
-        if (portal == nullptr) return false;
-        if (transition_allowed && !transition_allowed(*portal)) {
-            render->SetSubtitleOnce(portal->unavailable_message, 120);
-            return true;
-        }
-        if (!switch_room(portal->destination_room, portal->destination_spawn,
-                         portal->destination_yaw)) {
-            render->SetSubtitleOnce(portal->unavailable_message, 120);
-        }
-        return true;
-    };
 
     auto serialize_player = [&]() {
         std::vector<uint8_t> bytes;
