@@ -35,7 +35,7 @@ int Engine::Run(uint64_t max_frames) {
         }
 
         bool stepped = false;
-        while (accumulator.count() >= fixed_dt_ms &&
+        while (running_ && accumulator.count() >= fixed_dt_ms &&
                (max_frames == 0 || sim_ticks < max_frames)) {
             if (context_.clock != nullptr) {
                 for (const auto module : modules_) {
