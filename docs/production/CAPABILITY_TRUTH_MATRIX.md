@@ -178,7 +178,7 @@ an unused transition helper required by cross-platform `-Werror` CI builds).
 | FINAL_ART | DEFER_ASTRA | Existing Character-Art path is preserved; no art-gold claim. |
 | FINAL_AUDIO | DEFER_ASTRA | No final audio pass. |
 | MANUAL_PLAY | PENDING_MANUAL | No first-time human duration or foreground Windows Terminal acceptance was fabricated from replay frames. |
-| CHAPTER01_REPLAY_RECEIPT | VERIFIED | 15/15 current Release Recovery/Alpha/Chapter cases separate process exit, input consumption and expected state. |
+| CHAPTER01_REPLAY_RECEIPT | HISTORICAL_RECEIPT_ONLY | The earlier Alpha-02 document's 15/15 statement is retained as history; the current committed gate is reported in the Alpha-03 continuation addendum below. |
 | SAVE_FAULT_MATRIX | VERIFIED | Eight final-commit fault stages roll back without live-state mutation. |
 | BENCHMARK | VERIFIED_BOUNDED | Current Release proxy remains within recorded budgets; platform terminal writes and end-to-end 120 Hz are not proven. |
 
@@ -186,3 +186,37 @@ Alpha-02 remote receipt: normal main push completed; GitHub Actions run
 `34353383751` passed all five jobs for validated code/fix head
 `79c893d9f8f109b54c9af7dd3814b9ee5ffb81d9`. The documentation receipt itself
 does not make a Product Gold, Visual Gold, release, or manual-play claim.
+
+## Alpha-03 continuation current-head addendum
+
+This addendum is the current receipt for implementation head
+`2efde27325dd26baeb2fdc33b584acdfa81c6911`, from start head
+`4c809a8b0340808b1db287db3f71a340bcc28ea4`. It corrects the current coverage
+statements without rewriting any historical commit.
+
+| Capability | Current status | Current evidence / boundary |
+|---|---|---|
+| `CHAPTER01_REPLAY_RECEIPT` | `VERIFIED_BOUNDED` | The committed Release gate executed 18 cases: 9 Recovery/Alpha cases, 6 Chapter One cases, and 3 current regression fixtures. Each receipt separates process exit, input consumption, expected state and result. |
+| `CHAPTER01_SCENARIO_MATRIX` | `VERIFIED_BOUNDED` | 36 rows were classified; 18 authored fixtures executed and passed, 18 rows were explicitly `INVALID_SETUP`. Counts: 11 completable, 5 expected denial, 2 expected failure/recovery. |
+| `ELEVATOR_SOFTLOCK` | `FIXED_AND_VERIFIED` | Disabled-guard security bypass records the durable security checkpoint before entering the terminal elevator room. |
+| `NO_SAVE_DEATH_RECOVERY` | `FIXED_AND_VERIFIED` | A no-save death route accepts F9 and restarts the authored room at spawn with health 100 and explicit player text. |
+| `B1_TERMINAL_GATE` | `FIXED_AND_VERIFIED` | B1 crossing consumes the shared transition policy; badge-only/no-terminal remains denied. |
+| `INCAPACITATED_ACTOR_BODY` | `FIXED_AND_VERIFIED` | Runtime incapacitated actors create room-local BodyRecords and the body renderer consumes them outside the B1-only branch. |
+| `FACILITY_ALERT_CONSUMER` | `VERIFIED_BOUNDED` | Suspicious alert state changes the current security objective; per-NPC alertness remains diagnostic and is not claimed as a full AI consumer. |
+| `PACKAGE_RUNTIME_ASSETS` | `VERIFIED_BOUNDED` | Clean Windows package smoke requires authored character art and recovery text, checks executable-relative data and user-data separation. |
+| `SAVE_FAULT_MATRIX` | `VERIFIED` | Fresh current-head injection passed all eight final-commit stages with rollback and `LOAD_OK=NO`. |
+| `COMPLETE_ENEMY_COMBAT` | `NOT_CLAIMED` | Guard health/death is a bounded current Chapter One proof, not complete enemy combat AI. |
+| `TERMINAL_NORMAL_LAUNCH` | `PENDING_MANUAL` | Current non-foreground pipe correctly reports the compatibility fallback; a foreground Windows Terminal acceptance run has not been fabricated. |
+
+The fresh local gates for this addendum were: Debug/Release configure and
+build, Debug/Release CTest, both direct 206-test executables, content check and
+13/13 content tests, systemic schema check and 10/10 schema tests, invalid-seed
+check, static audit COUNT=0, contract check, Debug/Release smoke, 18/18
+replays, 36-row scenario matrix, 8/8 save fault matrix and Release benchmark.
+Benchmark output is reported with its actual `worst_1pct_avg_ms` field; it is
+not called p99 and is not end-to-end 120 Hz proof.
+
+The supplemental Audit-02B root is not complete. It has no completion flag,
+`FILE_COVERAGE_PASS=NO`, 0% PASS1/PASS2/PASS3 coverage and 376 unreviewed files.
+It therefore remains `NOT_COMPLETE`, not a zero-finding result. See
+`docs/audit/CHAPTER01_AUDIT02B_REMEDIATION.md`.

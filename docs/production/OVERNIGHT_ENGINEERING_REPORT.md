@@ -116,3 +116,35 @@ remain pending; no Gold or release claim is made. Source implementation head:
 the cross-platform unused-helper fix). The final validated code head passed
 GitHub Actions run `34353383751`; this downstream note does not promote
 manual play, visual acceptance, Product Gold, or release readiness.
+
+## Alpha-03 continuation addendum — current-head truth
+
+The current bounded remediation commit is
+`2efde27325dd26baeb2fdc33b584acdfa81c6911`, based on
+`4c809a8b0340808b1db287db3f71a340bcc28ea4`. It re-issued the replay receipt
+from the committed gate rather than relying on the historical Alpha-02 text:
+18/18 current cases pass, including six Chapter One routes and three new
+regression fixtures. A 36-row scenario matrix classified 18 authored runs as
+11 completable, 5 expected denial and 2 expected failure/recovery; its other
+18 rows are explicit `INVALID_SETUP`, not fake passes.
+
+Fresh local engineering results are Debug/Release build and CTest PASS,
+206/206 direct tests in both configurations, content 13/13, systemic schema
+10/10, invalid seed PASS, static audit COUNT=0, contract PASS, Debug/Release
+smoke PASS, 8/8 final-commit fault rollback PASS and Release benchmark
+`OVERALL_BUDGET=PASS`. Benchmark fields retain their actual
+`worst_1pct_avg_ms` name and are not end-to-end frame-rate proof. Clean package
+smoke also passes with the authored character/text resources.
+
+The first audit's 14 records are fully classified in
+`docs/audit/CHAPTER01_AUDIT_REMEDIATION.md`; all four original P1s are closed
+for the current bounded scope. Supplemental Audit-02B is not complete: its
+coverage status is `FILE_COVERAGE_PASS=NO` with 0% PASS1/PASS2/PASS3 and no
+findings handoff. Consequently:
+
+```text
+ALPHA03_LOCAL_REGRESSION = PASS
+ALPHA03_REMOTE_CI = NOT_RUN (implementation not pushed at this receipt)
+AUDIT02B = NOT_COMPLETE
+FINAL_STATUS = NOT_READY
+```

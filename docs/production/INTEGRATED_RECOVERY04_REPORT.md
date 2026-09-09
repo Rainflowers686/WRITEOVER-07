@@ -239,3 +239,23 @@ readiness. Current implementation head:
 the cross-platform unused-helper fix). The final validated code head passed
 GitHub Actions run `34353383751`; the separate Alpha-02 receipt remains the
 source of its bounded Chapter One claims.
+
+## Alpha-03 continuation addendum — current status
+
+The first completed Chapter One audit was reconciled against current code in
+`docs/audit/CHAPTER01_AUDIT_REMEDIATION.md`. The current implementation head is
+`2efde27325dd26baeb2fdc33b584acdfa81c6911`, with fresh local receipts: 18/18
+current replay gate, a 36-row scenario matrix with 18/18 authored executions,
+8/8 final-commit save rollback stages, 206/206 direct tests in both
+configurations, content 13/13, systemic schema 10/10, and Debug/Release smoke
+plus benchmark PASS. The disabled-guard elevator route, no-save death
+recovery, B1 terminal skip, incapacitated guard body, objective receipt,
+guard-death fact, facility-alert objective consumer and runtime text package
+defect are addressed within the bounded Chapter One scope.
+
+This addendum does not reuse the older 15/15 statement as current evidence and
+does not promote the bounded health/death proof to complete enemy combat.
+Audit-02B is still incomplete: no `AUDIT_COMPLETE.flag`,
+`FILE_COVERAGE_PASS=NO`, and 0% coverage in all three required passes. Its
+findings are therefore unverified and the current Alpha-03 final status is
+`NOT_READY` pending that mechanical coverage gate and subsequent reconciliation.
