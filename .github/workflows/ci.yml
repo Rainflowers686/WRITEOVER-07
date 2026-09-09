@@ -71,7 +71,7 @@ jobs:
         run: .\out\build\release\Release\writeover_tests.exe
         shell: pwsh
 
-      - name: Recovery replay regression gate
+      - name: Recovery and Chapter replay regression gate
         run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\recovery_replay_gate.ps1 -Executable out/build/release/Release/writeover_app.exe
 
       - name: Clean package smoke (Release runtime assets)

@@ -97,6 +97,16 @@ int Engine::Run(uint64_t max_frames) {
         }
     }
 
+    // Every registered module owns a portion of the live runtime.  Shutdown
+    // after both a finite run and a RequestStop path so normal player exit
+    // restores platform state just as a bounded smoke run does.
+    for (const auto module : modules_) {
+        if (module != nullptr) {
+            module->Shutdown();
+        }
+    }
+    running_ = false;
+
     return 0;
 }
 

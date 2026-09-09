@@ -768,7 +768,10 @@ public:
 
     // Persistence. Deserialize is fail-closed: on any invalid count, enum,
     // NaN, range, duplicate id, or bad reference it returns an error.
-    void Save(Serializer& s) const;
+    // Returns false when the live world cannot be represented by the bounded
+    // wire contract.  Callers must not treat a partial serializer buffer as a
+    // successful save.
+    bool Save(Serializer& s) const;
     std::vector<uint8_t> Serialize() const;
     static Result<SystemicWorld> Deserialize(const uint8_t* data, size_t size);
 

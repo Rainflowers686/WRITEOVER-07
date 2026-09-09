@@ -19,12 +19,12 @@ Z                 Prone
 Q / E             Lean left / right
 Mouse             Look
 Left mouse        Fire
-Right mouse       Aim down sights
+Right mouse       Reserved (ADS is disabled in this build)
 F                  Interact
 R                  Reload
 V                  Melee
 1 / 2 / 3          Select pistol / SMG / stunner
-Esc               Pause
+Esc               Pause; while paused, Q quits
 F1                Help / narrator information
 F5                Save
 F9                Load

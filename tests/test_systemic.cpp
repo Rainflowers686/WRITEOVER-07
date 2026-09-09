@@ -4,6 +4,7 @@
 #include "writeover/systemic/systemic.h"
 
 #include <cstdint>
+#include <limits>
 #include <vector>
 
 namespace writeover {
@@ -553,7 +554,7 @@ bool SystemicSaveCorruptionRejected() {
         // Invalid enum: make a tiny actor buffer with bad faction byte.
         std::vector<uint8_t> bad = bytes;
         // First actor first enum byte after id(8)+data_key(8) + faction at 16.
-        if (bad.size() > 16) {
+        if (bad.size() > 20) {
             bad[20] = 0xFF;
             const auto res = SystemicWorld::Deserialize(bad.data(), bad.size());
             WO_CHECK(res.IsError());
@@ -678,6 +679,21 @@ bool SystemicRuntimeWorldEventReachesLedger() {
     return true;
 }
 
+bool SystemicSaveRejectsInvalidLiveState() {
+    SystemicWorld w;
+    WO_CHECK(w.AddActor(MakeGuard(NpcId::New(21))));
+    // PlayerState is intentionally mutable for the runtime state owner.  A
+    // malformed value must make the public Save call fail instead of emitting
+    // a buffer that callers can mistake for a valid section.
+    w.PlayerState().humanity = std::numeric_limits<float>::quiet_NaN();
+    std::vector<uint8_t> bytes;
+    Serializer serializer(bytes);
+    WO_CHECK(!w.Save(serializer));
+    WO_CHECK(bytes.empty());
+    WO_CHECK(w.Serialize().empty());
+    return true;
+}
+
 bool SystemicRuntimeBridgeNoDuplicate() {
     SystemicWorld w;
     SystemicEventBridge bridge(&w);
@@ -725,6 +741,7 @@ void RegisterSystemicTests(TestHarness& test) {
     test.Add("systemic.narrator_observability_per_source", &SystemicNarratorObservabilityPerSource);
     test.Add("systemic.narrator_authority_vs_observability", &SystemicNarratorAuthorityVsObservability);
     test.Add("systemic.save_corruption_rejected", &SystemicSaveCorruptionRejected);
+    test.Add("systemic.save_rejects_invalid_live_state", &SystemicSaveRejectsInvalidLiveState);
     test.Add("systemic.save_section_round_trip", &SystemicSaveSectionRoundTrip);
     test.Add("systemic.runtime_save_load_roundtrip", &SystemicRuntimeSaveLoadRoundtrip);
     test.Add("systemic.discovery_report_escalates_alert", &SystemicDiscoveryReportEscalatesAlert);

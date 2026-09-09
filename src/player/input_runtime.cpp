@@ -9,6 +9,7 @@ InputRuntime::InputRuntime(std::unique_ptr<IInputBackend> keyboard,
 InputRuntime::~InputRuntime() { Shutdown(); }
 
 bool InputRuntime::Init() {
+    shutdown_called_ = false;
     bool ok = true;
     if (keyboard_) ok = keyboard_->Init() && ok;
     if (mouse_) ok = mouse_->Init() && ok;
@@ -16,6 +17,8 @@ bool InputRuntime::Init() {
 }
 
 void InputRuntime::Shutdown() {
+    if (shutdown_called_) return;
+    shutdown_called_ = true;
     if (keyboard_) keyboard_->Shutdown();
     if (mouse_) mouse_->Shutdown();
 }

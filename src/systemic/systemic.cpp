@@ -1778,11 +1778,14 @@ SearchOutcome SystemicWorld::PerformSearch(const SearchAction& action) {
     }
     searches_.push_back(action);
     bool target_exists = false;
+    BodyRecord* searched_body = nullptr;
+    bool body_was_searched = false;
     if (action.target_type == SearchTargetType::Body) {
-        BodyRecord* b = const_cast<BodyRecord*>(GetBody(action.target));
-        if (b) {
+        searched_body = const_cast<BodyRecord*>(GetBody(action.target));
+        if (searched_body) {
             target_exists = true;
-            b->searched = true;
+            body_was_searched = searched_body->searched;
+            searched_body->searched = true;
             out.success = true;
             out.legality = action.consent ? LegalityClass::Legal : LegalityClass::Unauthorized;
             for (const auto& item : items_) {
@@ -1812,7 +1815,15 @@ SearchOutcome SystemicWorld::PerformSearch(const SearchAction& action) {
     e.outcome = target_exists ? OutcomeType::Success : OutcomeType::Failure;
     e.method = action.consent ? "search_consent" : "search_unauthorized";
     e.tags.push_back(target_exists ? "search_succeeded" : "search_target_missing");
-    AddSystemicEvent(e);
+    if (!AddSystemicEvent(e)) {
+        // Searching is one semantic operation: do not leave a durable search
+        // record or a mutated body behind when its event cannot be recorded.
+        searches_.pop_back();
+        if (searched_body != nullptr) {
+            searched_body->searched = body_was_searched;
+        }
+        return SearchOutcome{};
+    }
     return out;
 }
 
@@ -2030,25 +2041,32 @@ IdentityReaction SystemicWorld::ReactionToIdentityMismatch(NpcId observer,
     return IdentityReaction::Report;
 }
 
-void SystemicWorld::Save(Serializer& s) const {
-    WriteRecordVector(s, actors_, &WriteActor);
-    WriteRecordVector(s, items_, &WriteItem);
-    WriteRecordVector(s, bodies_, &WriteBody);
-    WriteRecordVector(s, containers_, &WriteContainer);
-    WriteRecordVector(s, drags_, &WriteDrag);
-    WriteRecordVector(s, evidence_, &WriteEvidence);
-    WriteRecordVector(s, memories_, &WriteMemory);
-    WriteRecordVector(s, relationships_, &WriteRelationship);
-    WriteRecordVector(s, promises_, &WritePromise);
-    WriteRecordVector(s, quests_, &WriteQuest);
-    WriteRecordVector(s, knowledge_, &WriteKnowledge);
-    WriteRecordVector(s, searches_, &WriteSearch);
-    WriteRecordVector(s, exchanges_, &WriteExchange);
-    WriteRecordVector(s, terminals_, &WriteTerminal);
-    WriteRecordVector(s, sessions_, &WriteSession);
-    WriteRecordVector(s, audits_, &WriteAudit);
-    WriteRecordVector(s, sources_, &WriteSource);
-    WriteRecordVector(s, events_, &WriteSystemicEvent);
+bool SystemicWorld::Save(Serializer& s) const {
+    std::string validation_error;
+    if (!ValidateWorld(*this, validation_error)) {
+        return false;
+    }
+
+    if (!WriteRecordVector(s, actors_, &WriteActor) ||
+        !WriteRecordVector(s, items_, &WriteItem) ||
+        !WriteRecordVector(s, bodies_, &WriteBody) ||
+        !WriteRecordVector(s, containers_, &WriteContainer) ||
+        !WriteRecordVector(s, drags_, &WriteDrag) ||
+        !WriteRecordVector(s, evidence_, &WriteEvidence) ||
+        !WriteRecordVector(s, memories_, &WriteMemory) ||
+        !WriteRecordVector(s, relationships_, &WriteRelationship) ||
+        !WriteRecordVector(s, promises_, &WritePromise) ||
+        !WriteRecordVector(s, quests_, &WriteQuest) ||
+        !WriteRecordVector(s, knowledge_, &WriteKnowledge) ||
+        !WriteRecordVector(s, searches_, &WriteSearch) ||
+        !WriteRecordVector(s, exchanges_, &WriteExchange) ||
+        !WriteRecordVector(s, terminals_, &WriteTerminal) ||
+        !WriteRecordVector(s, sessions_, &WriteSession) ||
+        !WriteRecordVector(s, audits_, &WriteAudit) ||
+        !WriteRecordVector(s, sources_, &WriteSource) ||
+        !WriteRecordVector(s, events_, &WriteSystemicEvent)) {
+        return false;
+    }
 
     s.WriteF32(player_state_.humanity);
     s.WriteF32(player_state_.violence);
@@ -2078,11 +2096,11 @@ void SystemicWorld::Save(Serializer& s) const {
     s.WriteU8(observability_.meta_observability ? 1 : 0);
     // sources_ is the canonical owner; the public observability vector is a
     // compatibility mirror and must never create a second state truth.
-    WriteRecordVector(s, sources_, &WriteSource);
+    if (!WriteRecordVector(s, sources_, &WriteSource)) return false;
 
     s.WriteU8(static_cast<uint8_t>(alert_.level));
     s.WriteU64(alert_.last_change_frame);
-    WriteIdVector(s, alert_.scope);
+    return WriteIdVector(s, alert_.scope);
 }
 
 std::vector<uint8_t> SystemicWorld::Serialize() const {
@@ -2092,7 +2110,9 @@ std::vector<uint8_t> SystemicWorld::Serialize() const {
         return bytes;
     }
     Serializer s(bytes);
-    Save(s);
+    if (!Save(s)) {
+        bytes.clear();
+    }
     return bytes;
 }
 

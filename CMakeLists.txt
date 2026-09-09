@@ -257,15 +257,33 @@ endif()
 # ---------------------------------------------------------------------------
 if(WO_BUILD_TESTS)
     file(GLOB_RECURSE WO_PUBLIC_HEADERS ${WO_INCLUDE_DIR}/writeover/*.h)
+    set(WO_HEADER_CHECK_DIR "${CMAKE_CURRENT_BINARY_DIR}/header_checks")
+    file(MAKE_DIRECTORY "${WO_HEADER_CHECK_DIR}")
+    set(WO_HEADER_CHECK_SOURCES)
     foreach(WO_HDR ${WO_PUBLIC_HEADERS})
-        get_filename_component(WO_NAME ${WO_HDR} NAME)
-        add_library(header_${WO_NAME} OBJECT ${WO_HDR})
-        target_include_directories(header_${WO_NAME} PRIVATE ${WO_INCLUDE_DIR})
-        writeover_configure_target(header_${WO_NAME})
-        target_link_libraries(header_${WO_NAME} PRIVATE
-            writeover_common writeover_systemic writeover_core writeover_world writeover_player
-            writeover_ai writeover_narrative writeover_render)
+        file(RELATIVE_PATH WO_HDR_REL "${WO_INCLUDE_DIR}" "${WO_HDR}")
+        file(TO_CMAKE_PATH "${WO_HDR_REL}" WO_HDR_INCLUDE)
+        string(MAKE_C_IDENTIFIER "${WO_HDR_REL}" WO_HEADER_ID)
+        set(WO_HEADER_TU "${WO_HEADER_CHECK_DIR}/${WO_HEADER_ID}.cpp")
+        # Each public header gets its own translation unit.  Unlike compiling
+        # the header as an OBJECT source, this makes the compiler process the
+        # actual include contract and catches missing direct includes.
+        file(GENERATE OUTPUT "${WO_HEADER_TU}" CONTENT
+             "#include <${WO_HDR_INCLUDE}>\nnamespace writeover_header_check { void check_${WO_HEADER_ID}() {} }\n")
+        list(APPEND WO_HEADER_CHECK_SOURCES "${WO_HEADER_TU}")
     endforeach()
+    set(WO_HEADER_RUNNER "${WO_HEADER_CHECK_DIR}/main.cpp")
+    file(GENERATE OUTPUT "${WO_HEADER_RUNNER}" CONTENT
+         "int main() { return 0; }\n")
+    add_executable(writeover_public_header_check
+        ${WO_HEADER_CHECK_SOURCES} "${WO_HEADER_RUNNER}")
+    target_include_directories(writeover_public_header_check PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR} ${WO_INCLUDE_DIR})
+    target_link_libraries(writeover_public_header_check PRIVATE
+        writeover_common writeover_systemic writeover_core writeover_world writeover_player
+        writeover_ai writeover_narrative writeover_render)
+    writeover_configure_target(writeover_public_header_check)
+    add_test(NAME public_header_standalone COMMAND writeover_public_header_check)
 endif()
 
 message(STATUS "WRITEOVER-07 foundation configured")

@@ -4,6 +4,7 @@
 // every registered test actually executes.
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 

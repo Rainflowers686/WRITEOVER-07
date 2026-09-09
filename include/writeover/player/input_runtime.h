@@ -60,6 +60,7 @@ private:
     InputContext active_context_ = InputContext::Gameplay;
     InputContext last_context_ = InputContext::Gameplay;
     bool previous_focus_ = true;  // assume focused until first loss is seen
+    bool shutdown_called_ = false;
 };
 
 } // namespace writeover

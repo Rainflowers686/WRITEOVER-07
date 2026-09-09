@@ -1,0 +1,6 @@
+# The existing gameplay pause binding remains Escape.  While paused, Q is
+# the intentional quit affordance shown by the pause prompt.
+0 ESC down
+1 ESC up
+2 Q down
+3 Q up

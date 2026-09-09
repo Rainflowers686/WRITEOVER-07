@@ -172,10 +172,11 @@ bool ProfileRoundTrip() {
 class CountingModule final : public IEngineModule {
 public:
     void Init(const EngineContext&) override {}
-    void Shutdown() override {}
+    void Shutdown() override { ++shutdowns; }
     void SimTick(const SimClock&) override { ++ticks; }
     const char* Name() const override { return "test"; }
     int ticks = 0;
+    int shutdowns = 0;
 };
 
 class CountingRender final : public IRenderModule {
@@ -217,6 +218,51 @@ bool EngineHonorsPresentationCap() {
     return module.ticks == 8 && render.frames > 0 && render.frames < module.ticks;
 }
 
+bool EngineShutsDownRegisteredModules() {
+    SimClock clock;
+    EngineContext context;
+    context.clock = &clock;
+    Engine engine;
+    engine.SetContext(context);
+    CountingModule module;
+    engine.RegisterModule(&module);
+    WO_CHECK_EQ(engine.Run(1), 0);
+    WO_CHECK_EQ(module.ticks, 1);
+    WO_CHECK_EQ(module.shutdowns, 1);
+    return true;
+}
+
+class StopAfterFirstTickModule final : public IEngineModule {
+public:
+    explicit StopAfterFirstTickModule(Engine& engine) : engine_(engine) {}
+    void Init(const EngineContext&) override {}
+    void Shutdown() override { ++shutdowns; }
+    void SimTick(const SimClock&) override {
+        ++ticks;
+        if (ticks == 1) engine_.RequestStop();
+    }
+    const char* Name() const override { return "stop-after-first-tick"; }
+    int ticks = 0;
+    int shutdowns = 0;
+
+private:
+    Engine& engine_;
+};
+
+bool EngineRequestStopTerminatesAndShutsDown() {
+    SimClock clock;
+    EngineContext context;
+    context.clock = &clock;
+    Engine engine;
+    engine.SetContext(context);
+    StopAfterFirstTickModule module(engine);
+    engine.RegisterModule(&module);
+    WO_CHECK_EQ(engine.Run(0), 0);
+    WO_CHECK_EQ(module.ticks, 1);
+    WO_CHECK_EQ(module.shutdowns, 1);
+    return true;
+}
+
 } // namespace
 
 void RegisterCoreTests(TestHarness& test) {
@@ -232,6 +278,8 @@ void RegisterCoreTests(TestHarness& test) {
     test.Add("profile.round_trip", &ProfileRoundTrip);
     test.Add("engine.presents_once_per_fixed_step", &EnginePresentsOncePerFixedStep);
     test.Add("engine.presentation_cap_is_render_only", &EngineHonorsPresentationCap);
+    test.Add("engine.shutdowns_modules_once", &EngineShutsDownRegisteredModules);
+    test.Add("engine.request_stop_terminates_run", &EngineRequestStopTerminatesAndShutsDown);
 }
 
 } // namespace writeover

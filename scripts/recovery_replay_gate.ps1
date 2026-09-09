@@ -28,7 +28,8 @@ $cases = @(
     @{ Name = "chapter01_backtrack"; File = "chapter01_backtrack.txt"; Frames = 6000 },
     @{ Name = "chapter01_security_bypass"; File = "chapter01_security_bypass.txt"; Frames = 3500; Room = "" },
     @{ Name = "chapter01_no_save_death"; File = "chapter01_no_save_death.txt"; Frames = 3000; Room = "room_1f_security" },
-    @{ Name = "chapter01_terminal_skip_denied"; File = "chapter01_terminal_skip_denied.txt"; Frames = 2000; Room = "" }
+    @{ Name = "chapter01_terminal_skip_denied"; File = "chapter01_terminal_skip_denied.txt"; Frames = 2000; Room = "" },
+    @{ Name = "normal_quit"; File = "normal_quit.txt"; Frames = 0; Room = "" }
 )
 
 New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null

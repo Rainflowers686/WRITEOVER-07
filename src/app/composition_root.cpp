@@ -569,7 +569,17 @@ public:
             if (time_gate_ != nullptr) time_gate_->SetPaused(paused_);
             if (pause_callback_) pause_callback_();
         }
-        if (paused_) return;
+        if (paused_) {
+            // Q is the existing lean-left binding during gameplay.  While
+            // paused it is an intentional, discoverable quit chord shown by
+            // the pause prompt; this avoids adding a second action enum or
+            // stealing a live gameplay binding.
+            if (input_.action_pressed[static_cast<size_t>(GameAction::LeanLeft)] &&
+                quit_callback_) {
+                quit_callback_();
+            }
+            return;
+        }
         if (dead_) {
             // A dead player has no movement or interaction authority.  Load is
             // the only gameplay action accepted until the checkpoint restores
@@ -766,6 +776,7 @@ public:
     void SetSaveCallback(std::function<void()> cb) { save_callback_ = std::move(cb); }
     void SetLoadCallback(std::function<void()> cb) { load_callback_ = std::move(cb); }
     void SetPauseCallback(std::function<void()> cb) { pause_callback_ = std::move(cb); }
+    void SetQuitCallback(std::function<void()> cb) { quit_callback_ = std::move(cb); }
     void SetTimeGate(RuntimeTimeGate* gate) { time_gate_ = gate; }
     void SetMeleeCallback(std::function<void()> cb) { melee_callback_ = std::move(cb); }
     void SetFireCallback(std::function<void(const FireRequest&, const WeaponDef&)> cb) {
@@ -791,6 +802,7 @@ private:
     std::function<void()> save_callback_;
     std::function<void()> load_callback_;
     std::function<void()> pause_callback_;
+    std::function<void()> quit_callback_;
     std::function<void()> melee_callback_;
     std::function<void(const FireRequest&, const WeaponDef&)> fire_callback_;
     std::function<Vec3()> recovery_spawn_source_;
@@ -2166,6 +2178,7 @@ int RunComposition(const GameConfig& config) {
         bool gate_unlocked = false;
         bool gate_open = false;
         bool gate_crossed = false;
+        bool normal_quit_requested = false;
     } slice;
     slice.cart = ContainerId::New(cart_entity->systemic_id);
     slice.terminal = TerminalId::New(terminal_entity->systemic_id);
@@ -3945,7 +3958,11 @@ int RunComposition(const GameConfig& config) {
         }
     });
     services.player->SetPauseCallback([&] {
-        render->SetSubtitleOnce(services.player->Paused() ? "PAUSED" : "RESUMED", 90);
+        render->SetSubtitleOnce(
+            services.player->Paused()
+                ? "PAUSED - ESC resumes; Q quits"
+                : "RESUMED",
+            120);
     });
     services.player->SetMeleeCallback([&] {
         // The bounded stunner action is the third weapon slot, not a hidden
@@ -3998,6 +4015,11 @@ int RunComposition(const GameConfig& config) {
                             room.grid.Width(), room.grid.Height());
         render->SetActiveRoom(room.id);
     }
+    services.player->SetQuitCallback([&] {
+        slice.normal_quit_requested = true;
+        render->SetSubtitleOnce("QUIT REQUESTED - restoring terminal", 60);
+        engine.RequestStop();
+    });
     engine.SetRenderModule(render.get());
 
     const int result = engine.Run(config.max_frames);
@@ -4054,6 +4076,8 @@ int RunComposition(const GameConfig& config) {
         const bool badge_only_replay =
             config.replay_path.find("recovery_b1_badge_only") !=
             std::string::npos;
+        const bool normal_quit_replay =
+            config.replay_path.find("normal_quit") != std::string::npos;
         const bool alpha_systemic_replay =
             config.replay_path.find("alpha01_systemic_success") !=
             std::string::npos;
@@ -4136,7 +4160,9 @@ int RunComposition(const GameConfig& config) {
             visited_room("room_01_calibration") &&
             visited_room("room_service_medical") &&
             visited_room("room_elevator_lobby");
-        const bool expected_state_reached = chapter_systemic_replay
+        const bool expected_state_reached = normal_quit_replay
+            ? slice.normal_quit_requested
+            : chapter_systemic_replay
             ? (chapter_route_complete && fact_is_true("fact_chapter_quiet_route") &&
                fact_is_true("fact_chapter_staff_route") &&
                visited_room("room_restroom_staff") && replay_save_ok && replay_load_ok)
@@ -4270,10 +4296,12 @@ int RunComposition(const GameConfig& config) {
                       services.player->Dead() ? "YES" : "NO");
         std::fprintf(stderr,
                      "TRANSITION_DENIED=%s PLAYER_RESTARTED=%s "
+                     "NORMAL_QUIT_REQUESTED=%s "
                      "FACT_R1_GUARD_DEAD=%s FACT_CHAPTER_SECURITY_CHECKPOINT=%s "
                      "FACILITY_ALERT_LEVEL=%u\n",
                      slice.transition_denied ? "YES" : "NO",
                      slice.player_restarted ? "YES" : "NO",
+                     slice.normal_quit_requested ? "YES" : "NO",
                      fact_is_true("fact_r1_guard_dead") ? "YES" : "NO",
                      fact_is_true("fact_chapter_security_checkpoint") ? "YES" : "NO",
                      static_cast<unsigned>(services.systemic->AlertLevel()));
