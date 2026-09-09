@@ -112,4 +112,7 @@ six existing rooms, authored transitions/entities, route-specific durable
 facts, objective/storylet progression, replay receipts, and mid-route
 save/load coverage. Manual first-time duration and foreground visual review
 remain pending; no Gold or release claim is made. Source implementation head:
-`c6b3872611ed3a299cb5e05b9b0569083b88d187`.
+`79c893d9f8f109b54c9af7dd3814b9ee5ffb81d9` (Alpha-02 implementation plus
+the cross-platform unused-helper fix). The final validated code head passed
+GitHub Actions run `34353383751`; this downstream note does not promote
+manual play, visual acceptance, Product Gold, or release readiness.

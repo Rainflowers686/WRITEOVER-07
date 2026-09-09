@@ -235,4 +235,7 @@ section of `docs/production/CAPABILITY_TRUTH_MATRIX.md`. It reuses the six
 existing rooms and current systems; it does not promote the foundation to a
 whole-building game, complete combat AI, final prose, visual Gold, or release
 readiness. Current implementation head:
-`c6b3872611ed3a299cb5e05b9b0569083b88d187`.
+`79c893d9f8f109b54c9af7dd3814b9ee5ffb81d9` (Alpha-02 implementation plus
+the cross-platform unused-helper fix). The final validated code head passed
+GitHub Actions run `34353383751`; the separate Alpha-02 receipt remains the
+source of its bounded Chapter One claims.

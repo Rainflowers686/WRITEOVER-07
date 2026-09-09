@@ -142,8 +142,10 @@ accepted.
 ## Vertical Slice Alpha-02 — Functional Chapter One
 
 The following is the newer bounded Chapter One receipt. It does not alter the
-historical Alpha-01 or Recovery-04 claims above. Source implementation head:
-`c6b3872611ed3a299cb5e05b9b0569083b88d187`.
+historical Alpha-01 or Recovery-04 claims above. Source implementation/fix
+head: `79c893d9f8f109b54c9af7dd3814b9ee5ffb81d9` (implementation
+`c6b3872611ed3a299cb5e05b9b0569083b88d187`; the follow-up source fix removes
+an unused transition helper required by cross-platform `-Werror` CI builds).
 
 | Capability | Status | Evidence / boundary |
 |---|---|---|
@@ -179,3 +181,8 @@ historical Alpha-01 or Recovery-04 claims above. Source implementation head:
 | CHAPTER01_REPLAY_RECEIPT | VERIFIED | 15/15 current Release Recovery/Alpha/Chapter cases separate process exit, input consumption and expected state. |
 | SAVE_FAULT_MATRIX | VERIFIED | Eight final-commit fault stages roll back without live-state mutation. |
 | BENCHMARK | VERIFIED_BOUNDED | Current Release proxy remains within recorded budgets; platform terminal writes and end-to-end 120 Hz are not proven. |
+
+Alpha-02 remote receipt: normal main push completed; GitHub Actions run
+`34353383751` passed all five jobs for validated code/fix head
+`79c893d9f8f109b54c9af7dd3814b9ee5ffb81d9`. The documentation receipt itself
+does not make a Product Gold, Visual Gold, release, or manual-play claim.
