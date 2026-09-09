@@ -1,0 +1,52 @@
+# Alpha-01 durable-history route: reach the authored B1 cleaner, establish a
+# directed relationship, save/load that history, then perform the real
+# non-lethal body route so the later discovery response can change.
+0 W down
+0 SHIFT down
+1 MOUSEMOVE -177 0
+351 MOUSEMOVE -48 0
+390 W up
+390 SHIFT up
+391 MOUSEMOVE -350 0
+391 W down
+391 SHIFT down
+485 W up
+485 SHIFT up
+486 MOUSEMOVE -856 0
+500 F down
+501 F up
+520 F5 down
+521 F5 up
+540 F9 down
+541 F9 up
+# Re-approach officer_davis from the cleaner contact point.
+560 MOUSEMOVE -477 0
+560 W down
+560 SHIFT down
+650 W up
+650 SHIFT up
+651 V down
+652 V up
+653 W down
+736 W up
+737 S down
+754 S up
+754 MOUSEMOVE -1037 200
+755 F down
+756 F up
+759 F down
+760 F up
+761 MOUSEMOVE -287 0
+762 W down
+1160 W up
+1160 MOUSEMOVE -940 0
+1161 F down
+1162 F up
+# Clear the cart's approach cell so the cleaner can actually arrive; leaving
+# the player inside the container's footprint must delay, not trigger,
+# discovery.
+1163 MOUSEMOVE -517 0
+1164 W down
+1280 W up
+# Let the cleaner's motor arrive, inspect, and choose the history-dependent
+# response after the hidden body is actually in the cart.

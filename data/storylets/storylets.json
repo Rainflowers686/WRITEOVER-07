@@ -26,6 +26,66 @@
       "actions": [
         {"type": "narrator", "textId": "text_r1_narr_02", "persona": 2}
       ]
+    },
+    {
+      "id": "storylet_alpha_checkpoint",
+      "textId": "text_alpha_checkpoint",
+      "priority": 210,
+      "once": true,
+      "conditions": [
+        {"type": "fact", "fact": "fact_b1_checkpoint_reached", "equals": true}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_alpha_checkpoint", "persona": 1}
+      ]
+    },
+    {
+      "id": "storylet_alpha_camera",
+      "textId": "text_alpha_camera",
+      "priority": 160,
+      "once": true,
+      "conditions": [
+        {"type": "fact", "fact": "fact_b1_camera_disabled", "equals": true}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_alpha_camera", "persona": 1}
+      ]
+    },
+    {
+      "id": "storylet_alpha_body",
+      "textId": "text_alpha_body",
+      "priority": 150,
+      "once": true,
+      "conditions": [
+        {"type": "fact", "fact": "fact_b1_body_hidden", "equals": true}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_alpha_body", "persona": 2}
+      ]
+    },
+    {
+      "id": "storylet_alpha_loud",
+      "textId": "text_alpha_loud",
+      "priority": 140,
+      "once": true,
+      "conditions": [
+        {"type": "fact", "fact": "fact_b1_loud_action", "equals": true}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_alpha_loud", "persona": 2}
+      ]
+    },
+    {
+      "id": "storylet_alpha_denied",
+      "textId": "text_alpha_denied",
+      "priority": 130,
+      "once": true,
+      "conditions": [
+        {"type": "fact", "fact": "fact_b1_gate_denied", "equals": true}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_alpha_denied", "persona": 2}
+      ]
     }
   ]
 }

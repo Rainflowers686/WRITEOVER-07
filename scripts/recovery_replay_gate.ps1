@@ -15,7 +15,11 @@ $cases = @(
     @{ Name = "recovery_b1_denied"; File = "recovery_b1_denied.txt"; Frames = 2000 },
     @{ Name = "recovery_b1_terminal_denied"; File = "recovery_b1_terminal_denied.txt"; Frames = 750 },
     @{ Name = "recovery_b1_badge_only"; File = "recovery_b1_badge_only.txt"; Frames = 800 },
-    @{ Name = "recovery_b1_health_death"; File = "recovery_b1_health_death.txt"; Frames = 10220 }
+    @{ Name = "recovery_b1_health_death"; File = "recovery_b1_health_death.txt"; Frames = 3300 },
+    @{ Name = "alpha01_systemic_success"; File = "alpha01_systemic_success.txt"; Frames = 2200 },
+    @{ Name = "alpha01_aggressive_success"; File = "alpha01_aggressive_success.txt"; Frames = 1100 },
+    @{ Name = "alpha01_denied"; File = "alpha01_denied.txt"; Frames = 2200 },
+    @{ Name = "alpha01_memory_consequence"; File = "alpha01_memory_consequence.txt"; Frames = 1900 }
 )
 
 New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null

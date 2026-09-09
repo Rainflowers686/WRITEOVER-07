@@ -4,6 +4,17 @@
     {"id": "fact_player_has_gun", "predicate": 0, "initial": false, "subject": 1},
     {"id": "fact_r1_engineer_met", "predicate": 0, "initial": false, "subject": 2},
     {"id": "fact_r1_power_cut", "predicate": 0, "initial": false, "subject": 3},
-    {"id": "fact_r1_guard_dead", "predicate": 0, "initial": false, "subject": 4}
+    {"id": "fact_r1_guard_dead", "predicate": 0, "initial": false, "subject": 4},
+    {"id": "fact_b1_badge_obtained", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_b1_camera_disabled", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_b1_terminal_accessed", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_b1_gate_denied", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_b1_body_hidden", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_b1_checkpoint_reached", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_b1_loud_action", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_b1_nonlethal_action", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_alpha_medical_reached", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_alpha_security_reached", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_alpha_bribe_accepted", "predicate": 0, "initial": false, "subject": 1}
   ]
 }

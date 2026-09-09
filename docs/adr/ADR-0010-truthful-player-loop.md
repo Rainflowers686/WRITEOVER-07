@@ -38,6 +38,9 @@
   敌方武器行为、完整 combat AI 或一般敌人战斗范围；这些仍不在本轮。
 - Windows ANSI backend 在提交 character cells 前显式启用 VT processing 和
   UTF-8 output code page；运行时仍需用真实终端截图确认最终观感。
+- Alpha-01 的玩家 onboarding 只增加一个紧凑的 `HudFrame::interaction_prompt`
+  字段。它由当前真实 focus/状态产生，和 objective 分开；不创建通用 UI 或
+  quest presentation framework。公共头 hash 与本 ADR 一起更新。
 
 ## 约束
 

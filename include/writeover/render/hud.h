@@ -17,6 +17,7 @@ struct HudFrame {
     const char* preset_name = "COMPATIBILITY";
     const char* weapon_name = "PISTOL";
     const char* objective = nullptr;   // compact player-facing quest objective
+    const char* interaction_prompt = nullptr; // focused action, or bounded onboarding hint
     const char* subtitle = nullptr;  // UTF-8, or nullptr
     int grid_width = 0;              // shown only when developer_overlay is true
     int grid_height = 0;             // shown only when developer_overlay is true

@@ -1,0 +1,63 @@
+# Alpha-01 aggressive route: the same B1 approach uses the authored Pistol
+# instead of the Stunner. Five spaced shots resolve the guard through the
+# real hitscan/health/body path, after which the player searches the body and
+# crosses the credentialed service gate.
+0 W down
+0 SHIFT down
+1 MOUSEMOVE -177 0
+390 W up
+390 SHIFT up
+351 MOUSEMOVE -48 0
+352 W down
+426 W up
+427 NUM1 down
+428 NUM1 up
+429 MOUSELEFT down
+430 MOUSELEFT up
+446 MOUSELEFT down
+447 MOUSELEFT up
+463 MOUSELEFT down
+464 MOUSELEFT up
+480 MOUSELEFT down
+481 MOUSELEFT up
+497 MOUSELEFT down
+498 MOUSELEFT up
+514 MOUSELEFT down
+515 MOUSELEFT up
+531 MOUSELEFT down
+532 MOUSELEFT up
+548 MOUSELEFT down
+549 MOUSELEFT up
+565 MOUSELEFT down
+566 MOUSELEFT up
+582 MOUSELEFT down
+583 MOUSELEFT up
+599 MOUSELEFT down
+600 MOUSELEFT up
+616 MOUSELEFT down
+617 MOUSELEFT up
+# Move to the downed guard once the pistol has completed the lethal path.
+670 W down
+770 W up
+770 MOUSEMOVE 0 200
+772 F down
+773 F up
+# The loud route leaves the body exposed and goes straight to the reader.
+# This is the intentional counterfactual to the non-lethal concealment route.
+778 MOUSEMOVE 494 0
+779 W down
+861 W up
+862 F down
+863 F up
+870 D down
+878 D up
+879 MOUSEMOVE -269 0
+880 D down
+912 D up
+913 W down
+955 W up
+956 MOUSEMOVE 1047 0
+957 F down
+958 F up
+1000 F down
+1001 F up

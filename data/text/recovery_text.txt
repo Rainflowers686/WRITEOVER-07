@@ -4,3 +4,8 @@ text_r1_01	The weapon is real. The building will remember that you touched it.
 text_r1_02	The checkpoint is listening. Decide what you want it to learn.
 text_r1_narr_01	You have a gun now. That does not make this place yours.
 text_r1_narr_02	A door is only a promise until someone tests the lock.
+text_alpha_camera	The camera is blind for now. The building will remember the gap.
+text_alpha_body	You moved the evidence. That changes who can find it, not what happened.
+text_alpha_loud	The shot carried farther than the room. Security has a new question for you.
+text_alpha_checkpoint	Calibration accepts the route. This is the first checkpoint, not an escape.
+text_alpha_denied	The reader rejected the attempt. A closed door is still a fact.
