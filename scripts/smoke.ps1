@@ -14,7 +14,14 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 cmake --build --preset $Preset | Out-Null
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-ctest --preset $Preset --output-on-failure
+if ($Preset -eq "release") {
+    # The Visual Studio multi-config Release tree has no separate ctest
+    # preset; select its configuration explicitly instead of invoking a
+    # nonexistent preset.
+    ctest --test-dir "out/build/$Preset" -C Release --output-on-failure
+} else {
+    ctest --preset $Preset --output-on-failure
+}
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # Validate compiled content (mapc on each .woc under data/rooms).
