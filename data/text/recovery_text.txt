@@ -9,3 +9,9 @@ text_alpha_body	You moved the evidence. That changes who can find it, not what h
 text_alpha_loud	The shot carried farther than the room. Security has a new question for you.
 text_alpha_checkpoint	Calibration accepts the route. This is the first checkpoint, not an escape.
 text_alpha_denied	The reader rejected the attempt. A closed door is still a fact.
+text_chapter_calibration	The calibration room is still running. Read the route before you trust it.
+text_chapter_medical_quiet	Medical logged the quiet route. No alarm follows you into the service wing.
+text_chapter_medical_alert	Medical logged the damage. Security will meet you before the elevator does.
+text_chapter_staff	The staff passage opens on a maintenance schedule, not a welcome.
+text_chapter_security	The checkpoint has your face, your badge, and one more reason to remember you.
+text_chapter_complete	The elevator accepts the record. Chapter One ends with the building still awake.

@@ -1,5 +1,6 @@
-# Alpha-01 credential counterfactual: use the same authored approach but do
-# not search/take the badge. The real reader must deny and remain closed.
+# Chapter One denied counterfactual: follow the real B1 approach but do not
+# search the downed guard or obtain a credential. The service reader must
+# reject the attempt and keep the chapter route closed.
 0 W down
 0 SHIFT down
 1 MOUSEMOVE -177 0

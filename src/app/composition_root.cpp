@@ -2129,9 +2129,13 @@ int RunComposition(const GameConfig& config) {
         EntityId body = EntityId::New(9002);
         ContainerId cart;
         TerminalId terminal;
+        TerminalId calibration_terminal;
+        TerminalId medical_terminal;
         ObservationSourceId camera;
         QuestId opening_quest = QuestId::New(9005);
+        QuestId chapter_quest = QuestId::New(9006);
         RoomId b1_room;
+        NpcId security_guard_npc;
         ItemId badge;
         ItemId cash;
         bool terminal_session = false;
@@ -2155,6 +2159,8 @@ int RunComposition(const GameConfig& config) {
     } slice;
     slice.cart = ContainerId::New(cart_entity->systemic_id);
     slice.terminal = TerminalId::New(terminal_entity->systemic_id);
+    slice.calibration_terminal = TerminalId::New(9006);
+    slice.medical_terminal = TerminalId::New(9007);
     slice.camera = ObservationSourceId::New(camera_entity->systemic_id);
     render->SetSceneEntities(&scene_runtime.Entities());
     std::vector<std::string> replay_route;
@@ -2225,6 +2231,18 @@ int RunComposition(const GameConfig& config) {
         terminal.room = slice.b1_room;
         terminal.credential_requirement = 2;
         terminal.access_scope.push_back("B1_CALIBRATION");
+        TerminalRecord calibration_terminal;
+        calibration_terminal.id = slice.calibration_terminal;
+        calibration_terminal.room =
+            RoomId::New(StableContentId("room_01_calibration"));
+        calibration_terminal.credential_requirement = 2;
+        calibration_terminal.access_scope.push_back("MEDICAL_ROUTE");
+        TerminalRecord medical_terminal;
+        medical_terminal.id = slice.medical_terminal;
+        medical_terminal.room =
+            RoomId::New(StableContentId("room_service_medical"));
+        medical_terminal.credential_requirement = 2;
+        medical_terminal.access_scope.push_back("MEDICAL_INTAKE");
         ObservationSource camera;
         camera.id = slice.camera;
         camera.type = ObservationSourceType::Camera;
@@ -2237,10 +2255,18 @@ int RunComposition(const GameConfig& config) {
         opening.title = "Calibration route";
         opening.presentation_objective = "Reach the security checkpoint";
         opening.status = QuestStatus::Offered;
+        QuestRecord chapter;
+        chapter.id = slice.chapter_quest;
+        chapter.title = "Chapter One: service route";
+        chapter.presentation_objective = "Reach the elevator checkpoint";
+        chapter.status = QuestStatus::Offered;
         const bool setup_ok = services.systemic->AddContainer(cart) &&
                               services.systemic->AddTerminal(terminal) &&
+                              services.systemic->AddTerminal(calibration_terminal) &&
+                              services.systemic->AddTerminal(medical_terminal) &&
                               services.systemic->AddObservationSource(camera) &&
-                              services.systemic->AddQuest(opening);
+                              services.systemic->AddQuest(opening) &&
+                              services.systemic->AddQuest(chapter);
         if (!setup_ok) {
             std::fprintf(stderr, "pvs slice systemic setup rejected\n");
             return 9;
@@ -2251,6 +2277,12 @@ int RunComposition(const GameConfig& config) {
         (void)services.systemic->TransitionQuest(
             slice.opening_quest, QuestStatus::Active, 0,
             "Reach the security checkpoint");
+        (void)services.systemic->TransitionQuest(
+            slice.chapter_quest, QuestStatus::Accepted, 0,
+            "Complete the Chapter One service route");
+        (void)services.systemic->TransitionQuest(
+            slice.chapter_quest, QuestStatus::Active, 0,
+            "Reach the elevator checkpoint");
     }
     services.world->SetBooleanFact(RuntimeFactId("fact_player_has_gun"),
                                     slice.player, false);
@@ -2263,7 +2295,12 @@ int RunComposition(const GameConfig& config) {
              "fact_b1_body_hidden", "fact_b1_checkpoint_reached",
              "fact_b1_loud_action", "fact_b1_nonlethal_action",
              "fact_alpha_medical_reached", "fact_alpha_security_reached",
-             "fact_alpha_bribe_accepted"}) {
+             "fact_alpha_bribe_accepted", "fact_chapter_calibration_entered",
+             "fact_chapter_calibration_accessed", "fact_chapter_medical_reached",
+             "fact_chapter_medical_assessed", "fact_chapter_quiet_route",
+             "fact_chapter_aggressive_route", "fact_chapter_staff_route",
+             "fact_chapter_security_reached", "fact_chapter_security_checkpoint",
+             "fact_chapter_checkpoint_reached"}) {
         services.world->SetBooleanFact(RuntimeFactId(fact), slice.player, false);
     }
 
@@ -2308,6 +2345,11 @@ int RunComposition(const GameConfig& config) {
             npc.sight_range = profile.sight_range;
             npc.sight_fov_rad = profile.sight_fov_rad;
             npc.hearing_range = profile.hearing_range;
+            if (actor->role == Role::Guard &&
+                profile.spawn_room ==
+                    RoomId::New(StableContentId("room_1f_security"))) {
+                slice.security_guard_npc = profile.id;
+            }
             if (!services.ai->AddNpc(npc, profile.spawn_room)) {
                 std::fprintf(stderr, "pvs runtime npc setup rejected\n");
                 return 10;
@@ -2459,14 +2501,29 @@ int RunComposition(const GameConfig& config) {
         const float room_yaw = services.world->LoadedRoom().spawn_yaw;
         services.player->Locomotion().yaw = std::isfinite(destination_yaw)
                                                 ? destination_yaw : room_yaw;
+        // Room links author a horizontal destination view.  Reset the
+        // vertical look so a prior B1 interaction (which may leave the player
+        // looking at a body or floor) cannot make the first target in the new
+        // room impossible to focus.
+        services.player->Locomotion().pitch = 0.0f;
         services.player->SetCurrentRoom(id);
-        if (id == "room_service_medical") {
+        if (id == "room_01_calibration") {
+            services.world->SetBooleanFact(
+                RuntimeFactId("fact_chapter_calibration_entered"),
+                slice.player, true);
+        } else if (id == "room_service_medical") {
             services.world->SetBooleanFact(
                 RuntimeFactId("fact_alpha_medical_reached"),
+                slice.player, true);
+            services.world->SetBooleanFact(
+                RuntimeFactId("fact_chapter_medical_reached"),
                 slice.player, true);
         } else if (id == "room_1f_security") {
             services.world->SetBooleanFact(
                 RuntimeFactId("fact_alpha_security_reached"),
+                slice.player, true);
+            services.world->SetBooleanFact(
+                RuntimeFactId("fact_chapter_security_reached"),
                 slice.player, true);
         }
         services.ai->SetActiveRoom(services.world->LoadedRoom().id);
@@ -2482,11 +2539,20 @@ int RunComposition(const GameConfig& config) {
         return true;
     };
 
+    // Chapter links are authored SceneTransition records.  The policy is
+    // assigned after the camera helper below so it can use the same durable
+    // facts as objectives and interactions, while this position-only helper
+    // remains available for the established B1 doorway seam.
+    std::function<bool(const SceneTransition&)> transition_allowed;
     const auto try_room_portal = [&](const Vec3& position) {
         const std::string& current_room = services.player->CurrentRoom();
         const SceneTransition* portal = FindSceneTransitionAt(
             scene_runtime, current_room, position);
         if (portal == nullptr) return false;
+        if (transition_allowed && !transition_allowed(*portal)) {
+            render->SetSubtitleOnce(portal->unavailable_message, 120);
+            return true;
+        }
         if (!switch_room(portal->destination_room, portal->destination_spawn,
                          portal->destination_yaw)) {
             render->SetSubtitleOnce(portal->unavailable_message, 120);
@@ -2938,6 +3004,14 @@ int RunComposition(const GameConfig& config) {
         if (services.systemic->GetBody(slice.body) != nullptr) {
             slice.body_created = true;
         }
+        WorldFact restored_b1_checkpoint;
+        if (services.world->Facts().Get(
+                RuntimeFactId("fact_b1_checkpoint_reached"),
+                restored_b1_checkpoint) &&
+            std::holds_alternative<bool>(restored_b1_checkpoint.value)) {
+            slice.gate_crossed =
+                std::get<bool>(restored_b1_checkpoint.value) || slice.gate_crossed;
+        }
         // These are milestone facts, not current-state mirrors.  A successful
         // cleaner discovery intentionally changes the body disposition back to
         // Exposed, so reconstruct them from the durable systemic event ledger
@@ -2979,11 +3053,137 @@ int RunComposition(const GameConfig& config) {
     // All player-facing room interactions use the same center view ray as
     // the B1 recovery slice.  The helper is a bounded shared seam, not a
     // second target system.
+    constexpr float kPlayerInteractionDistance = 3.0f;
     const auto camera_looks_at = [&](const Vec3& target, float radius,
                                      float height) {
         return CameraRayHitsTarget(
             services.player->Locomotion(), terminal_w, terminal_h,
-            settings.fov, services.world->Query(), target, radius, height);
+            settings.fov, services.world->Query(), target, radius, height,
+            kPlayerInteractionDistance);
+    };
+    const auto fact_is_true = [&](std::string_view name) {
+        WorldFact fact;
+        return services.world->Facts().Get(RuntimeFactId(name), fact) &&
+               std::holds_alternative<bool>(fact.value) &&
+               std::get<bool>(fact.value);
+    };
+    const auto player_has_valid_badge = [&] {
+        return slice.badge.IsValid() &&
+               services.systemic->ItemHeldBy(slice.badge, slice.player) &&
+               services.systemic->ReaderAcceptsItem(slice.badge, 2);
+    };
+    const auto terminal_session_active = [&](TerminalId terminal_id) {
+        for (const auto& session : services.systemic->TerminalSessions()) {
+            if (session.terminal == terminal_id && session.user == slice.player &&
+                session.active) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto security_guard_disabled = [&] {
+        if (!slice.security_guard_npc.IsValid()) return false;
+        for (const auto& runtime : services.ai->Npcs()) {
+            if (runtime.instance.id == slice.security_guard_npc &&
+                (runtime.instance.state == NPCState::Stunned ||
+                 runtime.instance.state == NPCState::Dead)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    transition_allowed = [&](const SceneTransition& link) {
+        if (link.id == "b1_to_calibration") {
+            return player_has_valid_badge() &&
+                   terminal_session_active(slice.terminal);
+        }
+        if (link.id == "calibration_to_medical") {
+            return fact_is_true("fact_chapter_calibration_accessed");
+        }
+        if (link.id == "medical_to_staff") {
+            return fact_is_true("fact_chapter_medical_assessed") &&
+                   fact_is_true("fact_chapter_quiet_route");
+        }
+        if (link.id == "medical_to_security") {
+            return fact_is_true("fact_chapter_medical_assessed");
+        }
+        if (link.id == "medical_to_calibration") {
+            return fact_is_true("fact_chapter_calibration_accessed");
+        }
+        if (link.id == "medical_to_elevator") {
+            return fact_is_true("fact_chapter_staff_route") ||
+                   fact_is_true("fact_chapter_security_checkpoint");
+        }
+        if (link.id == "security_to_elevator") {
+            return fact_is_true("fact_chapter_security_checkpoint") ||
+                   security_guard_disabled();
+        }
+        if (link.id == "staff_to_elevator") {
+            return fact_is_true("fact_chapter_staff_route");
+        }
+        // Backtracking links are intentionally safe once the destination
+        // room exists. They do not create a second progression path.
+        if (link.id == "security_to_medical_south" ||
+            link.id == "security_to_medical_east" ||
+            link.id == "staff_to_medical") {
+            return true;
+        }
+        return true;
+    };
+    const auto enter_scene_transition = [&](const char* transition_id) {
+        const SceneTransition* link = scene_runtime.FindTransition(transition_id);
+        if (link == nullptr) return false;
+        if (transition_allowed && !transition_allowed(*link)) {
+            render->SetSubtitleOnce(link->unavailable_message, 120);
+            return true;
+        }
+        if (!switch_room(link->destination_room, link->destination_spawn,
+                         link->destination_yaw)) {
+            render->SetSubtitleOnce(link->unavailable_message, 120);
+            return true;
+        }
+        if (link->id == "medical_to_staff") {
+            services.world->SetBooleanFact(
+                RuntimeFactId("fact_chapter_staff_route"), slice.player, true);
+        }
+        return true;
+    };
+    const auto focused_scene_entity = [&](const char* entity_id) {
+        const SceneEntity* entity = scene_runtime.FindEntity(entity_id);
+        return entity != nullptr && entity->room == services.player->CurrentRoom() &&
+               camera_looks_at(entity->position, entity->radius, entity->height);
+    };
+    const auto use_chapter_terminal = [&](TerminalId terminal_id,
+                                           std::string_view action,
+                                           std::string_view success_text) {
+        const TerminalRecord* terminal = services.systemic->GetTerminal(terminal_id);
+        if (terminal == nullptr || terminal->room != services.world->LoadedRoom().id ||
+            !terminal->powered || !player_has_valid_badge() ||
+            !services.systemic->ReaderAcceptsItem(
+                slice.badge, terminal->credential_requirement)) {
+            return false;
+        }
+        if (terminal_session_active(terminal_id)) return true;
+        const uint64_t frame = services.player->CurrentFrame();
+        TerminalSession session;
+        session.terminal = terminal_id;
+        session.user = slice.player;
+        session.method = TerminalAccessMethod::Credential;
+        session.started_frame = frame;
+        session.active = true;
+        TerminalAuditLog audit;
+        audit.terminal = terminal_id;
+        audit.user = slice.player;
+        audit.method = TerminalAccessMethod::Credential;
+        audit.frame = frame;
+        audit.action = std::string(action);
+        audit.unauthorized = false;
+        if (!services.systemic->AddTerminalSession(session) ||
+            !services.systemic->AddTerminalAudit(audit)) {
+            return false;
+        }
+        render->SetSubtitleOnce(std::string(success_text), 180);
+        return true;
     };
     // Alpha-01 presentation is intentionally a pair of small sources rather
     // than a new UI or quest framework. They read the same systemic facts and
@@ -3005,25 +3205,40 @@ int RunComposition(const GameConfig& config) {
             return std::string("B1 complete: continue to calibration");
         }
         if (room == "room_01_calibration") {
-            return std::string("Calibration: follow the service route to Medical");
+            return fact_is_true("fact_chapter_calibration_accessed")
+                       ? std::string("Calibration: enter Medical service")
+                       : std::string("Calibration: use the route terminal");
         }
         if (room == "room_service_medical") {
-            return std::string("Medical: choose Security or the elevator route");
+            if (!fact_is_true("fact_chapter_medical_assessed")) {
+                return std::string("Medical: access the intake terminal");
+            }
+            if (fact_is_true("fact_chapter_security_checkpoint")) {
+                return std::string("Security: use the elevator checkpoint");
+            }
+            if (fact_is_true("fact_chapter_quiet_route")) {
+                return std::string("Medical: take the quiet staff passage");
+            }
+            return std::string("Medical: report to the Security checkpoint");
         }
         if (room == "room_1f_security") {
-            return std::string("Security: observe the guard, then reach the checkpoint");
+            return fact_is_true("fact_chapter_security_checkpoint") ||
+                           security_guard_disabled()
+                       ? std::string("Security: use the elevator access door")
+                       : std::string("Security: pass the checkpoint");
         }
         if (room == "room_elevator_lobby") {
-            return std::string("CHAPTER CHECKPOINT: elevator lobby reached");
+            return fact_is_true("fact_chapter_checkpoint_reached")
+                       ? std::string("Chapter One complete")
+                       : std::string("Elevator: verify the chapter checkpoint");
         }
         if (room == "room_restroom_staff") {
-            return std::string("Staff route: reach the elevator lobby");
+            return std::string("Staff route: use the elevator service door");
         }
         return std::string("Explore the marked service route");
     });
     render->SetInteractionPromptSource([&] {
         const std::string& room = services.player->CurrentRoom();
-        const Vec3& position = services.player->Locomotion().position;
         if (room == "room_b1_revival") {
             if (services.systemic->GetDrag(slice.body) != nullptr) {
                 const SceneEntity* cart = scene_runtime.FindEntity("b1_cleaning_cart");
@@ -3079,13 +3294,12 @@ int RunComposition(const GameConfig& config) {
         }
         if (room == "room_01_calibration") {
             const SceneEntity* terminal = scene_runtime.FindEntity("calibration_terminal");
-            if (terminal != nullptr && camera_looks_at(terminal->position,
-                                                       terminal->radius,
-                                                       terminal->height)) {
-                return slice.terminal_session ? std::string("[F] REVIEW CALIBRATION ROUTE")
-                                              : std::string("[F] USE CALIBRATION TERMINAL");
+            if (terminal != nullptr && focused_scene_entity("calibration_terminal")) {
+                return terminal_session_active(slice.calibration_terminal)
+                           ? std::string("[F] REVIEW CALIBRATION ROUTE")
+                           : std::string("[F] USE CALIBRATION TERMINAL");
             }
-            if (FindSceneTransitionAt(scene_runtime, room, position) != nullptr) {
+            if (focused_scene_entity("calibration_service_door")) {
                 return std::string("[F] ENTER MEDICAL SERVICE");
             }
             return services.player->CurrentFrame() < 360
@@ -3096,27 +3310,56 @@ int RunComposition(const GameConfig& config) {
             for (const auto& runtime : services.ai->Npcs()) {
                 if (runtime.room == services.world->LoadedRoom().id &&
                     runtime.instance.role == Role::Guard &&
+                    focused_scene_entity("security_service_door") == false &&
                     runtime.instance.state != NPCState::Dead &&
                     runtime.instance.state != NPCState::Stunned &&
                     camera_looks_at(runtime.instance.position, 0.90f, 1.80f)) {
                     return std::string("[F] ADDRESS SECURITY");
                 }
             }
-            if (FindSceneTransitionAt(scene_runtime, room, position) != nullptr) {
+            if (focused_scene_entity("security_service_door")) {
+                return std::string("[F] ENTER ELEVATOR ACCESS");
+            }
+            if (focused_scene_entity("security_medical_south_door") ||
+                focused_scene_entity("security_medical_east_door")) {
                 return std::string("[F] RETURN TO MEDICAL");
             }
             return std::string{};
         }
         if (room == "room_service_medical") {
-            if (FindSceneTransitionAt(scene_runtime, room, position) != nullptr) {
-                return position.y >= 10.5f ? std::string("[F] ENTER ELEVATOR LOBBY")
-                                           : std::string("[F] ENTER SECURITY");
+            if (focused_scene_entity("medical_terminal")) {
+                return terminal_session_active(slice.medical_terminal)
+                           ? std::string("[F] REVIEW MEDICAL INTAKE")
+                           : std::string("[F] USE MEDICAL TERMINAL");
+            }
+            if (focused_scene_entity("medical_calibration_door")) {
+                return std::string("[F] RETURN TO CALIBRATION");
+            }
+            if (focused_scene_entity("medical_security_door")) {
+                return std::string("[F] ENTER SECURITY");
+            }
+            if (focused_scene_entity("medical_staff_door")) {
+                return std::string("[F] ENTER STAFF PASSAGE");
+            }
+            if (focused_scene_entity("medical_elevator_door")) {
+                return std::string("[F] ENTER ELEVATOR LOBBY");
             }
             return std::string{};
         }
-        if (room == "room_restroom_staff" &&
-            FindSceneTransitionAt(scene_runtime, room, position) != nullptr) {
-            return std::string("[F] ENTER ELEVATOR LOBBY");
+        if (room == "room_restroom_staff") {
+            if (focused_scene_entity("staff_medical_door")) {
+                return std::string("[F] RETURN TO MEDICAL");
+            }
+            if (focused_scene_entity("staff_elevator_door")) {
+                return std::string("[F] ENTER ELEVATOR LOBBY");
+            }
+            return std::string{};
+        }
+        if (room == "room_elevator_lobby" &&
+            focused_scene_entity("elevator_restricted_door")) {
+            return fact_is_true("fact_chapter_checkpoint_reached")
+                       ? std::string("[F] CHECKPOINT RECORDED")
+                       : std::string("[F] VERIFY ELEVATOR CHECKPOINT");
         }
         return std::string{};
     });
@@ -3184,7 +3427,8 @@ int RunComposition(const GameConfig& config) {
                 float hit_distance = 0.0f;
                 const bool hit = IntersectRayAabb(eye, interaction_ray, bounds,
                                                   hit_distance);
-                if (!hit || hit_distance >= focused_distance) {
+                if (!hit || hit_distance > kPlayerInteractionDistance ||
+                    hit_distance >= focused_distance) {
                     return;
                 }
                 const Vec3 hit_point = eye + interaction_ray * hit_distance;
@@ -3278,6 +3522,26 @@ int RunComposition(const GameConfig& config) {
                         services.world->SetBooleanFact(
                             RuntimeFactId("fact_b1_checkpoint_reached"),
                             player, true);
+                        const BodyRecord* route_body =
+                            services.systemic->GetBody(slice.body);
+                        // The chapter route records the player's durable
+                        // approach, not the body's transient post-discovery
+                        // disposition.  A cleaner may later reopen a hidden
+                        // cart body; that consequence must not rewrite a
+                        // previously quiet/non-lethal route into the loud
+                        // branch.  Keep the body read for the existing B1
+                        // seam, while the chapter facts own this distinction.
+                        const bool quiet_route =
+                            route_body != nullptr &&
+                            fact_is_true("fact_b1_body_hidden") &&
+                            fact_is_true("fact_b1_nonlethal_action") &&
+                            !fact_is_true("fact_b1_loud_action");
+                        services.world->SetBooleanFact(
+                            RuntimeFactId("fact_chapter_quiet_route"),
+                            player, quiet_route);
+                        services.world->SetBooleanFact(
+                            RuntimeFactId("fact_chapter_aggressive_route"),
+                            player, !quiet_route);
                         (void)services.systemic->TransitionQuest(
                             slice.opening_quest, QuestStatus::Completed, frame,
                             "B1 service checkpoint reached");
@@ -3424,19 +3688,29 @@ int RunComposition(const GameConfig& config) {
         }
 
         if (services.player->CurrentRoom() == "room_01_calibration") {
-            if (try_room_portal(p)) {
+            if (focused_scene_entity("calibration_terminal")) {
+                if (terminal_session_active(slice.calibration_terminal)) {
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_chapter_calibration_accessed"),
+                        player, true);
+                    render->SetSubtitleOnce(
+                        "CALIBRATION: route already verified. Proceed to Medical.",
+                        160);
+                } else if (use_chapter_terminal(
+                               slice.calibration_terminal,
+                               "read_medical_route",
+                               "CALIBRATION: route verified. Service access is open.")) {
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_chapter_calibration_accessed"),
+                        player, true);
+                } else {
+                    render->SetSubtitleOnce(
+                        "CALIBRATION: held credential required.", 160);
+                }
                 return;
             }
-            const SceneEntity* calibration_terminal =
-                scene_runtime.FindEntity("calibration_terminal");
-            if (calibration_terminal != nullptr &&
-                camera_looks_at(calibration_terminal->position,
-                                calibration_terminal->radius,
-                                calibration_terminal->height)) {
-                render->SetSubtitleOnce(slice.terminal_session
-                                            ? "CALIBRATION: route verified. Service access is open."
-                                            : "CALIBRATION: use the B1 terminal before proceeding.",
-                                        160);
+            if (focused_scene_entity("calibration_service_door")) {
+                (void)enter_scene_transition("calibration_to_medical");
                 return;
             }
             render->SetSubtitleOnce("CALIBRATION: diagnostics, logistics, then medical service.", 120);
@@ -3449,7 +3723,18 @@ int RunComposition(const GameConfig& config) {
                 services.systemic->ReaderAcceptsItem(slice.badge, 2);
             if (interaction_guard_available &&
                 camera_looks_at(interaction_guard_position, 0.90f, 1.80f)) {
-                if (has_badge) {
+                if (interaction_guard_npc == slice.security_guard_npc &&
+                    security_guard_disabled()) {
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_chapter_security_checkpoint"),
+                        player, true);
+                    render->SetSubtitleOnce(
+                        "SECURITY: the checkpoint is open while the guard is down.",
+                        180);
+                } else if (has_badge) {
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_chapter_security_checkpoint"),
+                        player, true);
                     render->SetSubtitleOnce("ACCESS GRANTED. Security checkpoint logged you.", 180);
                 } else if (!slice.bribe_done && slice.cash.IsValid() &&
                            services.systemic->TransferItem(slice.cash, guard)) {
@@ -3467,6 +3752,9 @@ int RunComposition(const GameConfig& config) {
                         services.world->SetBooleanFact(
                             RuntimeFactId("fact_alpha_bribe_accepted"),
                             player, true);
+                        services.world->SetBooleanFact(
+                            RuntimeFactId("fact_chapter_security_checkpoint"),
+                            player, true);
                         render->SetSubtitleOnce("He takes the money. That is not the same as trust.", 180);
                     }
                 } else if (slice.bribe_done) {
@@ -3476,7 +3764,16 @@ int RunComposition(const GameConfig& config) {
                 }
                 return;
             }
-            if (try_room_portal(p)) {
+            if (focused_scene_entity("security_service_door")) {
+                (void)enter_scene_transition("security_to_elevator");
+                return;
+            }
+            if (focused_scene_entity("security_medical_south_door")) {
+                (void)enter_scene_transition("security_to_medical_south");
+                return;
+            }
+            if (focused_scene_entity("security_medical_east_door")) {
+                (void)enter_scene_transition("security_to_medical_east");
                 return;
             }
             if (p.x < 8.0f && p.y < 5.0f) {
@@ -3497,21 +3794,85 @@ int RunComposition(const GameConfig& config) {
         }
 
         if (services.player->CurrentRoom() == "room_service_medical") {
-            if (!try_room_portal(p)) {
-                render->SetSubtitleOnce("MEDICAL: supplies are logged before they are used.", 160);
+            if (focused_scene_entity("medical_terminal")) {
+                if (terminal_session_active(slice.medical_terminal)) {
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_chapter_medical_assessed"),
+                        player, true);
+                    render->SetSubtitleOnce(
+                        "MEDICAL: intake already recorded. Choose a service route.",
+                        160);
+                } else if (use_chapter_terminal(
+                               slice.medical_terminal,
+                               "complete_medical_intake",
+                               "MEDICAL: intake recorded. Choose a service route.")) {
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_chapter_medical_assessed"),
+                        player, true);
+                } else {
+                    render->SetSubtitleOnce(
+                        "MEDICAL: held credential required for intake.", 160);
+                }
+                return;
             }
+            if (focused_scene_entity("medical_calibration_door")) {
+                (void)enter_scene_transition("medical_to_calibration");
+                return;
+            }
+            if (focused_scene_entity("medical_security_door")) {
+                (void)enter_scene_transition("medical_to_security");
+                return;
+            }
+            if (focused_scene_entity("medical_staff_door")) {
+                (void)enter_scene_transition("medical_to_staff");
+                return;
+            }
+            if (focused_scene_entity("medical_elevator_door")) {
+                (void)enter_scene_transition("medical_to_elevator");
+                return;
+            }
+            render->SetSubtitleOnce("MEDICAL: supplies are logged before they are used.", 160);
             return;
         }
 
         if (services.player->CurrentRoom() == "room_restroom_staff") {
-            if (!try_room_portal(p)) {
-                render->SetSubtitleOnce("STAFF ROUTE: a service door stands open.", 140);
+            if (focused_scene_entity("staff_medical_door")) {
+                (void)enter_scene_transition("staff_to_medical");
+                return;
             }
+            if (focused_scene_entity("staff_elevator_door")) {
+                (void)enter_scene_transition("staff_to_elevator");
+                return;
+            }
+            render->SetSubtitleOnce("STAFF ROUTE: find the elevator service door.", 140);
             return;
         }
 
         if (services.player->CurrentRoom() == "room_elevator_lobby") {
-            render->SetSubtitleOnce("ELEVATOR: floors 2–36 require a reason to exist.", 180);
+            if (focused_scene_entity("elevator_restricted_door")) {
+                const bool route_authorized =
+                    fact_is_true("fact_chapter_staff_route") ||
+                    fact_is_true("fact_chapter_security_checkpoint");
+                if (!route_authorized) {
+                    render->SetSubtitleOnce(
+                        "ELEVATOR: the checkpoint record is incomplete.", 160);
+                } else if (!fact_is_true("fact_chapter_checkpoint_reached")) {
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_chapter_checkpoint_reached"),
+                        player, true);
+                    (void)services.systemic->TransitionQuest(
+                        slice.chapter_quest, QuestStatus::Completed, frame,
+                        "Chapter One elevator checkpoint reached");
+                    render->SetSubtitleOnce(
+                        "ELEVATOR: checkpoint recorded. The building remains awake.",
+                        220);
+                } else {
+                    render->SetSubtitleOnce(
+                        "ELEVATOR: Chapter One checkpoint already recorded.", 140);
+                }
+                return;
+            }
+            render->SetSubtitleOnce("ELEVATOR: the restricted door awaits verification.", 180);
         }
     });
     services.player->SetDragStateCallback([&](float& modifier, bool& sprint_forbidden,
@@ -3621,9 +3982,12 @@ int RunComposition(const GameConfig& config) {
         const size_t replay_mouse_events = input_module->ReplayMouseEventCount();
         const bool replay_process_ok = result == 0;
         const bool replay_input_consumed = replay_keyboard_events > 0 || replay_mouse_events > 0;
-        const bool chapter_checkpoint_reached = slice.gate_crossed &&
-                                                services.player->CurrentRoom() ==
-                                                    "room_01_calibration";
+        const bool b1_checkpoint_reached = slice.gate_crossed &&
+                                            services.player->CurrentRoom() ==
+                                                "room_01_calibration";
+        const bool chapter_checkpoint_reached =
+            fact_is_true("fact_chapter_checkpoint_reached") &&
+            services.player->CurrentRoom() == "room_elevator_lobby";
         const bool success_replay = config.replay_path.find("recovery_b1_success") !=
                                     std::string::npos;
         const bool denied_replay = config.replay_path.find("recovery_b1_denied") !=
@@ -3648,6 +4012,21 @@ int RunComposition(const GameConfig& config) {
         const bool alpha_memory_replay =
             config.replay_path.find("alpha01_memory_consequence") !=
             std::string::npos;
+        const bool chapter_systemic_replay =
+            config.replay_path.find("chapter01_systemic") != std::string::npos;
+        const bool chapter_aggressive_replay =
+            config.replay_path.find("chapter01_aggressive") != std::string::npos;
+        const bool chapter_denied_replay =
+            config.replay_path.find("chapter01_denied_or_blocked") !=
+            std::string::npos;
+        const bool chapter_memory_replay =
+            config.replay_path.find("chapter01_memory_consequence") !=
+            std::string::npos;
+        const bool chapter_mid_save_replay =
+            config.replay_path.find("chapter01_mid_save_load") !=
+            std::string::npos;
+        const bool chapter_backtrack_replay =
+            config.replay_path.find("chapter01_backtrack") != std::string::npos;
         const bool badge_held_by_player =
             slice.badge.IsValid() &&
             services.systemic->ItemHeldBy(slice.badge, slice.player);
@@ -3671,17 +4050,69 @@ int RunComposition(const GameConfig& config) {
             !services.narrative->LastPresentedText().empty();
         const bool quest_presented_during_route = render->ObjectiveWasPresented();
         const bool quest_presentation_visible = render->ObjectiveVisible();
-        const bool expected_state_reached = (success_replay || alpha_systemic_replay)
+        const QuestRecord* chapter_quest =
+            services.systemic->GetQuest(slice.chapter_quest);
+        const bool chapter_quest_completed =
+            chapter_quest != nullptr && chapter_quest->status == QuestStatus::Completed;
+        const auto visited_room = [&](std::string_view room) {
+            return std::find(replay_route.begin(), replay_route.end(), room) !=
+                   replay_route.end();
+        };
+        const bool backtracked_medical = [&] {
+            for (size_t i = 1; i + 1 < replay_route.size(); ++i) {
+                if (replay_route[i] == "room_service_medical" &&
+                    replay_route[i - 1] == "room_01_calibration" &&
+                    replay_route[i + 1] == "room_01_calibration") {
+                    return true;
+                }
+            }
+            return false;
+        }();
+        const bool chapter_route_complete =
+            chapter_checkpoint_reached && chapter_quest_completed &&
+            fact_is_true("fact_chapter_calibration_accessed") &&
+            fact_is_true("fact_chapter_medical_assessed") &&
+            narrative_visible_action && quest_presented_during_route &&
+            visited_room("room_01_calibration") &&
+            visited_room("room_service_medical") &&
+            visited_room("room_elevator_lobby");
+        const bool expected_state_reached = chapter_systemic_replay
+            ? (chapter_route_complete && fact_is_true("fact_chapter_quiet_route") &&
+               fact_is_true("fact_chapter_staff_route") &&
+               visited_room("room_restroom_staff") && replay_save_ok && replay_load_ok)
+            : chapter_aggressive_replay
+                ? (chapter_route_complete &&
+                   fact_is_true("fact_chapter_aggressive_route") &&
+                   fact_is_true("fact_chapter_security_checkpoint") &&
+                   visited_room("room_1f_security") && slice.shot_hit &&
+                   !slice.nonlethal_hit && slice.body_created && badge_held_by_player &&
+                   replay_save_ok && replay_load_ok)
+            : chapter_denied_replay
+                ? (slice.access_attempted && slice.access_denied &&
+                   !slice.gate_open && !slice.gate_crossed &&
+                   !chapter_checkpoint_reached)
+            : chapter_memory_replay
+                ? (chapter_route_complete &&
+                   cleaner_relationship_established && cleaner_helped_coverup &&
+                   slice.body_hidden && slice.body_discovered &&
+                   slice.cleaner_response && replay_save_ok && replay_load_ok)
+            : chapter_mid_save_replay
+                ? (chapter_route_complete && replay_save_ok && replay_load_ok &&
+                   visited_room("room_restroom_staff"))
+            : chapter_backtrack_replay
+                ? (chapter_route_complete && fact_is_true("fact_chapter_quiet_route") &&
+                   fact_is_true("fact_chapter_staff_route") && backtracked_medical)
+            : (success_replay || alpha_systemic_replay)
             ? (slice.shot_hit && slice.nonlethal_hit && slice.body_created &&
                slice.body_hidden && slice.body_discovered && slice.cleaner_response &&
                slice.terminal_session && slice.gate_open &&
                narrative_visible_action && quest_presented_during_route &&
-               replay_save_ok && replay_load_ok && chapter_checkpoint_reached)
+               replay_save_ok && replay_load_ok && b1_checkpoint_reached)
             : alpha_aggressive_replay
                 ? (slice.shot_hit && !slice.nonlethal_hit && slice.body_created &&
                    badge_held_by_player && slice.gate_open && slice.gate_crossed &&
                    narrative_visible_action && quest_presented_during_route &&
-                   chapter_checkpoint_reached)
+                   b1_checkpoint_reached)
             : alpha_denied_replay
                 ? (slice.access_attempted && slice.access_denied &&
                    !slice.gate_open && !slice.gate_crossed &&
@@ -3692,7 +4123,7 @@ int RunComposition(const GameConfig& config) {
                    cleaner_helped_coverup && replay_save_ok && replay_load_ok)
             : denied_replay
                 ? (slice.access_attempted && slice.access_denied && !slice.gate_open &&
-                   !slice.terminal_session && !chapter_checkpoint_reached)
+                   !slice.terminal_session && !b1_checkpoint_reached)
                 : terminal_denied_replay
                     ? (slice.terminal_attempted && slice.terminal_denied &&
                        !slice.terminal_session && !slice.gate_open)
@@ -3704,7 +4135,7 @@ int RunComposition(const GameConfig& config) {
                         : badge_only_replay
                             ? (badge_held_by_player && !slice.access_attempted &&
                                !slice.access_denied && !slice.gate_open &&
-                               !chapter_checkpoint_reached)
+                               !b1_checkpoint_reached)
                             : false;
         for (const auto& runtime : services.ai->Npcs()) {
             if (runtime.instance.cognition == CognitionTier::Full) {
@@ -3791,6 +4222,8 @@ int RunComposition(const GameConfig& config) {
                      render->NarratorTypographyActive() ? "YES" : "NO");
         std::fprintf(stderr, "NARRATIVE_VISIBLE_ACTION=%s\n",
                      narrative_visible_action ? "YES" : "NO");
+        std::fprintf(stderr, "NARRATIVE_LAST_TEXT=%s\n",
+                     services.narrative->LastPresentedText().c_str());
         std::fprintf(stderr, "QUEST_PRESENTED_DURING_ROUTE=%s\n",
                      quest_presented_during_route ? "YES" : "NO");
         std::fprintf(stderr, "QUEST_PRESENTATION_VISIBLE=%s OBJECTIVE=%s\n",

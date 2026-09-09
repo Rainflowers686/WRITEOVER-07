@@ -1,0 +1,110 @@
+# Chapter One durable-memory route: establish a directed Cleaner relationship,
+# save/load it, perform the quiet B1 body route, then complete Chapter One.
+0 W down
+0 SHIFT down
+1 MOUSEMOVE -177 0
+351 MOUSEMOVE -48 0
+390 W up
+390 SHIFT up
+391 MOUSEMOVE -350 0
+391 W down
+391 SHIFT down
+485 W up
+485 SHIFT up
+486 MOUSEMOVE -856 0
+500 F down
+501 F up
+520 F5 down
+521 F5 up
+540 F9 down
+541 F9 up
+# Re-approach officer_davis for the real non-lethal body route.
+560 MOUSEMOVE -477 0
+560 W down
+560 SHIFT down
+650 W up
+650 SHIFT up
+651 V down
+652 V up
+653 W down
+736 W up
+737 S down
+754 S up
+754 MOUSEMOVE -1037 200
+755 F down
+756 F up
+759 F down
+760 F up
+761 MOUSEMOVE -287 0
+762 W down
+1160 W up
+1160 MOUSEMOVE -940 0
+1161 F down
+1162 F up
+# Leave the cart area while the Cleaner observes the hidden body.
+1163 MOUSEMOVE -517 0
+1164 W down
+1280 W up
+# Return to the B1 calibration terminal from a known heading.
+1500 MOUSEMOVE -696 0
+1501 W down
+1501 SHIFT down
+1631 W up
+1631 SHIFT up
+1640 F down
+1641 F up
+# Turn toward the service reader and approach it.
+1650 MOUSEMOVE -853 0
+1651 W down
+1651 SHIFT down
+1870 W up
+1875 F down
+1876 F up
+# Cross the opened B1 service door.
+1880 W down
+1980 W up
+1985 MOUSEMOVE 1047 0
+1990 F down
+1991 F up
+# Calibration terminal.
+2000 W down
+2133 W up
+2134 A down
+2223 A up
+2224 F down
+2225 F up
+# Calibration service door.
+2235 W down
+2324 W up
+2325 A down
+2347 A up
+2348 F down
+2349 F up
+# Medical intake terminal.
+2580 W down
+2713 W up
+2714 A down
+2758 A up
+2760 F down
+2761 F up
+# Quiet medical-to-staff passage.
+2780 D down
+2824 D up
+2825 W down
+2935 W up
+2936 A down
+3046 A up
+3050 F down
+3051 F up
+# Staff passage to elevator lobby.
+3070 W down
+3392 W up
+3395 F down
+3396 F up
+# Elevator checkpoint.
+3410 W down
+3566 W up
+3567 A down
+3589 A up
+3590 F down
+3591 F up

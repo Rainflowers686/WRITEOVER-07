@@ -33,13 +33,16 @@
 900 MOUSEMOVE -113 0
 902 MOUSEMOVE -604 0
 903 MOUSEMOVE 0 -175
-920 F down
-921 F up
+904 MOUSEMOVE 0 175
+920 W down
+960 W up
+961 F down
+962 F up
 # Hold in the B1 corridor long enough for the cleaner's real arrival,
 # inspection, and response before approaching the checkpoint.
-922 MOUSEMOVE 960 0
+1010 MOUSEMOVE 960 0
 1190 D down
-1198 D up
+1210 D up
 1200 W down
 1200 SHIFT down
 1330 F down

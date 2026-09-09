@@ -86,6 +86,80 @@
       "actions": [
         {"type": "narrator", "textId": "text_alpha_denied", "persona": 2}
       ]
+    },
+    {
+      "id": "storylet_chapter_calibration",
+      "textId": "text_chapter_calibration",
+      "priority": 205,
+      "once": true,
+      "conditions": [
+        {"type": "fact", "fact": "fact_chapter_calibration_accessed", "equals": true}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_chapter_calibration", "persona": 1}
+      ]
+    },
+    {
+      "id": "storylet_chapter_medical_quiet",
+      "textId": "text_chapter_medical_quiet",
+      "priority": 155,
+      "once": true,
+      "conditions": [
+        {"type": "fact", "fact": "fact_chapter_medical_assessed", "equals": true},
+        {"type": "fact", "fact": "fact_chapter_quiet_route", "equals": true}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_chapter_medical_quiet", "persona": 1}
+      ]
+    },
+    {
+      "id": "storylet_chapter_medical_alert",
+      "textId": "text_chapter_medical_alert",
+      "priority": 154,
+      "once": true,
+      "conditions": [
+        {"type": "fact", "fact": "fact_chapter_medical_assessed", "equals": true},
+        {"type": "fact", "fact": "fact_chapter_aggressive_route", "equals": true}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_chapter_medical_alert", "persona": 2}
+      ]
+    },
+    {
+      "id": "storylet_chapter_staff",
+      "textId": "text_chapter_staff",
+      "priority": 145,
+      "once": true,
+      "conditions": [
+        {"type": "fact", "fact": "fact_chapter_staff_route", "equals": true}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_chapter_staff", "persona": 1}
+      ]
+    },
+    {
+      "id": "storylet_chapter_security",
+      "textId": "text_chapter_security",
+      "priority": 144,
+      "once": true,
+      "conditions": [
+        {"type": "fact", "fact": "fact_chapter_security_checkpoint", "equals": true}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_chapter_security", "persona": 2}
+      ]
+    },
+    {
+      "id": "storylet_chapter_complete",
+      "textId": "text_chapter_complete",
+      "priority": 220,
+      "once": true,
+      "conditions": [
+        {"type": "fact", "fact": "fact_chapter_checkpoint_reached", "equals": true}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_chapter_complete", "persona": 1}
+      ]
     }
   ]
 }

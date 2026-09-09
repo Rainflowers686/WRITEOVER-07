@@ -1,0 +1,110 @@
+# Chapter One quiet/systemic route: preserve the real B1 non-lethal,
+# concealment, cleaner-discovery, credential, and service-gate route, then
+# use both authored chapter terminals, take the quiet staff passage, and
+# verify the elevator checkpoint.
+0 W down
+0 SHIFT down
+1 MOUSEMOVE -177 0
+390 W up
+390 SHIFT up
+351 MOUSEMOVE -48 0
+352 W down
+426 W up
+427 V down
+428 V up
+429 W down
+512 W up
+513 S down
+530 S up
+530 MOUSEMOVE 0 200
+531 F down
+532 F up
+535 F down
+536 F up
+537 MOUSEMOVE 1120 0
+538 W down
+850 W up
+850 MOUSEMOVE 956 0
+851 F down
+852 F up
+900 MOUSEMOVE -113 0
+902 MOUSEMOVE -604 0
+903 MOUSEMOVE 0 -175
+904 MOUSEMOVE 0 175
+920 W down
+960 W up
+961 F down
+962 F up
+1010 MOUSEMOVE 960 0
+1190 D down
+1210 D up
+1200 W down
+1200 SHIFT down
+1330 F down
+1331 F up
+1450 W up
+1450 SHIFT up
+1451 MOUSEMOVE 1047 0
+1470 F down
+1471 F up
+# Calibration terminal.
+1472 W down
+1472 SHIFT down
+1605 W up
+1606 A down
+1695 A up
+1696 F down
+1697 F up
+# Calibration service door.
+1705 W down
+1794 W up
+1795 A down
+1817 A up
+1818 F down
+1819 F up
+# Retry the authored door focus without changing state if the first look
+# landed on the adjacent low service ceiling.  One of these attempts must
+# either enter Medical or leave the player at the same authored door.
+1860 F down
+1861 F up
+1900 F down
+1901 F up
+1940 F down
+1941 F up
+2009 F down
+2010 F up
+# Medical intake terminal.
+2050 W down
+2183 W up
+2184 A down
+2228 A up
+2235 F down
+2236 F up
+2245 F down
+2246 F up
+# Mid-chapter save/load must preserve the real medical-route state.
+2250 F5 down
+2251 F5 up
+2260 F9 down
+2261 F9 up
+# Quiet medical-to-staff passage.
+2280 D down
+2324 D up
+2325 W down
+2435 W up
+2436 A down
+2546 A up
+2550 F down
+2551 F up
+# Staff passage to the elevator lobby.
+2570 W down
+2892 W up
+2895 F down
+2896 F up
+# Final elevator checkpoint interaction.
+2910 W down
+3066 W up
+3067 A down
+3089 A up
+3090 F down
+3091 F up

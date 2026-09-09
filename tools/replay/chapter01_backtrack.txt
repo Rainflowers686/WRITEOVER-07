@@ -1,0 +1,113 @@
+# Chapter One backtrack route: complete the B1 quiet setup, enter Medical,
+# return through the authored calibration door, re-verify Calibration, then
+# continue through Medical, Staff, and the elevator checkpoint.
+0 W down
+0 SHIFT down
+1 MOUSEMOVE -177 0
+390 W up
+390 SHIFT up
+351 MOUSEMOVE -48 0
+352 W down
+426 W up
+427 V down
+428 V up
+429 W down
+512 W up
+513 S down
+530 S up
+530 MOUSEMOVE 0 200
+531 F down
+532 F up
+535 F down
+536 F up
+537 MOUSEMOVE 1120 0
+538 W down
+850 W up
+850 MOUSEMOVE 956 0
+851 F down
+852 F up
+900 MOUSEMOVE -113 0
+902 MOUSEMOVE -604 0
+903 MOUSEMOVE 0 -175
+904 MOUSEMOVE 0 175
+920 W down
+960 W up
+961 F down
+962 F up
+1010 MOUSEMOVE 960 0
+1190 D down
+1210 D up
+1200 W down
+1200 SHIFT down
+1330 F down
+1331 F up
+1450 W up
+1450 SHIFT up
+1451 MOUSEMOVE 1047 0
+1470 F down
+1471 F up
+# First Calibration pass.
+1472 W down
+1472 SHIFT down
+1605 W up
+1606 A down
+1695 A up
+1696 F down
+1697 F up
+1705 W down
+1794 W up
+1795 A down
+1817 A up
+1818 F down
+1819 F up
+# First Medical intake.
+2050 W down
+2183 W up
+2184 A down
+2228 A up
+2235 F down
+2236 F up
+# Backtrack through the authored Medical -> Calibration door.
+2240 S down
+2340 S up
+2341 MOUSEMOVE 1047 0
+2350 F down
+2351 F up
+# Re-verify Calibration and return to Medical.
+2355 W down
+2488 W up
+2489 A down
+2578 A up
+2580 F down
+2581 F up
+2590 W down
+2679 W up
+2680 A down
+2702 A up
+2703 F down
+2704 F up
+# Finish the quiet route after the backtrack.
+2705 W down
+2838 W up
+2839 A down
+2883 A up
+2890 F down
+2891 F up
+2895 D down
+2939 D up
+2940 W down
+3050 W up
+3051 A down
+3161 A up
+3165 F down
+3166 F up
+3180 W down
+3502 W up
+3505 F down
+3506 F up
+3520 W down
+3676 W up
+3677 A down
+3699 A up
+3700 F down
+3701 F up

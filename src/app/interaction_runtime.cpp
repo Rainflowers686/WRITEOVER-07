@@ -8,11 +8,13 @@ bool CameraRayHitsTarget(const LocomotionState& player,
                          int terminal_width, int terminal_height,
                          float vertical_fov_degrees,
                          const IWorldQuery& world,
-                         const Vec3& target, float radius, float height) {
+                         const Vec3& target, float radius, float height,
+                         float max_distance) {
     if (terminal_width <= 0 || terminal_height <= 0 ||
         !std::isfinite(vertical_fov_degrees) || vertical_fov_degrees <= 1.0f ||
         vertical_fov_degrees >= 179.0f || !std::isfinite(radius) ||
         !std::isfinite(height) || radius <= 0.0f || height <= 0.0f ||
+        !std::isfinite(max_distance) || max_distance <= 0.0f ||
         !std::isfinite(target.x) || !std::isfinite(target.y) ||
         !std::isfinite(target.z)) {
         return false;
@@ -33,9 +35,20 @@ bool CameraRayHitsTarget(const LocomotionState& player,
         Vec3{target.x + radius, target.y + radius, target.z + height}};
     float hit_distance = 0.0f;
     if (!IntersectRayAabb(eye, ray, bounds, hit_distance)) return false;
-    const Vec3 hit_point{eye.x + ray.x * hit_distance,
-                         eye.y + ray.y * hit_distance,
-                         eye.z + ray.z * hit_distance};
+    if (hit_distance > max_distance) return false;
+    // IntersectRayAabb returns the forward exit when the eye is already
+    // inside a target proxy.  That is the right nearest-target ordering
+    // policy, but using the exit for visibility would trace through a wall
+    // behind a nearby terminal or door and falsely reject the target.  An
+    // already-overlapped target is visible at the eye plane; test that local
+    // point instead of the far side of its proxy.
+    const bool eye_inside = eye.x >= bounds.min.x && eye.x <= bounds.max.x &&
+                            eye.y >= bounds.min.y && eye.y <= bounds.max.y &&
+                            eye.z >= bounds.min.z && eye.z <= bounds.max.z;
+    const float visible_distance = eye_inside ? 0.0f : hit_distance;
+    const Vec3 hit_point{eye.x + ray.x * visible_distance,
+                         eye.y + ray.y * visible_distance,
+                         eye.z + ray.z * visible_distance};
     return world.LineOfSight(eye, hit_point, hit_point.z);
 }
 

@@ -17,7 +17,8 @@ bool CameraRayHitsTarget(const LocomotionState& player,
                          int terminal_width, int terminal_height,
                          float vertical_fov_degrees,
                          const IWorldQuery& world,
-                         const Vec3& target, float radius, float height);
+                         const Vec3& target, float radius, float height,
+                         float max_distance = 3.0f);
 
 // Returns the first authored link whose source room and bounds contain the
 // player. Content order is deterministic and remains the tie-breaker for

@@ -15,6 +15,16 @@
     {"id": "fact_b1_nonlethal_action", "predicate": 0, "initial": false, "subject": 1},
     {"id": "fact_alpha_medical_reached", "predicate": 0, "initial": false, "subject": 1},
     {"id": "fact_alpha_security_reached", "predicate": 0, "initial": false, "subject": 1},
-    {"id": "fact_alpha_bribe_accepted", "predicate": 0, "initial": false, "subject": 1}
+    {"id": "fact_alpha_bribe_accepted", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_chapter_calibration_entered", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_chapter_calibration_accessed", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_chapter_medical_reached", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_chapter_medical_assessed", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_chapter_quiet_route", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_chapter_aggressive_route", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_chapter_staff_route", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_chapter_security_reached", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_chapter_security_checkpoint", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_chapter_checkpoint_reached", "predicate": 0, "initial": false, "subject": 1}
   ]
 }
