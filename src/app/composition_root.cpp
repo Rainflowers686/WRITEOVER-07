@@ -3230,11 +3230,6 @@ int RunComposition(const GameConfig& config) {
             return;
         }
 
-        const auto near = [&](float x, float y, float radius) {
-            const float dx = p.x - x;
-            const float dy = p.y - y;
-            return dx * dx + dy * dy <= radius * radius;
-        };
         if (services.player->CurrentRoom() == "room_01_calibration") {
             if (try_room_portal(p)) {
                 return;
