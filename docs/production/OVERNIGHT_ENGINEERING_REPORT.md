@@ -3,8 +3,9 @@
 ## Purpose
 
 This report closes the overnight audit handoff for Recovery-04. It records
-engineering truth at implementation head
-b7cea9cca387f30a4b4d81b9b9f3d81f186c7859 and is intentionally separate from
+engineering truth at source implementation head
+b7cea9cca387f30a4b4d81b9b9f3d81f186c7859, with final receipt head
+b6dacee155b1af3492f48eb02f0030dc7cc82ebe, and is intentionally separate from
 visual or Product Gold acceptance.
 
 ## Work completed
@@ -35,7 +36,7 @@ process/input/state/result fields; and all 8 save final-commit fault stages
 rolled back.
 
 The benchmark receipt uses worst_1pct_avg_ms, not p99: character rendering
-measured 1.489 ms and the integrated proxy measured 2.215 ms with platform
+measured 1.308 ms and the integrated proxy measured 2.220 ms with platform
 writes excluded. This does not prove end-to-end 120 Hz terminal presentation.
 
 ## Audit disposition
@@ -75,7 +76,11 @@ The first remote CI run for f2ab0bd (run 34313672985) exposed one real
 portability defect: Linux, Linux Clang, ARM64 link and macOS treated an
 unused local interaction helper as an error under -Werror. The helper was
 removed in b7cea9c without changing behavior, and the affected Windows
-regression was rerun locally.
+regression was rerun locally. The next final-head run exposed two portable
+operator-precedence warnings in an existing test; b6dacee added explicit
+parentheses only. Final run 34316270370 passed build, test, replay, benchmark
+and static/contract jobs on Windows, Linux GCC, Linux Clang, macOS ARM64 and
+the ARM64 link gate.
 
 PRODUCT_GOLD = NOT_CLAIMED
 VISUAL_GOLD = NOT_CLAIMED
@@ -84,13 +89,13 @@ USER_ACCEPTANCE = PENDING
 
 ## Final handoff fields
 
-IMPLEMENTATION_HEAD = b7cea9cca387f30a4b4d81b9b9f3d81f186c7859
+IMPLEMENTATION_HEAD = b6dacee155b1af3492f48eb02f0030dc7cc82ebe
 LOCAL_ENGINEERING_REGRESSION = PASS
 AUDIT_RECONCILIATION = COMPLETE
 OPEN_FATAL = 0
 OPEN_P0 = 0
 OPEN_ACTIVE_P1 = 0
 DEFERRED_P1 = 1 (DS-AUDIT-0042, unsupported settings explicitly reserved)
-REMOTE_CI = PENDING_AT_AUTHORING
+REMOTE_CI = PASS (run 34316270370)
 FRONTEND_EVIDENCE = PENDING_MANUAL
-FINAL_STATUS = PENDING_REMOTE_CI
+FINAL_STATUS = READY_FOR_RAIN_GAMEPLAY_SYSTEM_REVIEW

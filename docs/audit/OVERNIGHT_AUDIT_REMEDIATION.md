@@ -11,13 +11,17 @@ MASTER_LEDGER.md, HANDOFF_TO_CODEX.md, all wave finding material, and the
 audit completion/cleanup receipts. The audit contained 46 findings:
 FATAL=0, P0=1, P1=17, P2=17, P3=11.
 
-The live implementation receipt was rebuilt at
-b7cea9cca387f30a4b4d81b9b9f3d81f186c7859. The Release binary used for the
-final local checks has SHA-256
+The live implementation receipt was rebuilt at source-fix head
+b7cea9cca387f30a4b4d81b9b9f3d81f186c7859. The final receipt head is
+b6dacee155b1af3492f48eb02f0030dc7cc82ebe; it only adds the required
+portable parentheses to an existing AI test assertion and does not change
+runtime behavior. The Release application binary used for the final local
+checks has SHA-256
 6FB7398C4BDA08A0C68B18EB11A6631E560EBFC451651CA114EFEA1CBED94E0C.
-The pre-fix remote was origin/main =
+The pre-remediation remote was origin/main =
 f2ab0bd151dfee8ba438e69af136af6ecb691cf6. The result column below records
-current-head evidence, not the stale audit snapshot.
+current-head evidence, not the stale audit snapshot. The final
+origin/main is the receipt head above after the normal push.
 
 Verdict vocabulary is deliberately narrow:
 
@@ -67,7 +71,7 @@ Verdict vocabulary is deliberately narrow:
 | DS-AUDIT-0029 | P2 | DEFER_ASTRA | Several foundation settings/capabilities existed without an active consumer in the bounded product slice. | src/core/engine.cpp; src/app/composition_root.cpp; docs/production/CAPABILITY_TRUTH_MATRIX.md | Consume fov, difficulty and frame_rate_cap where truthful; explicitly reserve unsupported gamepad/aim-assist/tactical features in the matrix. | Release tests include presentation-cap behavior; full matrix receipt. | Partial active consumption verified; remaining fields are explicitly deferred. | 3cd2210 | Do not expose a setting as player-facing until its real backend/feature exists. |
 | DS-AUDIT-0030 | P1 | CONFIRMED | The prior truth matrix promoted unproven B1 and health capabilities and used stale wording. | docs/production/CAPABILITY_TRUTH_MATRIX.md | Replace stale claims with current replay, binary and bounded-scope receipts. | Current Release replay gate, 206 tests, matrix review. | PASS for the claims now made; explicit partial/deferred boundaries remain. | 3cd2210 | Reports are evidence receipts, not human visual acceptance. |
 | DS-AUDIT-0031 | P2 | CONFIRMED | Prior evidence cited stale output/recovery-run logs rather than a current-head receipt. | docs/audit/OVERNIGHT_AUDIT_REMEDIATION.md; docs/production/INTEGRATED_RECOVERY04_REPORT.md | Record current binary/fixture hashes and rerun commands; do not cite stale logs as current results. | Current Release run and replay output. | PASS; this report separates live results from historical audit inputs. | 3cd2210 | A future run must regenerate its own receipt rather than copy this one. |
-| DS-AUDIT-0032 | P1 | CONFIRMED | CI did not run the current Recovery replay gate. | .github/workflows/ci.yml; scripts/recovery_replay_gate.ps1 | Add the five current Recovery replay cases as a normal main CI step. | Workflow inspection; local gate passes. | Present in workflow; remote execution is reported separately after push. | 3cd2210 | Hosted CI timing/platform differences still need the final remote result. |
+| DS-AUDIT-0032 | P1 | CONFIRMED | CI did not run the current Recovery replay gate. | .github/workflows/ci.yml; scripts/recovery_replay_gate.ps1 | Add the five current Recovery replay cases as a normal main CI step. | Workflow inspection; local gate; GitHub Actions run 34316270370. | PASS; the final-head remote run executed the Recovery gate and all five jobs succeeded. | 3cd2210 | The foreground terminal remains a separate manual acceptance boundary. |
 | DS-AUDIT-0033 | P3 | CONFIRMED | Bootstrap did not compile the authored systemic seed artifact. | scripts/bootstrap.ps1 | Compile the systemic seed after content compilation. | Script syntax/static checks; production content compile. | PASS for the bounded bootstrap path. | 3cd2210 | Bootstrap does not replace a full packaging installer. |
 | DS-AUDIT-0034 | P2 | CONFIRMED | A nonfinite/out-of-world player position had no bounded recovery. | src/app/composition_root.cpp | Reset nonfinite or below-world player state to the current room spawn with zero velocity and grounded state. | Release tests and source path review; current replay routes remain stable. | PASS for the bounded recovery rule. | 3cd2210 | A broader fall/death UX is outside this remediation. |
 | DS-AUDIT-0035 | P2 | CONFIRMED | Active dragging could survive a successful room transition with a stale body context. | src/app/composition_root.cpp | End active drag after a successful room load before replacing room/query state. | Save/replay and room-switch tests. | PASS; no active drag crosses the current transition boundary. | 3cd2210 | More complex cross-room carried-object semantics are not claimed. |
@@ -100,3 +104,13 @@ are explicitly bounded future risks/capabilities; they are not silently
 promoted to implementation claims. The remaining foreground terminal and
 visual acceptance evidence is a manual product/runtime check, not a reason to
 rewrite the recovery truth matrix.
+
+## Final remote receipt
+
+* FINAL_HEAD = b6dacee155b1af3492f48eb02f0030dc7cc82ebe
+* FINAL_HEAD_PUSH = YES
+* GITHUB_ACTIONS_RUN = 34316270370
+* GITHUB_ACTIONS_RESULT = PASS
+* JOBS = build, linux-arm64-link, linux, linux-clang, macos-arm64 — all PASS
+* PRODUCT_GOLD / VISUAL_GOLD / READY_FOR_PUBLIC_RELEASE = NOT_CLAIMED
+* FOREGROUND_WINDOWS_TERMINAL_EVIDENCE = PENDING_MANUAL

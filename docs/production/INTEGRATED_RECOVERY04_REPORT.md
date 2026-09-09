@@ -4,7 +4,9 @@
 
 * Scope: final regression and full overnight-audit remediation.
 * Baseline code head: 8bc65d025d756d1096d739e8872455b9a6f60e05.
-* Implementation head validated locally: b7cea9cca387f30a4b4d81b9b9f3d81f186c7859.
+* Source implementation head validated locally: b7cea9cca387f30a4b4d81b9b9f3d81f186c7859.
+* Final receipt head: b6dacee155b1af3492f48eb02f0030dc7cc82ebe (portable test
+  assertion parentheses only; no runtime behavior change).
 * Branch: main.
 * origin/main before the source-fix push: f2ab0bd151dfee8ba438e69af136af6ecb691cf6.
 * Old tag/release: v0.1.0-pvs01-gold was not changed.
@@ -129,8 +131,8 @@ differences, not omitted Release application tests.
 The Release benchmark reports the metric using its honest name:
 worst_1pct_avg_ms. It does not call that value p99.
 
-* Character render workload at 240x67: 1.489 ms.
-* Integrated character/runtime proxy at 240x67: 2.215 ms, excluding platform
+* Character render workload at 240x67: 1.308 ms.
+* Integrated character/runtime proxy at 240x67: 2.220 ms, excluding platform
   writes.
 * Terminal full/delta/unchanged and systemic lookup/update budgets: PASS.
 
@@ -188,12 +190,13 @@ larger product capability already exists.
 
 ## Push and remote status
 
-At report authoring time:
+Final remote receipt:
 
-* LOCAL_IMPLEMENTATION_HEAD = b7cea9cca387f30a4b4d81b9b9f3d81f186c7859
+* SOURCE_IMPLEMENTATION_HEAD = b7cea9cca387f30a4b4d81b9b9f3d81f186c7859
+* FINAL_RECEIPT_HEAD = b6dacee155b1af3492f48eb02f0030dc7cc82ebe
 * ORIGIN_MAIN_BEFORE_PUSH = f2ab0bd151dfee8ba438e69af136af6ecb691cf6
-* PUSH = PENDING
-* REMOTE_CI = PENDING
+* PUSH = YES
+* REMOTE_CI = PASS (GitHub Actions run 34316270370; all five jobs passed)
 
 The workflow was inspected before push: a normal main push runs CI and does
 not create a Release, move a tag, upload Steam, or create a PR. Final remote
@@ -202,8 +205,9 @@ status must be filled from the actual final-head Actions result.
 The first documentation push at f2ab0bd triggered run 34313672985. Windows
 passed its build/recovery path, while Linux, Linux Clang, ARM64 link and
 macOS rejected the same unused local near helper under -Werror. That
-cross-platform defect was removed in b7cea9c and the local Windows regression
-was rerun before the source-fix push.
+cross-platform defect was removed in b7cea9c, the portable test assertion was
+closed in b6dacee, and the current Windows regression was rerun before the
+final push. The separate foreground-terminal evidence remains manual.
 
 ## Status at this receipt
 
@@ -217,4 +221,4 @@ DEFERRED_P1 = 1 (DS-AUDIT-0042, unsupported settings explicitly reserved)
 FRONTEND_TERMINAL_EVIDENCE = PENDING_MANUAL
 USER_ACCEPTANCE = PENDING
 
-FINAL_STATUS = PENDING_REMOTE_CI
+FINAL_STATUS = READY_FOR_RAIN_GAMEPLAY_SYSTEM_REVIEW
