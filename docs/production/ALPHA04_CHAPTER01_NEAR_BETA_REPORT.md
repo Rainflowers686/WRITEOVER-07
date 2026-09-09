@@ -183,3 +183,32 @@ macOS ARM64, and Linux ARM64 link jobs. Foreground Windows Terminal visual
 acceptance and first-time human play remain manual boundaries; this report
 does not claim `CHAPTER01_GOLD`, `PRODUCT_GOLD`, `VISUAL_GOLD`, or
 `READY_FOR_RELEASE`.
+
+## Post-receipt cross-platform correction
+
+The subsequent documentation-only push initially exposed a real portability
+defect in `34392141539`: macOS arm64 failed
+`engine.request_stop_terminates_run` with two simulation ticks instead of one.
+The failure was reproducible from the existing test: `RequestStop()` set
+`running_` false inside the first tick, but the fixed-step inner loop did not
+test that flag and could consume a second already-accumulated tick.
+
+The minimal correction is committed as
+`c6ccfe05f26be27907f10c35ce7a11facd168b1c`:
+`src/core/engine.cpp` now gates the inner fixed-step loop on `running_`. No
+gameplay, content, renderer, save format, or audit classification changed.
+The failed run remains historical evidence; it is not counted as a pass.
+
+Fresh local verification after that correction is still green: Debug and
+Release configure/build, Debug and Release CTest, direct Debug/Release unit
+executables (`209 tests, 0 failed` each), content check/tests (`13/13`),
+systemic schema/check/tests (`10/10`), invalid-seed check, static audit
+`COUNT=0`, contract check, Debug/Release smoke, current Release replay gate
+`19/19`, scenario matrix `36/18/18`, eight expected-failed save rollback
+probes, package smoke, and Release benchmark `OVERALL_BUDGET=PASS`.
+
+```text
+CURRENT_SOURCE_HEAD = c6ccfe05f26be27907f10c35ce7a11facd168b1c
+REMOTE_CI_AFTER_CORRECTION = PENDING_PUSH
+FINAL_STATUS = NOT_READY_UNTIL_CORRECTED_HEAD_REMOTE_CI_VERIFIED
+```

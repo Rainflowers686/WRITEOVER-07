@@ -186,3 +186,25 @@ AUDIT02B_RECONCILIATION = COMPLETE
 FRONTEND_EVIDENCE = PENDING_MANUAL
 FINAL_STATUS = READY_FOR_RAIN_GAMEPLAY_SYSTEM_REVIEW
 ```
+
+## Alpha-04 post-receipt portability correction
+
+The first documentation receipt run `34392141539` failed only on macOS arm64
+in the existing shutdown test: the fixed-step inner loop could continue after
+`RequestStop()` and execute a second accumulated tick. The minimal source fix
+is `c6ccfe05f26be27907f10c35ce7a11facd168b1c` in
+`src/core/engine.cpp`; it adds the existing `running_` state to that loop
+condition. No gameplay or content behavior was changed.
+
+Fresh local post-fix regression passed, including Debug/Release builds and
+CTest, 209/209 direct tests in both configurations, content 13/13, systemic
+schema 10/10, invalid seed, static audit, contract, Debug/Release smoke,
+19/19 current replays, the 36-row scenario matrix, eight expected-failed save
+rollback probes, package smoke, and Release benchmark. Corrected-head remote
+CI is pending the normal main push.
+
+```text
+CURRENT_SOURCE_HEAD = c6ccfe05f26be27907f10c35ce7a11facd168b1c
+REMOTE_CI_AFTER_CORRECTION = PENDING_PUSH
+FINAL_STATUS = NOT_READY_UNTIL_CORRECTED_HEAD_REMOTE_CI_VERIFIED
+```

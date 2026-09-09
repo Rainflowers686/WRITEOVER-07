@@ -297,3 +297,24 @@ FRONTEND_TERMINAL_EVIDENCE = PENDING_MANUAL
 USER_ACCEPTANCE = PENDING
 FINAL_STATUS = READY_FOR_RAIN_GAMEPLAY_SYSTEM_REVIEW
 ```
+
+## Alpha-04 post-receipt portability correction
+
+The first documentation receipt run `34392141539` failed on macOS arm64 in
+`engine.request_stop_terminates_run`: `RequestStop()` stopped the outer loop,
+but the already-entered fixed-step inner loop did not stop immediately. The
+focused correction is `c6ccfe05f26be27907f10c35ce7a11facd168b1c` in
+`src/core/engine.cpp`, adding the existing running-state guard. It does not
+change gameplay/content/renderer or the Recovery-04 contracts.
+
+Post-fix local regression is PASS: Debug/Release configure/build and CTest,
+209/209 direct tests in both configurations, content/schema/static/contract
+gates, Debug/Release smoke, 19/19 replay gate, scenario matrix, eight save
+rollback probes, package smoke, and Release benchmark. The corrected head has
+not yet received its replacement remote CI receipt.
+
+```text
+CURRENT_SOURCE_HEAD = c6ccfe05f26be27907f10c35ce7a11facd168b1c
+REMOTE_CI_AFTER_CORRECTION = PENDING_PUSH
+FINAL_STATUS = NOT_READY_UNTIL_CORRECTED_HEAD_REMOTE_CI_VERIFIED
+```

@@ -294,3 +294,20 @@ USER_ACCEPTANCE = PENDING
 
 This is an engineering-system review receipt, not a Product Gold, Visual Gold,
 release, or public-release claim.
+
+## Alpha-04 post-receipt portability correction
+
+The first documentation-only receipt push (`34392141539`) exposed a real
+cross-platform engine timing defect: macOS arm64 could execute a second
+fixed-step tick after a module called `RequestStop()` during the first tick.
+The focused correction is `c6ccfe05f26be27907f10c35ce7a11facd168b1c`, which
+checks `running_` in the inner fixed-step loop. This is a core shutdown fix;
+it does not alter gameplay/content/renderer semantics. The failed remote run
+is retained as a failure record, not relabeled as success.
+
+```text
+CURRENT_SOURCE_HEAD = c6ccfe05f26be27907f10c35ce7a11facd168b1c
+LOCAL_POST_CORRECTION_REGRESSION = PASS
+REMOTE_CI_AFTER_CORRECTION = PENDING_PUSH
+FINAL_STATUS = NOT_READY_UNTIL_CORRECTED_HEAD_REMOTE_CI_VERIFIED
+```
