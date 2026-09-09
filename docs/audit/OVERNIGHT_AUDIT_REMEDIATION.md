@@ -12,11 +12,11 @@ audit completion/cleanup receipts. The audit contained 46 findings:
 FATAL=0, P0=1, P1=17, P2=17, P3=11.
 
 The live implementation receipt was rebuilt at
-3cd2210389027baea5359b37c1cb07a7e7b152c4. The Release binary used for the
+b7cea9cca387f30a4b4d81b9b9f3d81f186c7859. The Release binary used for the
 final local checks has SHA-256
-87C20BA2AC650ABAC571134CEDEDE2EDE82ED235DBC94E31BF210F91EAC3872E.
-The current pre-push remote was origin/main =
-293fd2e810e069b34f711e3d56e6bbf2a9acdb70. The result column below records
+6FB7398C4BDA08A0C68B18EB11A6631E560EBFC451651CA114EFEA1CBED94E0C.
+The pre-fix remote was origin/main =
+f2ab0bd151dfee8ba438e69af136af6ecb691cf6. The result column below records
 current-head evidence, not the stale audit snapshot.
 
 Verdict vocabulary is deliberately narrow:

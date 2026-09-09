@@ -4,9 +4,9 @@
 
 * Scope: final regression and full overnight-audit remediation.
 * Baseline code head: 8bc65d025d756d1096d739e8872455b9a6f60e05.
-* Implementation head validated locally: 3cd2210389027baea5359b37c1cb07a7e7b152c4.
+* Implementation head validated locally: b7cea9cca387f30a4b4d81b9b9f3d81f186c7859.
 * Branch: main.
-* origin/main before this consolidation: 293fd2e810e069b34f711e3d56e6bbf2a9acdb70.
+* origin/main before the source-fix push: f2ab0bd151dfee8ba438e69af136af6ecb691cf6.
 * Old tag/release: v0.1.0-pvs01-gold was not changed.
 * Scope boundary: no new map, floor, weapon type, story chapter, release,
   tag, Steam operation, branch, PR, or renderer paradigm.
@@ -129,8 +129,8 @@ differences, not omitted Release application tests.
 The Release benchmark reports the metric using its honest name:
 worst_1pct_avg_ms. It does not call that value p99.
 
-* Character render workload at 240x67: 1.292 ms.
-* Integrated character/runtime proxy at 240x67: 2.035 ms, excluding platform
+* Character render workload at 240x67: 1.489 ms.
+* Integrated character/runtime proxy at 240x67: 2.215 ms, excluding platform
   writes.
 * Terminal full/delta/unchanged and systemic lookup/update budgets: PASS.
 
@@ -190,14 +190,20 @@ larger product capability already exists.
 
 At report authoring time:
 
-* LOCAL_IMPLEMENTATION_HEAD = 3cd2210389027baea5359b37c1cb07a7e7b152c4
-* ORIGIN_MAIN_BEFORE_PUSH = 293fd2e810e069b34f711e3d56e6bbf2a9acdb70
+* LOCAL_IMPLEMENTATION_HEAD = b7cea9cca387f30a4b4d81b9b9f3d81f186c7859
+* ORIGIN_MAIN_BEFORE_PUSH = f2ab0bd151dfee8ba438e69af136af6ecb691cf6
 * PUSH = PENDING
 * REMOTE_CI = PENDING
 
 The workflow was inspected before push: a normal main push runs CI and does
 not create a Release, move a tag, upload Steam, or create a PR. Final remote
 status must be filled from the actual final-head Actions result.
+
+The first documentation push at f2ab0bd triggered run 34313672985. Windows
+passed its build/recovery path, while Linux, Linux Clang, ARM64 link and
+macOS rejected the same unused local near helper under -Werror. That
+cross-platform defect was removed in b7cea9c and the local Windows regression
+was rerun before the source-fix push.
 
 ## Status at this receipt
 

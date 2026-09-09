@@ -1,7 +1,7 @@
 # WRITEOVER-07 — Recovery-04 Capability Truth Matrix
 
 This is the current bounded capability receipt for implementation head
-`3cd2210389027baea5359b37c1cb07a7e7b152c4`. `VERIFIED` means that the live
+`b7cea9cca387f30a4b4d81b9b9f3d81f186c7859`. `VERIFIED` means that the live
 code path and a current assertion, replay, or gate exercised the capability.
 `PARTIAL` means that a bounded recovery seam is real but the general product
 capability is not claimed. `DEFERRED` is an explicit boundary, not a hidden
@@ -47,7 +47,7 @@ PASS.
 ## Replay and binary receipt
 
 The current Release binary was rebuilt from the code above. Its SHA-256 is
-`87C20BA2AC650ABAC571134CEDEDE2EDE82ED235DBC94E31BF210F91EAC3872E`.
+`6FB7398C4BDA08A0C68B18EB11A6631E560EBFC451651CA114EFEA1CBED94E0C`.
 `scripts/recovery_replay_gate.ps1` independently checked
 `PROCESS_EXIT_OK`, `INPUT_CONSUMED`, `EXPECTED_STATE_REACHED`, and
 `REPLAY_RESULT` for:
@@ -65,7 +65,7 @@ The current Release binary was rebuilt from the code above. Its SHA-256 is
 The direct Release unit executable ran 206 tests with 0 failed. The final
 commit fault matrix ran all 8 stages with rollback asserted. Benchmark values
 are reported as `worst_1pct_avg_ms`, not p99; the current Release character
-render workload measured 1.292 ms and the integrated proxy measured 2.035 ms
+render workload measured 1.489 ms and the integrated proxy measured 2.215 ms
 with platform writes excluded. These are not end-to-end 120 Hz proof.
 
 ## Explicit non-claims

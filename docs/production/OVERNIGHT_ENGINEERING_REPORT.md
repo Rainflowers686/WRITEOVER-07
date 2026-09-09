@@ -4,7 +4,7 @@
 
 This report closes the overnight audit handoff for Recovery-04. It records
 engineering truth at implementation head
-3cd2210389027baea5359b37c1cb07a7e7b152c4 and is intentionally separate from
+b7cea9cca387f30a4b4d81b9b9f3d81f186c7859 and is intentionally separate from
 visual or Product Gold acceptance.
 
 ## Work completed
@@ -35,7 +35,7 @@ process/input/state/result fields; and all 8 save final-commit fault stages
 rolled back.
 
 The benchmark receipt uses worst_1pct_avg_ms, not p99: character rendering
-measured 1.292 ms and the integrated proxy measured 2.035 ms with platform
+measured 1.489 ms and the integrated proxy measured 2.215 ms with platform
 writes excluded. This does not prove end-to-end 120 Hz terminal presentation.
 
 ## Audit disposition
@@ -71,6 +71,12 @@ dimensions, VT negotiation, color capability, clipping behavior and screenshots
 remain PENDING_MANUAL. The non-foreground pipe smoke result is retained as a
 fallback diagnostic only.
 
+The first remote CI run for f2ab0bd (run 34313672985) exposed one real
+portability defect: Linux, Linux Clang, ARM64 link and macOS treated an
+unused local interaction helper as an error under -Werror. The helper was
+removed in b7cea9c without changing behavior, and the affected Windows
+regression was rerun locally.
+
 PRODUCT_GOLD = NOT_CLAIMED
 VISUAL_GOLD = NOT_CLAIMED
 READY_FOR_PUBLIC_RELEASE = NOT_CLAIMED
@@ -78,7 +84,7 @@ USER_ACCEPTANCE = PENDING
 
 ## Final handoff fields
 
-IMPLEMENTATION_HEAD = 3cd2210389027baea5359b37c1cb07a7e7b152c4
+IMPLEMENTATION_HEAD = b7cea9cca387f30a4b4d81b9b9f3d81f186c7859
 LOCAL_ENGINEERING_REGRESSION = PASS
 AUDIT_RECONCILIATION = COMPLETE
 OPEN_FATAL = 0
