@@ -318,3 +318,20 @@ CURRENT_SOURCE_HEAD = c6ccfe05f26be27907f10c35ce7a11facd168b1c
 REMOTE_CI_AFTER_CORRECTION = PENDING_PUSH
 FINAL_STATUS = NOT_READY_UNTIL_CORRECTED_HEAD_REMOTE_CI_VERIFIED
 ```
+
+## Corrected-head remote CI receipt
+
+The focused cross-platform shutdown correction was pushed with its report
+receipt at `6622c079d63cc3a05e819d879adeaf9c17fb664a`. GitHub Actions run
+`34396017075` completed successfully after rerun attempt 2 for that exact
+head. All five configured jobs passed, including the macOS arm64 Release
+benchmark. The initial benchmark-only failure remains historical evidence;
+no threshold was changed.
+
+```text
+CORRECTED_SOURCE_COMMIT = c6ccfe05f26be27907f10c35ce7a11facd168b1c
+PUSHED_RECEIPT_HEAD = 6622c079d63cc3a05e819d879adeaf9c17fb664a
+REMOTE_CI = PASS (run 34396017075, rerun attempt 2)
+FRONTEND_TERMINAL_EVIDENCE = PENDING_MANUAL
+FINAL_STATUS = READY_FOR_RAIN_GAMEPLAY_SYSTEM_REVIEW
+```

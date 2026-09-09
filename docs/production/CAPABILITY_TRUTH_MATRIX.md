@@ -311,3 +311,20 @@ LOCAL_POST_CORRECTION_REGRESSION = PASS
 REMOTE_CI_AFTER_CORRECTION = PENDING_PUSH
 FINAL_STATUS = NOT_READY_UNTIL_CORRECTED_HEAD_REMOTE_CI_VERIFIED
 ```
+
+## Corrected-head remote CI receipt
+
+The focused shutdown correction and documentation receipt were pushed normally
+to `main` at `6622c079d63cc3a05e819d879adeaf9c17fb664a`. GitHub Actions run
+`34396017075` completed successfully after rerun attempt 2 for that exact
+pushed head. All five configured jobs passed, including the macOS arm64
+Release benchmark. The first benchmark-only failure is retained as a hosted
+runner outlier record; no performance threshold was weakened.
+
+```text
+CORRECTED_SOURCE_COMMIT = c6ccfe05f26be27907f10c35ce7a11facd168b1c
+PUSHED_RECEIPT_HEAD = 6622c079d63cc3a05e819d879adeaf9c17fb664a
+REMOTE_CI_AFTER_CORRECTION = PASS (run 34396017075, rerun attempt 2)
+FRONTEND_TERMINAL_ACCEPTANCE = PENDING_MANUAL
+FINAL_STATUS = READY_FOR_RAIN_GAMEPLAY_SYSTEM_REVIEW
+```
