@@ -84,3 +84,57 @@ assist/tactical focus, a universal directional-art catalogue, and foreground
 Windows Terminal visual acceptance. Historical PVS01 replay files remain
 preserved; they are not silently treated as current mandatory gameplay gates
 when their interaction assumptions are obsolete.
+
+## Vertical Slice Alpha-01 receipt
+
+Source implementation head: `a3266ab1427eef416dd2963a54dc08be4a45096f`.
+This section records the bounded first-playable slice; it does not promote the
+project to product gold or replace the manual foreground-terminal review.
+
+| Capability | Status | Evidence / boundary |
+|---|---|---|
+| FIRST_10_MINUTE_SLICE | VERIFIED_BOUNDED | Existing B1 route now has contextual onboarding, objective progression, two materially different replayed approaches, delayed consequence, narrative reaction and a calibration checkpoint. The replay is intentionally shorter than a first-time human playthrough. |
+| ONBOARDING | VERIFIED_BOUNDED | First B1 frames expose compact WASD/mouse/F/LMB guidance through the normal HUD; no tutorial menu or internal identifiers are added. |
+| INTERACTION_PROMPTS | VERIFIED_BOUNDED | Focused body/cart/camera/terminal/reader/NPC prompts are derived from the same target and state used by interaction callbacks. |
+| OBJECTIVE_FLOW | VERIFIED_BOUNDED | B1 objective advances from body/access to terminal/reader/crossing; calibration and later authored recovery rooms expose bounded next-step text. |
+| SYSTEMIC_ROUTE | VERIFIED | `alpha01_systemic_success` passes with non-lethal hit, body search/drag/hide, Cleaner discovery/response, badge, terminal, door crossing, save/load, narrative action and checkpoint. |
+| AGGRESSIVE_ROUTE | VERIFIED | `alpha01_aggressive_success` passes with a real lethal Pistol route, runtime body, credential transfer and checkpoint; it deliberately leaves the body exposed and does not claim the same final state as the systemic route. |
+| OPTIONAL_VARIATION | VERIFIED_BOUNDED | `alpha01_memory_consequence` proves a prior Cleaner relationship/history changes a later discovery response; the earlier Recovery denied route remains the exposed/no-access counterfactual. |
+| BODY_GAMEPLAY | VERIFIED | Search, credential transfer, drag movement and cart concealment are exercised by the Release systemic route; body state remains systemic rather than subtitle-only. |
+| CLEANER_CONSEQUENCE | VERIFIED_BOUNDED | Cleaner motor reaches the authored area, inspects after arrival and emits a bounded response. Response is read from the systemic event ledger. |
+| MEMORY_DELAYED_CONSEQUENCE | VERIFIED | Relationship/history is created through player interaction, survives the Alpha save/load route and produces `HelpCoverUp` in the later Cleaner decision. |
+| PATROL_ENCOUNTER | VERIFIED_BOUNDED | Authored Cleaner/Guard/Technician patrol routes and motor movement are exercised by AI tests and live replay loop counts. |
+| INVESTIGATE_ENCOUNTER | VERIFIED_BOUNDED | Reachable noise/evidence routes NPC investigation; obstacle and no-route behavior are covered by AI tests. |
+| STEALTH_ENCOUNTER | VERIFIED_BOUNDED | Posture, movement, light and distance alter deterministic player visibility; there is no large detection-meter or final stealth presentation claim. |
+| GUARD_COMBAT_ENCOUNTER | VERIFIED_BOUNDED | Guard active-room/LOS/range/cadence damage reaches authoritative player health and death/recovery. This is a bounded health/combat proof, not complete enemy combat AI. |
+| PISTOL_ROUTE | VERIFIED_BOUNDED | Existing Pistol slot fires through the real AI/event/health path and supplies the aggressive route; no new weapon type or art-gold claim. |
+| STUNNER_ROUTE | VERIFIED | Existing Stunner slot drives non-lethal hit → unconscious body → search/drag/hide in the systemic route. |
+| SMG | DEFER_ASTRA | Existing slot remains outside the Alpha core route; no expanded SMG content or art polish is claimed. |
+| TERMINAL_GAMEPLAY | VERIFIED_BOUNDED | Credential possession gates the B1 terminal; successful access creates a session/audit and route fact, while denial stays denied. |
+| CAMERA_GAMEPLAY | VERIFIED_BOUNDED | B1 camera can be disabled through focused interaction, creates a vandalism/outage fact and feeds the current narrator reaction. |
+| READER_GATE | VERIFIED | Held valid badge plus clearance opens the real B1 door and crossing changes room/checkpoint state; denied route leaves it closed. |
+| CHECKPOINT | VERIFIED_BOUNDED | B1 service crossing loads `room_01_calibration`, completes the bounded opening quest and records the active objective presentation before completion. |
+| NARRATIVE_ALPHA | VERIFIED_BOUNDED | Current Alpha facts select authored natural-language text resources; visible action is asserted in replay. Final prose is deferred. |
+| NORMAL_PLAYER_ROUTE | ENGINEERING_READY_MANUAL_PENDING | The authored route and prompts are present, but an unattended direct human 8–12 minute foreground session was not used as a substitute for engineering replay. |
+| MANUAL_PLAYABILITY | PENDING_MANUAL | Requires Rain to launch the Release executable in the intended foreground Windows Terminal and play the route. |
+| ART_POLISH | MANUAL_REVIEW_PENDING | Existing Character-Art direction and HUD remain unchanged in this slice; no visual-gold claim is made. |
+| AUDIO_POLISH | DEFER_ASTRA | Existing procedural/placeholder cues remain; final audio design is outside Alpha-01. |
+
+### Alpha replay receipt
+
+`scripts/recovery_replay_gate.ps1` now checks the five Recovery cases and four
+Alpha cases independently for process exit, input consumption, expected state
+and replay result. The current Release gate returned `RECOVERY_REPLAY_GATE=PASS`.
+
+* `alpha01_systemic_success` — PASS: non-lethal/systemic route, body hidden
+  and discovered, Cleaner response, credentialed terminal and service gate.
+* `alpha01_aggressive_success` — PASS: Pistol damage/death, runtime body,
+  credentialed gate and checkpoint without the concealment route.
+* `alpha01_denied` — PASS: no badge, access attempted and denied, gate closed,
+  no terminal session and no checkpoint.
+* `alpha01_memory_consequence` — PASS: durable Cleaner relationship/history,
+  save/load, hidden body discovery and altered Cleaner response.
+
+These are deterministic integration receipts, not a claim that a human has
+completed the full slice or that the foreground visual presentation has been
+accepted.
