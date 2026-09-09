@@ -138,3 +138,44 @@ and replay result. The current Release gate returned `RECOVERY_REPLAY_GATE=PASS`
 These are deterministic integration receipts, not a claim that a human has
 completed the full slice or that the foreground visual presentation has been
 accepted.
+
+## Vertical Slice Alpha-02 — Functional Chapter One
+
+The following is the newer bounded Chapter One receipt. It does not alter the
+historical Alpha-01 or Recovery-04 claims above. Source implementation head:
+`c6b3872611ed3a299cb5e05b9b0569083b88d187`.
+
+| Capability | Status | Evidence / boundary |
+|---|---|---|
+| CHAPTER01_FUNCTIONAL | VERIFIED_BOUNDED | Six existing rooms form a real B1 → calibration → medical → staff/security → elevator flow with authoritative checkpoint state. The 15–25 minute human target remains unmeasured. |
+| CHAPTER01_SYSTEMIC_ROUTE | VERIFIED | `chapter01_systemic` proves non-lethal/body concealment, durable Cleaner history, credentialed terminals/readers, quiet staff route, narrative action, save/load and checkpoint. |
+| CHAPTER01_AGGRESSIVE_ROUTE | VERIFIED | `chapter01_aggressive` proves a distinct loud/lethal/security route with runtime body, bounded Guard damage/health proof, security checkpoint, save/load and elevator completion. |
+| CHAPTER01_BRANCHING | VERIFIED_BOUNDED | Quiet/staff and aggressive/security routes diverge in durable facts and later access, then reconverge at the elevator. |
+| CHAPTER01_CONSEQUENCE_PROPAGATION | VERIFIED_BOUNDED | Body/loudness/relationship/camera facts alter later route or Cleaner response; no replay-only branch flag is used. |
+| CHAPTER01_OBJECTIVES | VERIFIED_BOUNDED | Objective progression continues beyond B1 through calibration, medical, branch selection and elevator. Completion does not require a stale active objective. |
+| CHAPTER01_CHECKPOINT | VERIFIED_BOUNDED | Elevator completion requires route/checkpoint conditions and records the durable chapter fact. |
+| CALIBRATION_GAMEPLAY | VERIFIED_BOUNDED | Authored terminal, objective and bounded links are runtime-interactive. |
+| MEDICAL_GAMEPLAY | VERIFIED_BOUNDED | Intake terminal and body/route consequence surface provide the second-stage service branch. |
+| SECURITY_GAMEPLAY | VERIFIED_BOUNDED | Patrol/investigate/stealth and bounded Guard combat/health proof are available in the authored security room. |
+| STAFF_GAMEPLAY | VERIFIED_BOUNDED | Compact quiet-route room and service link are reachable only after the quiet condition. |
+| ELEVATOR_GAMEPLAY | VERIFIED_BOUNDED | Elevator room is a real checkpoint interaction, not an unconditional coordinate trigger. |
+| NPC_POPULATION | VERIFIED_BOUNDED | Five runtime instances from six authored profiles are used; no decorative fake NPC population was added. |
+| PATROL | VERIFIED_BOUNDED | Three authored patrol routes use the existing motor/decision seams. |
+| INVESTIGATE | VERIFIED_BOUNDED | Reachable noise/evidence and body/camera consequences feed current-room investigation. |
+| STEALTH | VERIFIED_BOUNDED | Existing deterministic posture/movement/light/distance visibility affects the security approach; no large stealth framework is claimed. |
+| COMBAT | VERIFIED_BOUNDED | Guard attack reaches authoritative player health/death with room/LOS/range/cadence checks. This is not complete enemy combat AI. |
+| MEMORY_RELATIONSHIP | VERIFIED | Cleaner history changes a later discovery response and survives save/load. |
+| CAMERA_CONSEQUENCE | VERIFIED_BOUNDED | B1 camera state feeds durable outage/surveillance consequence and current narrative response. |
+| BODY_CONSEQUENCE | VERIFIED | Body state and concealment affect the quiet/aggressive branch and Cleaner response. |
+| MID_CHAPTER_SAVE_LOAD | VERIFIED | Quiet and aggressive chapter replays continue to completion after a mid-route save/load. |
+| BACKTRACKING | VERIFIED_BOUNDED | Calibration ↔ medical backtrack replay passes without duplicating completion or losing objective state. |
+| SOFTLOCK_RED_TEAM | VERIFIED_BOUNDED | Denial, badge-only, terminal-denied, death/recovery, backtracking, branch divergence and save/load counterfactuals pass; exhaustive human ordering review remains future review. |
+| NARRATIVE_FUNCTIONAL | VERIFIED_BOUNDED | Thirteen compiled storylets use authored natural-language resources for the current chapter reactions. |
+| NARRATOR_FUNCTIONAL | VERIFIED_BOUNDED | Current bounded facts trigger visible chapter reactions; final narrator prose is not claimed. |
+| FINAL_PROSE | DEFER_ASTRA | Functional text only. |
+| FINAL_ART | DEFER_ASTRA | Existing Character-Art path is preserved; no art-gold claim. |
+| FINAL_AUDIO | DEFER_ASTRA | No final audio pass. |
+| MANUAL_PLAY | PENDING_MANUAL | No first-time human duration or foreground Windows Terminal acceptance was fabricated from replay frames. |
+| CHAPTER01_REPLAY_RECEIPT | VERIFIED | 15/15 current Release Recovery/Alpha/Chapter cases separate process exit, input consumption and expected state. |
+| SAVE_FAULT_MATRIX | VERIFIED | Eight final-commit fault stages roll back without live-state mutation. |
+| BENCHMARK | VERIFIED_BOUNDED | Current Release proxy remains within recorded budgets; platform terminal writes and end-to-end 120 Hz are not proven. |

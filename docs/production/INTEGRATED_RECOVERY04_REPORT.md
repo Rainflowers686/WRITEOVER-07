@@ -225,3 +225,14 @@ FRONTEND_TERMINAL_EVIDENCE = PENDING_MANUAL
 USER_ACCEPTANCE = PENDING
 
 FINAL_STATUS = READY_FOR_RAIN_GAMEPLAY_SYSTEM_REVIEW
+
+## Downstream Alpha-02 functional chapter handoff
+
+Recovery-04 remains the audited foundation receipt above. The bounded
+Vertical Slice Alpha-02 implementation is recorded separately in
+`docs/production/VERTICAL_SLICE_ALPHA02_CHAPTER01_REPORT.md` and the newer
+section of `docs/production/CAPABILITY_TRUTH_MATRIX.md`. It reuses the six
+existing rooms and current systems; it does not promote the foundation to a
+whole-building game, complete combat AI, final prose, visual Gold, or release
+readiness. Current implementation head:
+`c6b3872611ed3a299cb5e05b9b0569083b88d187`.

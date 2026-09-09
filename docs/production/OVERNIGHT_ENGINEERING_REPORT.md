@@ -102,3 +102,14 @@ DEFERRED_P1 = 1 (DS-AUDIT-0042, unsupported settings explicitly reserved)
 REMOTE_CI = PASS (run 34317014333)
 FRONTEND_EVIDENCE = PENDING_MANUAL
 FINAL_STATUS = READY_FOR_RAIN_GAMEPLAY_SYSTEM_REVIEW
+
+## Downstream Alpha-02 note
+
+The next bounded product slice is documented in
+`docs/production/VERTICAL_SLICE_ALPHA02_CHAPTER01_REPORT.md`. It adds only
+functional Chapter One content on top of the audited Recovery-04 foundation:
+six existing rooms, authored transitions/entities, route-specific durable
+facts, objective/storylet progression, replay receipts, and mid-route
+save/load coverage. Manual first-time duration and foreground visual review
+remain pending; no Gold or release claim is made. Source implementation head:
+`c6b3872611ed3a299cb5e05b9b0569083b88d187`.
