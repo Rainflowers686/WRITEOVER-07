@@ -162,7 +162,7 @@ timings/identity assumptions predate the current route contracts.
 - `DEFER_ASTRA` is zero in the 02B ledger. Subjective future art/prose/audio
   work is not being used to hide a correctness finding.
 
-## Current provisional status before documentation receipt push
+## Final engineering status after documentation receipt push and remote CI
 
 ```text
 LOCAL_REGRESSION = PASS
@@ -170,11 +170,16 @@ AUDIT02B_RECONCILIATION = COMPLETE
 OPEN_FATAL = 0
 OPEN_P0 = 0
 OPEN_CURRENT_P1 = 0
-REMOTE_CI = PENDING_PUSH
+ORIGIN_MAIN = 5711e68cf15343c016913b8391092d3dfb1248d4
+REMOTE_CI = PASS (GitHub Actions run 34390875567; exact final pushed HEAD 5711e68cf15343c016913b8391092d3dfb1248d4; all five jobs)
 FRONTEND_TERMINAL_ACCEPTANCE = PENDING_MANUAL
 USER_ACCEPTANCE = PENDING
-FINAL_STATUS = NOT_READY_UNTIL_RECEIPT_COMMITTED_AND_REMOTE_CI_VERIFIED
+FINAL_STATUS = READY_FOR_RAIN_GAMEPLAY_SYSTEM_REVIEW
 ```
 
-This report does not claim `CHAPTER01_GOLD`, `PRODUCT_GOLD`, `VISUAL_GOLD`, or
+The final remote run covered the pushed documentation receipt head and passed
+the Windows Release replay/package/benchmark path plus Linux GCC, Linux Clang,
+macOS ARM64, and Linux ARM64 link jobs. Foreground Windows Terminal visual
+acceptance and first-time human play remain manual boundaries; this report
+does not claim `CHAPTER01_GOLD`, `PRODUCT_GOLD`, `VISUAL_GOLD`, or
 `READY_FOR_RELEASE`.

@@ -167,3 +167,22 @@ closure; it does not claim complete enemy combat AI or manual visual
 acceptance. The normal `main` push and final-head remote CI receipt are still
 pending at this pre-push addendum.
 ```
+
+## Alpha-04 final remote receipt
+
+The Alpha-04 documentation receipt was pushed normally to `main` at
+`5711e68cf15343c016913b8391092d3dfb1248d4`. GitHub Actions run
+`34390875567` completed successfully for that exact head. All five configured
+jobs passed: Windows build/replay/package/benchmark, Linux GCC, Linux Clang,
+macOS ARM64, and Linux ARM64 link. No release, tag, Steam, branch, PR, or
+force-push action was used.
+
+```text
+FINAL_HEAD = 5711e68cf15343c016913b8391092d3dfb1248d4
+ORIGIN_MAIN = 5711e68cf15343c016913b8391092d3dfb1248d4
+REMOTE_CI = PASS (34390875567)
+LOCAL_ENGINEERING_REGRESSION = PASS
+AUDIT02B_RECONCILIATION = COMPLETE
+FRONTEND_EVIDENCE = PENDING_MANUAL
+FINAL_STATUS = READY_FOR_RAIN_GAMEPLAY_SYSTEM_REVIEW
+```

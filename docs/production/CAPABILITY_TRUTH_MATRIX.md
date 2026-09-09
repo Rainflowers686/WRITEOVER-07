@@ -280,3 +280,17 @@ REMOTE_CI = PENDING_PUSH
 | `FULL_REPLAY_GATE` | `VERIFIED` | Current Release gate runs 19 cases: the 5 Recovery cases, 4 Alpha cases, 6 Chapter One cases, 3 current regression fixtures, and the normal-quit case. Each separates process exit, input consumption, expected state, and replay result. |
 | `SCENARIO_MATRIX` | `VERIFIED_BOUNDED` | 36 rows are classified; 18 valid authored fixtures execute and pass (11 success, 5 denial, 2 failure/recovery), while 18 are explicitly `INVALID_SETUP`. |
 | `FRONTEND_TERMINAL_ACCEPTANCE` | `PENDING_MANUAL` | Current automated non-foreground output reports its fallback honestly; no foreground visual acceptance is fabricated from pipe/replay output. |
+
+Final Alpha-04 remote receipt for the pushed documentation head:
+
+```text
+DOCUMENTATION_RECEIPT_HEAD = 5711e68cf15343c016913b8391092d3dfb1248d4
+ORIGIN_MAIN = 5711e68cf15343c016913b8391092d3dfb1248d4
+REMOTE_CI = PASS (GitHub Actions run 34390875567; exact head; all five jobs)
+FINAL_STATUS = READY_FOR_RAIN_GAMEPLAY_SYSTEM_REVIEW
+FRONTEND_TERMINAL_ACCEPTANCE = PENDING_MANUAL
+USER_ACCEPTANCE = PENDING
+```
+
+This is an engineering-system review receipt, not a Product Gold, Visual Gold,
+release, or public-release claim.

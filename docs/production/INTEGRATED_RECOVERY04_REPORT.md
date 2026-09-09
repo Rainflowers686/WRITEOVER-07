@@ -277,3 +277,23 @@ propagation, and the current 19-case replay receipt while preserving the
 bounded Chapter One scope. Local current-head regression is recorded in
 `docs/production/ALPHA04_CHAPTER01_NEAR_BETA_REPORT.md`; normal push and
 final-head remote CI are intentionally not claimed until performed.
+
+## Alpha-04 final remote receipt
+
+The Alpha-04 remediation and documentation receipts are now on `main` at
+`5711e68cf15343c016913b8391092d3dfb1248d4`. GitHub Actions run
+`34390875567` passed for that exact head across Windows, Linux GCC, Linux
+Clang, macOS ARM64, and Linux ARM64 link. The run validates the engineering
+receipt; it does not promote manual foreground-terminal acceptance or any
+Gold/release status.
+
+```text
+FINAL_HEAD = 5711e68cf15343c016913b8391092d3dfb1248d4
+ORIGIN_MAIN = 5711e68cf15343c016913b8391092d3dfb1248d4
+REMOTE_CI = PASS (34390875567)
+ENGINEERING_REGRESSION = PASS
+AUDIT02B_RECONCILIATION = COMPLETE
+FRONTEND_TERMINAL_EVIDENCE = PENDING_MANUAL
+USER_ACCEPTANCE = PENDING
+FINAL_STATUS = READY_FOR_RAIN_GAMEPLAY_SYSTEM_REVIEW
+```
