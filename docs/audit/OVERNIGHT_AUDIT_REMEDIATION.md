@@ -12,10 +12,11 @@ audit completion/cleanup receipts. The audit contained 46 findings:
 FATAL=0, P0=1, P1=17, P2=17, P3=11.
 
 The live implementation receipt was rebuilt at source-fix head
-b7cea9cca387f30a4b4d81b9b9f3d81f186c7859. The final receipt head is
+b7cea9cca387f30a4b4d81b9b9f3d81f186c7859. The portable test receipt head is
 b6dacee155b1af3492f48eb02f0030dc7cc82ebe; it only adds the required
-portable parentheses to an existing AI test assertion and does not change
-runtime behavior. The Release application binary used for the final local
+parentheses to an existing AI test assertion and does not change runtime
+behavior. The final documentation receipt head is
+2895050ae6c4990315d1816adf5da3c53bd374e1. The Release application binary used for the final local
 checks has SHA-256
 6FB7398C4BDA08A0C68B18EB11A6631E560EBFC451651CA114EFEA1CBED94E0C.
 The pre-remediation remote was origin/main =
@@ -107,10 +108,12 @@ rewrite the recovery truth matrix.
 
 ## Final remote receipt
 
-* FINAL_HEAD = b6dacee155b1af3492f48eb02f0030dc7cc82ebe
+* FINAL_HEAD = 2895050ae6c4990315d1816adf5da3c53bd374e1
 * FINAL_HEAD_PUSH = YES
-* GITHUB_ACTIONS_RUN = 34316270370
+* GITHUB_ACTIONS_RUN = 34317014333
 * GITHUB_ACTIONS_RESULT = PASS
 * JOBS = build, linux-arm64-link, linux, linux-clang, macos-arm64 — all PASS
+* The first macOS attempt exceeded the unchanged-frame budget once; only that
+  failed job was rerun, then passed with the unchanged threshold unchanged.
 * PRODUCT_GOLD / VISUAL_GOLD / READY_FOR_PUBLIC_RELEASE = NOT_CLAIMED
 * FOREGROUND_WINDOWS_TERMINAL_EVIDENCE = PENDING_MANUAL

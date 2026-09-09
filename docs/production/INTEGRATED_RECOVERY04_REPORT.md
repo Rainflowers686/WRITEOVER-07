@@ -5,8 +5,9 @@
 * Scope: final regression and full overnight-audit remediation.
 * Baseline code head: 8bc65d025d756d1096d739e8872455b9a6f60e05.
 * Source implementation head validated locally: b7cea9cca387f30a4b4d81b9b9f3d81f186c7859.
-* Final receipt head: b6dacee155b1af3492f48eb02f0030dc7cc82ebe (portable test
-  assertion parentheses only; no runtime behavior change).
+* Portable test receipt head: b6dacee155b1af3492f48eb02f0030dc7cc82ebe
+  (assertion parentheses only; no runtime behavior change).
+* Final documentation receipt head: 2895050ae6c4990315d1816adf5da3c53bd374e1.
 * Branch: main.
 * origin/main before the source-fix push: f2ab0bd151dfee8ba438e69af136af6ecb691cf6.
 * Old tag/release: v0.1.0-pvs01-gold was not changed.
@@ -193,10 +194,10 @@ larger product capability already exists.
 Final remote receipt:
 
 * SOURCE_IMPLEMENTATION_HEAD = b7cea9cca387f30a4b4d81b9b9f3d81f186c7859
-* FINAL_RECEIPT_HEAD = b6dacee155b1af3492f48eb02f0030dc7cc82ebe
+* FINAL_RECEIPT_HEAD = 2895050ae6c4990315d1816adf5da3c53bd374e1
 * ORIGIN_MAIN_BEFORE_PUSH = f2ab0bd151dfee8ba438e69af136af6ecb691cf6
 * PUSH = YES
-* REMOTE_CI = PASS (GitHub Actions run 34316270370; all five jobs passed)
+* REMOTE_CI = PASS (GitHub Actions run 34317014333; all five jobs passed)
 
 The workflow was inspected before push: a normal main push runs CI and does
 not create a Release, move a tag, upload Steam, or create a PR. Final remote
@@ -207,7 +208,9 @@ passed its build/recovery path, while Linux, Linux Clang, ARM64 link and
 macOS rejected the same unused local near helper under -Werror. That
 cross-platform defect was removed in b7cea9c, the portable test assertion was
 closed in b6dacee, and the current Windows regression was rerun before the
-final push. The separate foreground-terminal evidence remains manual.
+final push. The separate foreground-terminal evidence remains manual. The
+initial macOS benchmark attempt hit a one-off unchanged-frame outlier; its
+single failed job was rerun without threshold changes and passed.
 
 ## Status at this receipt
 

@@ -1,9 +1,10 @@
 # WRITEOVER-07 — Recovery-04 Capability Truth Matrix
 
-This is the current bounded capability receipt for final receipt head
-`b6dacee155b1af3492f48eb02f0030dc7cc82ebe` (source implementation head
-`b7cea9cca387f30a4b4d81b9b9f3d81f186c7859`). The final receipt adds only
-portable parentheses to an existing test assertion. `VERIFIED` means that the live
+This is the current bounded capability receipt for final documentation receipt
+head `2895050ae6c4990315d1816adf5da3c53bd374e1` (source implementation head
+`b7cea9cca387f30a4b4d81b9b9f3d81f186c7859`; portable test receipt
+`b6dacee155b1af3492f48eb02f0030dc7cc82ebe`). The final documentation receipt
+adds no runtime behavior. `VERIFIED` means that the live
 code path and a current assertion, replay, or gate exercised the capability.
 `PARTIAL` means that a bounded recovery seam is real but the general product
 capability is not claimed. `DEFERRED` is an explicit boundary, not a hidden
@@ -70,7 +71,7 @@ are reported as `worst_1pct_avg_ms`, not p99; the current Release character
 render workload measured 1.308 ms and the integrated proxy measured 2.220 ms
 with platform writes excluded. These are not end-to-end 120 Hz proof.
 
-The final GitHub Actions run for this receipt is `34316270370` and completed
+The final GitHub Actions run for this receipt is `34317014333` and completed
 successfully for all five jobs. A foreground Windows Terminal visual session
 was not available to the current automation surface, so that evidence remains
 `PENDING_MANUAL`.

@@ -4,8 +4,9 @@
 
 This report closes the overnight audit handoff for Recovery-04. It records
 engineering truth at source implementation head
-b7cea9cca387f30a4b4d81b9b9f3d81f186c7859, with final receipt head
-b6dacee155b1af3492f48eb02f0030dc7cc82ebe, and is intentionally separate from
+b7cea9cca387f30a4b4d81b9b9f3d81f186c7859, portable test receipt head
+b6dacee155b1af3492f48eb02f0030dc7cc82ebe, and final documentation receipt
+head 2895050ae6c4990315d1816adf5da3c53bd374e1; it is intentionally separate from
 visual or Product Gold acceptance.
 
 ## Work completed
@@ -78,9 +79,11 @@ unused local interaction helper as an error under -Werror. The helper was
 removed in b7cea9c without changing behavior, and the affected Windows
 regression was rerun locally. The next final-head run exposed two portable
 operator-precedence warnings in an existing test; b6dacee added explicit
-parentheses only. Final run 34316270370 passed build, test, replay, benchmark
+parentheses only. Final run 34317014333 passed build, test, replay, benchmark
 and static/contract jobs on Windows, Linux GCC, Linux Clang, macOS ARM64 and
-the ARM64 link gate.
+the ARM64 link gate. Its first macOS benchmark attempt was a one-off
+unchanged-frame budget outlier; rerunning only that failed job passed without
+changing the threshold.
 
 PRODUCT_GOLD = NOT_CLAIMED
 VISUAL_GOLD = NOT_CLAIMED
@@ -89,13 +92,13 @@ USER_ACCEPTANCE = PENDING
 
 ## Final handoff fields
 
-IMPLEMENTATION_HEAD = b6dacee155b1af3492f48eb02f0030dc7cc82ebe
+IMPLEMENTATION_HEAD = 2895050ae6c4990315d1816adf5da3c53bd374e1
 LOCAL_ENGINEERING_REGRESSION = PASS
 AUDIT_RECONCILIATION = COMPLETE
 OPEN_FATAL = 0
 OPEN_P0 = 0
 OPEN_ACTIVE_P1 = 0
 DEFERRED_P1 = 1 (DS-AUDIT-0042, unsupported settings explicitly reserved)
-REMOTE_CI = PASS (run 34316270370)
+REMOTE_CI = PASS (run 34317014333)
 FRONTEND_EVIDENCE = PENDING_MANUAL
 FINAL_STATUS = READY_FOR_RAIN_GAMEPLAY_SYSTEM_REVIEW
