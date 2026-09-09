@@ -122,14 +122,21 @@ def copy_runtime_data(source_root: Path, stage_root: Path) -> None:
     source_data = source_root / "data"
     if not source_data.is_dir():
         fail(f"missing runtime data directory: {source_data}")
-    compiled = [
+    runtime_files = [
         path
         for path in sorted(source_data.rglob("*"))
-        if path.is_file() and path.suffix.lower() in {".bin", ".woc"}
+        if path.is_file() and (
+            path.suffix.lower() in {".bin", ".woc"}
+            or (
+                path.suffix.lower() == ".txt"
+                and path.relative_to(source_data).parts
+                and path.relative_to(source_data).parts[0] in {"characters", "text"}
+            )
+        )
     ]
-    if not compiled:
+    if not runtime_files:
         fail("runtime data has no compiled .bin or .woc files")
-    for source in compiled:
+    for source in runtime_files:
         destination = stage_root / "data" / source.relative_to(source_data)
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)

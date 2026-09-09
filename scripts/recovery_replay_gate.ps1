@@ -19,7 +19,16 @@ $cases = @(
     @{ Name = "alpha01_systemic_success"; File = "alpha01_systemic_success.txt"; Frames = 2200 },
     @{ Name = "alpha01_aggressive_success"; File = "alpha01_aggressive_success.txt"; Frames = 1100 },
     @{ Name = "alpha01_denied"; File = "alpha01_denied.txt"; Frames = 2200 },
-    @{ Name = "alpha01_memory_consequence"; File = "alpha01_memory_consequence.txt"; Frames = 1900 }
+    @{ Name = "alpha01_memory_consequence"; File = "alpha01_memory_consequence.txt"; Frames = 1900 },
+    @{ Name = "chapter01_systemic"; File = "chapter01_systemic.txt"; Frames = 3600 },
+    @{ Name = "chapter01_aggressive"; File = "chapter01_aggressive.txt"; Frames = 3500 },
+    @{ Name = "chapter01_denied_or_blocked"; File = "chapter01_denied_or_blocked.txt"; Frames = 2400 },
+    @{ Name = "chapter01_memory_consequence"; File = "chapter01_memory_consequence.txt"; Frames = 6000 },
+    @{ Name = "chapter01_mid_save_load"; File = "chapter01_mid_save_load.txt"; Frames = 3600 },
+    @{ Name = "chapter01_backtrack"; File = "chapter01_backtrack.txt"; Frames = 6000 },
+    @{ Name = "chapter01_security_bypass"; File = "chapter01_security_bypass.txt"; Frames = 3500; Room = "" },
+    @{ Name = "chapter01_no_save_death"; File = "chapter01_no_save_death.txt"; Frames = 3000; Room = "room_1f_security" },
+    @{ Name = "chapter01_terminal_skip_denied"; File = "chapter01_terminal_skip_denied.txt"; Frames = 2000; Room = "" }
 )
 
 New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
@@ -31,8 +40,16 @@ try {
         New-Item -ItemType Directory -Path $userData -Force | Out-Null
 
         Write-Host ("== recovery replay: {0} ({1} frames) ==" -f $case.Name, $case.Frames)
-        & $exePath --replay $replayPath --data-dir $dataRoot `
-            --user-data-dir $userData --frames $case.Frames *> $logPath
+        $arguments = @(
+            "--replay", $replayPath,
+            "--data-dir", $dataRoot,
+            "--user-data-dir", $userData,
+            "--frames", $case.Frames
+        )
+        if ($case.ContainsKey("Room") -and -not [string]::IsNullOrWhiteSpace($case.Room)) {
+            $arguments += @("--room", $case.Room)
+        }
+        & $exePath @arguments *> $logPath
         $exitCode = $LASTEXITCODE
         $output = Get-Content -LiteralPath $logPath -Raw -ErrorAction SilentlyContinue
         $required = @(

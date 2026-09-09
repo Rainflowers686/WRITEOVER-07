@@ -120,6 +120,24 @@ def check_inventory(root: Path, platform: str) -> dict:
     if platform == "macos-arm64" and not (root / "WRITEOVER-07.app" / "Contents" / "Resources" / "data").is_dir():
         fail("missing app-bundle Resources/data")
 
+    runtime_root = (
+        root / "WRITEOVER-07.app" / "Contents" / "Resources"
+        if platform == "macos-arm64"
+        else root
+    )
+    required_runtime = {
+        "data/characters/b1_character_art.txt",
+        "data/text/recovery_text.txt",
+    }
+    actual_runtime = {
+        path.relative_to(runtime_root).as_posix()
+        for path in (runtime_root / "data").rglob("*")
+        if path.is_file()
+    }
+    missing_runtime = required_runtime - actual_runtime
+    if missing_runtime:
+        fail(f"missing required player runtime resources: {sorted(missing_runtime)}")
+
     for path in root.rglob("*"):
         name = path.name.lower()
         relative = path.relative_to(root).as_posix().lower()
@@ -134,7 +152,7 @@ def check_inventory(root: Path, platform: str) -> dict:
                 fail(f"developer path/build marker in package: {relative}")
             if any(marker in payload for marker in SECRET_MARKERS):
                 fail(f"possible secret marker in package: {relative}")
-    return {"entry": entry, "actual": actual}
+    return {"entry": entry, "actual": actual, "runtime": actual_runtime}
 
 
 def check_metadata(root: Path, platform: str) -> None:
@@ -229,6 +247,10 @@ def run_smoke(root: Path, platform: str, clean_root: Path) -> None:
         fail("startup identity or clean smoke receipt missing")
     if "Missing game data" in output:
         fail("package could not find executable-relative data")
+    if "character art bank unavailable" in output:
+        fail("package fell back from authored character art")
+    if "NARRATIVE_TEXT_RESOLUTION=FAILED_CLOSED" in output:
+        fail("package failed closed while resolving authored narrative text")
     save_path = user_data / "saves" / "smoke.wo07"
     if not save_path.is_file() or save_path.stat().st_size == 0:
         fail("package smoke did not write user data outside the package")

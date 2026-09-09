@@ -1,0 +1,12 @@
+# Death/recovery counterfactual: begin in the authored Security room, move
+# into the guard's reachable area, make no manual save, then request F9 after
+# the guard has had time to kill the player.  The runtime must restart the
+# current authored room when no checkpoint exists.
+0 W down
+360 W up
+361 A down
+550 A up
+551 W down
+700 W up
+2500 F9 down
+2501 F9 up

@@ -110,8 +110,9 @@ for every distance.
 The lightweight B1 authoring file is
 `data/characters/b1_character_art.txt`. It is plain UTF-8 text compiled into
 bounded runtime data by the CharacterArtBank; it is not a new general asset
-engine. The runtime bounds are 64 assets, 32 rows and 64 single-width columns
-per asset.
+engine. The runtime parser bounds are 128 assets, 64 rows and 64 single-width
+columns per asset. These are safety limits for the current authored bank, not
+an invitation to turn character art into an unrestricted asset system.
 
 - Each important actor/prop has separate far, mid and near entries where a
   visual cue changes with distance.

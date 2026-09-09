@@ -1,0 +1,121 @@
+# Chapter One alternate security route: use the stunner on guard_7, then
+# enter the elevator access without addressing the disabled guard.  The
+# security checkpoint fact must be granted by the same authored bypass that
+# permits the transition; otherwise the elevator lobby would be a soft-lock.
+0 W down
+0 SHIFT down
+1 MOUSEMOVE -177 0
+390 W up
+390 SHIFT up
+351 MOUSEMOVE -48 0
+352 W down
+426 W up
+427 NUM1 down
+428 NUM1 up
+429 MOUSELEFT down
+430 MOUSELEFT up
+446 MOUSELEFT down
+447 MOUSELEFT up
+463 MOUSELEFT down
+464 MOUSELEFT up
+480 MOUSELEFT down
+481 MOUSELEFT up
+497 MOUSELEFT down
+498 MOUSELEFT up
+514 MOUSELEFT down
+515 MOUSELEFT up
+531 MOUSELEFT down
+532 MOUSELEFT up
+548 MOUSELEFT down
+549 MOUSELEFT up
+565 MOUSELEFT down
+566 MOUSELEFT up
+582 MOUSELEFT down
+583 MOUSELEFT up
+599 MOUSELEFT down
+600 MOUSELEFT up
+616 MOUSELEFT down
+617 MOUSELEFT up
+670 W down
+770 W up
+770 MOUSEMOVE 0 200
+772 F down
+773 F up
+778 MOUSEMOVE 494 0
+779 W down
+861 W up
+862 F down
+863 F up
+870 D down
+878 D up
+879 MOUSEMOVE -269 0
+880 D down
+912 D up
+913 W down
+955 W up
+956 MOUSEMOVE 1047 0
+957 F down
+958 F up
+1000 F down
+1001 F up
+# Calibration terminal.
+1005 W down
+1005 SHIFT down
+1139 W up
+1140 A down
+1232 A up
+1235 F down
+1236 F up
+# Calibration service door and bounded retry window.
+1245 W down
+1337 W up
+1338 A down
+1360 A up
+1365 F down
+1366 F up
+1380 F down
+1381 F up
+1400 F down
+1401 F up
+1420 F down
+1421 F up
+# Medical intake terminal.
+1440 W down
+1574 W up
+1575 A down
+1619 A up
+1670 F down
+1671 F up
+1680 F down
+1681 F up
+# Medical to Security passage.
+1700 D down
+1731 D up
+1735 W down
+1924 W up
+1960 F down
+1961 F up
+# Approach guard_7, then use one stunner action instead of addressing him.
+2000 W down
+2300 W up
+2301 A down
+2417 A up
+2420 V down
+2421 V up
+# Mid-chapter save/load must preserve the active Security route.
+2460 F5 down
+2461 F5 up
+2470 F9 down
+2471 F9 up
+# Security service door to the elevator lobby.
+2470 W down
+2585 W up
+2590 F down
+2591 F up
+# Elevator checkpoint.
+2605 W down
+2761 W up
+2762 A down
+2784 A up
+2785 F down
+2786 F up

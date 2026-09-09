@@ -22,10 +22,13 @@ constexpr float kMaxSpriteDistance = 50.0f;
 constexpr int kNearCharacterScreenCap = 44;
 constexpr int kMidCharacterScreenCap = 48;
 constexpr int kFarCharacterScreenCap = 24;
-constexpr size_t kMaxArtAssets = 64;
+// Keep the authored bank bounded, but leave room for the current production
+// character/weapon set without turning one additional asset into an all-bank
+// fallback.  These are parser safety limits, not a promise of unlimited art.
+constexpr size_t kMaxArtAssets = 128;
 // Weapon viewmodels may use a taller authored hand/forearm silhouette than
 // world sprites, but remain bounded well below an unbounded text asset.
-constexpr size_t kMaxArtRows = 48;
+constexpr size_t kMaxArtRows = 64;
 constexpr size_t kMaxArtColumns = 64;
 // The authored pistol is a held viewmodel: its grip/hand is the stable
 // screen-space anchor, while the muzzle remains several cells inward toward

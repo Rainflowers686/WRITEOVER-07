@@ -1042,6 +1042,9 @@ public:
     void SetObjectiveSource(std::function<std::string()> source) {
         objective_source_ = std::move(source);
     }
+    void SetObjectivePresentationPrefix(std::string prefix) {
+        objective_presentation_prefix_ = std::move(prefix);
+    }
     void SetInteractionPromptSource(std::function<std::string()> source) {
         interaction_prompt_source_ = std::move(source);
     }
@@ -1180,29 +1183,6 @@ public:
                             kind, runtime.instance.yaw));
                     }
                 }
-                // An incapacitated actor has one visual authority: the
-                // exposed BodyRecord.  Never draw a standing NPC and its
-                // floor body at the same time, and never let a hidden body
-                // leak into the scene.
-                if (systemic_ != nullptr) {
-                    for (const auto& body : systemic_->Bodies()) {
-                        if (body.room != active_room_ ||
-                            body.disposition == BodyDisposition::HiddenInContainer ||
-                            body.status == BodyStatus::Alive) {
-                            continue;
-                        }
-                        const CharacterSpriteKind body_kind =
-                            body.status == BodyStatus::Dead
-                                ? CharacterSpriteKind::BodyDead
-                                : CharacterSpriteKind::BodyUnconscious;
-                        // Body art is a distinct floor pose.  Its visual
-                        // authority is BodyRecord::position, not the
-                        // incapacitated actor's standing sprite.
-                        sprites.push_back(make_world_sprite(
-                            0xB000000000000000ull | body.id.GetValue(),
-                            body.position, 0.45f, body_kind, 0.0f));
-                    }
-                }
             } else if (scene_id_ == "room_1f_security") {
                 if (npcs_ != nullptr) {
                     for (const auto& runtime : *npcs_) {
@@ -1243,6 +1223,29 @@ public:
                             kind == CharacterSpriteKind::FullHuman ? 1.8f : 1.75f,
                             kind, runtime.instance.yaw));
                     }
+                }
+            }
+            // An incapacitated actor has one visual authority: the
+            // room-local BodyRecord.  Keep this outside the scene-specific
+            // NPC branches so a security body (or a later bounded room actor)
+            // cannot become invisible merely because the player changed rooms.
+            if (systemic_ != nullptr) {
+                for (const auto& body : systemic_->Bodies()) {
+                    if (body.room != active_room_ ||
+                        body.disposition == BodyDisposition::HiddenInContainer ||
+                        body.status == BodyStatus::Alive) {
+                        continue;
+                    }
+                    const CharacterSpriteKind body_kind =
+                        body.status == BodyStatus::Dead
+                            ? CharacterSpriteKind::BodyDead
+                            : CharacterSpriteKind::BodyUnconscious;
+                    // Body art is a distinct floor pose.  Its visual authority
+                    // is BodyRecord::position, not an incapacitated actor's
+                    // standing sprite.
+                    sprites.push_back(make_world_sprite(
+                        0xB000000000000000ull | body.id.GetValue(),
+                        body.position, 0.45f, body_kind, 0.0f));
                 }
             }
             if (scene_entities_ != nullptr) {
@@ -1371,7 +1374,11 @@ public:
             }
         }
         hud.objective = objective_.empty() ? nullptr : objective_.c_str();
-        if (!objective_.empty()) objective_was_presented_ = true;
+        if (!objective_.empty() &&
+            (objective_presentation_prefix_.empty() ||
+             objective_.rfind(objective_presentation_prefix_, 0) == 0)) {
+            objective_was_presented_ = true;
+        }
         interaction_prompt_ = interaction_prompt_source_
                                   ? interaction_prompt_source_()
                                   : std::string{};
@@ -1576,6 +1583,7 @@ private:
     std::function<uint64_t()> game_frame_source_;
     std::function<std::string()> objective_source_;
     std::function<std::string()> interaction_prompt_source_;
+    std::string objective_presentation_prefix_;
     uint64_t last_render_game_frame_ = 0;
     bool has_rendered_game_frame_ = false;
     std::map<uint64_t, CharacterLod> lod_states_;
@@ -2151,8 +2159,10 @@ int RunComposition(const GameConfig& config) {
         bool terminal_denied = false;
         bool player_died = false;
         bool player_recovered = false;
+        bool player_restarted = false;
         bool access_attempted = false;
         bool access_denied = false;
+        bool transition_denied = false;
         bool gate_unlocked = false;
         bool gate_open = false;
         bool gate_crossed = false;
@@ -2177,7 +2187,7 @@ int RunComposition(const GameConfig& config) {
                 slice.player_died = true;
             }
             render->SetSubtitleOnce(services.player->Dead()
-                                        ? "YOU ARE DOWN. F9 loads the last checkpoint."
+                                        ? "YOU ARE DOWN. F9 loads a checkpoint or restarts this room."
                                         : "IMPACT. Health is now authoritative.",
                                     services.player->Dead() ? 240 : 90);
         });
@@ -2300,7 +2310,7 @@ int RunComposition(const GameConfig& config) {
              "fact_chapter_medical_assessed", "fact_chapter_quiet_route",
              "fact_chapter_aggressive_route", "fact_chapter_staff_route",
              "fact_chapter_security_reached", "fact_chapter_security_checkpoint",
-             "fact_chapter_checkpoint_reached"}) {
+             "fact_chapter_checkpoint_reached", "fact_r1_guard_dead"}) {
         services.world->SetBooleanFact(RuntimeFactId(fact), slice.player, false);
     }
 
@@ -2424,11 +2434,15 @@ int RunComposition(const GameConfig& config) {
     });
     auto sync_body_from_feedback = [&](const ShotFeedback& feedback) {
         if (!feedback.target_was_npc ||
-            (!feedback.target_stunned && !feedback.target_died) ||
-            feedback.npc != slice.guard_npc ||
-            services.systemic->GetBody(slice.body) != nullptr) {
+            (!feedback.target_stunned && !feedback.target_died)) {
             return;
         }
+        const bool is_primary_b1_body = feedback.npc == slice.guard_npc;
+        const EntityId body_id = is_primary_b1_body
+            ? slice.body
+            : EntityId::New(0xC000000000000000ull |
+                            (feedback.npc.GetValue() & 0x3FFFFFFFFFFFFFFFull));
+        if (services.systemic->GetBody(body_id) != nullptr) return;
         const RuntimeNpc* target = nullptr;
         for (const auto& runtime : services.ai->Npcs()) {
             if (runtime.instance.id == feedback.npc) {
@@ -2436,9 +2450,9 @@ int RunComposition(const GameConfig& config) {
                 break;
             }
         }
-        if (target == nullptr || target->room != slice.b1_room) return;
+        if (target == nullptr) return;
         BodyRecord body;
-        body.id = slice.body;
+        body.id = body_id;
         body.npc = feedback.npc;
         body.status = feedback.target_died ? BodyStatus::Dead : BodyStatus::Unconscious;
         body.disposition = BodyDisposition::Exposed;
@@ -2446,12 +2460,16 @@ int RunComposition(const GameConfig& config) {
         body.room = target->room;
         if (!services.systemic->AddBody(body)) return;
         const EntityId target_entity = EntityId::New(feedback.npc.GetValue());
-        if (slice.badge.IsValid() &&
+        if (is_primary_b1_body && slice.badge.IsValid() &&
             services.systemic->ItemHeldBy(slice.badge, target_entity)) {
-            (void)services.systemic->TransferItem(slice.badge, slice.body);
+            (void)services.systemic->TransferItem(slice.badge, body_id);
         }
-        slice.body_created = true;
-        slice.nonlethal_hit = feedback.target_stunned;
+        slice.body_created = slice.body_created || is_primary_b1_body;
+        slice.nonlethal_hit = slice.nonlethal_hit || feedback.target_stunned;
+        if (is_primary_b1_body && feedback.target_died) {
+            services.world->SetBooleanFact(
+                RuntimeFactId("fact_r1_guard_dead"), slice.player, true);
+        }
         render->SetSubtitleOnce(feedback.target_stunned
                                     ? "Target down. Search the body before moving on."
                                     : "Target dead. The scene is now evidence.",
@@ -2610,7 +2628,27 @@ int RunComposition(const GameConfig& config) {
         SaveManager save;
         const auto loaded = save.LoadWorld(
             (user_data_root / "saves" / "pvs_manual").string());
-        if (loaded.IsError()) { render->SetSubtitleOnce("Load failed.", 120); return; }
+        if (loaded.IsError()) {
+            // A first death can legitimately happen before the player has made
+            // a manual save.  Keep the dead state authoritative while the
+            // load attempt is pending, then provide a deterministic authored
+            // room restart instead of leaving the player in input limbo.
+            if (services.player->Dead() && services.world->HasLoadedRoom()) {
+                const Room& room = services.world->LoadedRoom();
+                services.player->Locomotion().position = room.spawn_point;
+                services.player->Locomotion().velocity = Vec3{};
+                services.player->Locomotion().yaw = room.spawn_yaw;
+                services.player->Locomotion().pitch = 0.0f;
+                services.player->Locomotion().contact.grounded = true;
+                services.player->SetHealthState(100, false);
+                slice.player_restarted = true;
+                render->SetSubtitleOnce(
+                    "No checkpoint found. This room has been restarted.", 240);
+            } else {
+                render->SetSubtitleOnce("Load failed.", 120);
+            }
+            return;
+        }
         const SaveSection* player_section = nullptr;
         const SaveSection* world_section = nullptr;
         const SaveSection* rng_section = nullptr;
@@ -3079,7 +3117,8 @@ int RunComposition(const GameConfig& config) {
     transition_allowed = [&](const SceneTransition& link) {
         if (link.id == "b1_to_calibration") {
             return player_has_valid_badge() &&
-                   terminal_session_active(slice.terminal);
+                   (terminal_session_active(slice.terminal) ||
+                    fact_is_true("fact_b1_loud_action"));
         }
         if (link.id == "calibration_to_medical") {
             return fact_is_true("fact_chapter_calibration_accessed");
@@ -3118,13 +3157,52 @@ int RunComposition(const GameConfig& config) {
         const SceneTransition* link = scene_runtime.FindTransition(transition_id);
         if (link == nullptr) return false;
         if (transition_allowed && !transition_allowed(*link)) {
+            slice.transition_denied = true;
             render->SetSubtitleOnce(link->unavailable_message, 120);
             return true;
         }
+        const bool security_guard_bypass =
+            link->id == "security_to_elevator" && security_guard_disabled();
         if (!switch_room(link->destination_room, link->destination_spawn,
                          link->destination_yaw)) {
             render->SetSubtitleOnce(link->unavailable_message, 120);
             return true;
+        }
+        if (link->id == "b1_to_calibration") {
+            slice.gate_crossed = true;
+            services.world->SetBooleanFact(
+                RuntimeFactId("fact_r1_checkpoint_reached"), slice.player, true);
+            services.world->SetBooleanFact(
+                RuntimeFactId("fact_b1_checkpoint_reached"), slice.player, true);
+            const BodyRecord* route_body =
+                services.systemic->GetBody(slice.body);
+            // The chapter route records the player's durable approach, not the
+            // body's transient post-discovery disposition. A cleaner may later
+            // reopen a hidden cart body; that consequence must not rewrite a
+            // previously quiet/non-lethal route into the loud branch.
+            const bool quiet_route =
+                route_body != nullptr &&
+                fact_is_true("fact_b1_body_hidden") &&
+                fact_is_true("fact_b1_nonlethal_action") &&
+                !fact_is_true("fact_b1_loud_action");
+            services.world->SetBooleanFact(
+                RuntimeFactId("fact_chapter_quiet_route"),
+                slice.player, quiet_route);
+            services.world->SetBooleanFact(
+                RuntimeFactId("fact_chapter_aggressive_route"),
+                slice.player, !quiet_route);
+            (void)services.systemic->TransitionQuest(
+                slice.opening_quest, QuestStatus::Completed,
+                services.player->CurrentFrame(),
+                "B1 service checkpoint reached");
+        }
+        if (security_guard_bypass) {
+            // The disabled-guard authorization is an intentional alternate
+            // security route. Make the same durable checkpoint fact visible to
+            // the elevator completion gate before entering its terminal room.
+            services.world->SetBooleanFact(
+                RuntimeFactId("fact_chapter_security_checkpoint"),
+                slice.player, true);
         }
         if (link->id == "medical_to_staff") {
             services.world->SetBooleanFact(
@@ -3183,7 +3261,10 @@ int RunComposition(const GameConfig& config) {
                 if (!has_badge) return std::string("B1: Take the access badge");
             }
             if (!has_badge) return std::string("B1: Find a way through the service route");
-            if (!slice.terminal_session) return std::string("B1: Use the calibration terminal");
+            if (!slice.terminal_session &&
+                !fact_is_true("fact_b1_loud_action")) {
+                return std::string("B1: Use the calibration terminal");
+            }
             if (!slice.gate_open) return std::string("B1: Use the service reader");
             if (!slice.gate_crossed) return std::string("B1: Cross the open service door");
             return std::string("B1 complete: continue to calibration");
@@ -3206,9 +3287,13 @@ int RunComposition(const GameConfig& config) {
             return std::string("Medical: report to the Security checkpoint");
         }
         if (room == "room_1f_security") {
+            if (static_cast<uint8_t>(services.systemic->AlertLevel()) >=
+                static_cast<uint8_t>(FacilityAlertLevel::Suspicious)) {
+                return std::string("Security: response elevated; reach the checkpoint");
+            }
             return fact_is_true("fact_chapter_security_checkpoint") ||
                            security_guard_disabled()
-                       ? std::string("Security: use the elevator access door")
+                        ? std::string("Security: use the elevator access door")
                        : std::string("Security: pass the checkpoint");
         }
         if (room == "room_elevator_lobby") {
@@ -3221,6 +3306,7 @@ int RunComposition(const GameConfig& config) {
         }
         return std::string("Explore the marked service route");
     });
+    render->SetObjectivePresentationPrefix("B1:");
     render->SetInteractionPromptSource([&] {
         const std::string& room = services.player->CurrentRoom();
         if (room == "room_b1_revival") {
@@ -3494,42 +3580,7 @@ int RunComposition(const GameConfig& config) {
                 } else if (const SceneEntity* door =
                                scene_runtime.FindEntity("b1_service_door");
                            door != nullptr && p.x > door->position.x + 0.4f) {
-                    const SceneTransition* link =
-                        scene_runtime.FindTransition("b1_to_calibration");
-                    if (link != nullptr &&
-                        switch_room(link->destination_room, link->destination_spawn,
-                                    link->destination_yaw)) {
-                        slice.gate_crossed = true;
-                        services.world->SetBooleanFact(
-                            RuntimeFactId("fact_r1_checkpoint_reached"),
-                            player, true);
-                        services.world->SetBooleanFact(
-                            RuntimeFactId("fact_b1_checkpoint_reached"),
-                            player, true);
-                        const BodyRecord* route_body =
-                            services.systemic->GetBody(slice.body);
-                        // The chapter route records the player's durable
-                        // approach, not the body's transient post-discovery
-                        // disposition.  A cleaner may later reopen a hidden
-                        // cart body; that consequence must not rewrite a
-                        // previously quiet/non-lethal route into the loud
-                        // branch.  Keep the body read for the existing B1
-                        // seam, while the chapter facts own this distinction.
-                        const bool quiet_route =
-                            route_body != nullptr &&
-                            fact_is_true("fact_b1_body_hidden") &&
-                            fact_is_true("fact_b1_nonlethal_action") &&
-                            !fact_is_true("fact_b1_loud_action");
-                        services.world->SetBooleanFact(
-                            RuntimeFactId("fact_chapter_quiet_route"),
-                            player, quiet_route);
-                        services.world->SetBooleanFact(
-                            RuntimeFactId("fact_chapter_aggressive_route"),
-                            player, !quiet_route);
-                        (void)services.systemic->TransitionQuest(
-                            slice.opening_quest, QuestStatus::Completed, frame,
-                            "B1 service checkpoint reached");
-                    } else {
+                    if (!enter_scene_transition("b1_to_calibration")) {
                         render->SetSubtitleOnce("Calibration room unavailable.", 120);
                     }
                 } else {
@@ -3705,6 +3756,13 @@ int RunComposition(const GameConfig& config) {
             const bool has_badge = slice.badge.IsValid() &&
                 services.systemic->ItemHeldBy(slice.badge, player) &&
                 services.systemic->ReaderAcceptsItem(slice.badge, 2);
+            const bool bribe_done = slice.bribe_done || [&] {
+                WorldFact fact;
+                return services.world->Facts().Get(
+                           RuntimeFactId("fact_alpha_bribe_accepted"), fact) &&
+                       std::holds_alternative<bool>(fact.value) &&
+                       std::get<bool>(fact.value);
+            }();
             if (interaction_guard_available &&
                 camera_looks_at(interaction_guard_position, 0.90f, 1.80f)) {
                 if (interaction_guard_npc == slice.security_guard_npc &&
@@ -3720,7 +3778,7 @@ int RunComposition(const GameConfig& config) {
                         RuntimeFactId("fact_chapter_security_checkpoint"),
                         player, true);
                     render->SetSubtitleOnce("ACCESS GRANTED. Security checkpoint logged you.", 180);
-                } else if (!slice.bribe_done && slice.cash.IsValid() &&
+                } else if (!bribe_done && slice.cash.IsValid() &&
                            services.systemic->TransferItem(slice.cash, guard)) {
                     SocialExchangeRecord exchange;
                     exchange.id = SocialExchangeId::New(10000 + services.systemic->SocialExchangeCount());
@@ -3741,7 +3799,7 @@ int RunComposition(const GameConfig& config) {
                             player, true);
                         render->SetSubtitleOnce("He takes the money. That is not the same as trust.", 180);
                     }
-                } else if (slice.bribe_done) {
+                } else if (bribe_done) {
                     render->SetSubtitleOnce("Checkpoint: the guard remembers the exchange.", 150);
                 } else {
                     render->SetSubtitleOnce("ACCESS DENIED. No valid credential.", 180);
@@ -3761,7 +3819,18 @@ int RunComposition(const GameConfig& config) {
                 return;
             }
             if (p.x < 8.0f && p.y < 5.0f) {
-                if (!slice.schedule_found) {
+                bool schedule_found = slice.schedule_found;
+                if (!schedule_found) {
+                    for (const auto& asset : services.systemic->Knowledge()) {
+                        if (asset.type == KnowledgeAssetType::ShiftSchedule &&
+                            std::find(asset.known_by.begin(), asset.known_by.end(),
+                                      player) != asset.known_by.end()) {
+                            schedule_found = true;
+                            break;
+                        }
+                    }
+                }
+                if (!schedule_found) {
                     KnowledgeAssetRecord asset;
                     asset.id = KnowledgeAssetId::New(10000 + services.systemic->KnowledgeCount());
                     asset.type = KnowledgeAssetType::ShiftSchedule;
@@ -4011,6 +4080,13 @@ int RunComposition(const GameConfig& config) {
             std::string::npos;
         const bool chapter_backtrack_replay =
             config.replay_path.find("chapter01_backtrack") != std::string::npos;
+        const bool chapter_security_bypass_replay =
+            config.replay_path.find("chapter01_security_bypass") != std::string::npos;
+        const bool chapter_no_save_death_replay =
+            config.replay_path.find("chapter01_no_save_death") != std::string::npos;
+        const bool chapter_terminal_skip_replay =
+            config.replay_path.find("chapter01_terminal_skip_denied") !=
+            std::string::npos;
         const bool badge_held_by_player =
             slice.badge.IsValid() &&
             services.systemic->ItemHeldBy(slice.badge, slice.player);
@@ -4084,9 +4160,24 @@ int RunComposition(const GameConfig& config) {
                 ? (chapter_route_complete && replay_save_ok && replay_load_ok &&
                    visited_room("room_restroom_staff"))
             : chapter_backtrack_replay
-                ? (chapter_route_complete && fact_is_true("fact_chapter_quiet_route") &&
-                   fact_is_true("fact_chapter_staff_route") && backtracked_medical)
-            : (success_replay || alpha_systemic_replay)
+                 ? (chapter_route_complete && fact_is_true("fact_chapter_quiet_route") &&
+                    fact_is_true("fact_chapter_staff_route") && backtracked_medical)
+             : chapter_security_bypass_replay
+                 ? (chapter_route_complete &&
+                    fact_is_true("fact_chapter_security_checkpoint") &&
+                    visited_room("room_1f_security") &&
+                    visited_room("room_elevator_lobby") &&
+                    !slice.transition_denied)
+             : chapter_no_save_death_replay
+                 ? (slice.player_died && slice.player_restarted &&
+                    !replay_load_ok && services.player->Health() > 0 &&
+                    !services.player->Dead())
+             : chapter_terminal_skip_replay
+                 ? (slice.transition_denied && slice.gate_open &&
+                    !slice.gate_crossed && badge_held_by_player &&
+                    !slice.terminal_session &&
+                    !visited_room("room_01_calibration"))
+             : (success_replay || alpha_systemic_replay)
             ? (slice.shot_hit && slice.nonlethal_hit && slice.body_created &&
                slice.body_hidden && slice.body_discovered && slice.cleaner_response &&
                slice.terminal_session && slice.gate_open &&
@@ -4164,8 +4255,8 @@ int RunComposition(const GameConfig& config) {
         std::fprintf(stderr,
                      "SLICE_SHOT_HIT=%s NONLETHAL_HIT=%s BODY_CREATED=%s "
                      "BODY_HIDDEN=%s BODY_DISCOVERED=%s ACCESS_ATTEMPTED=%s "
-                     "ACCESS_DENIED=%s GATE_OPEN=%s GATE_CROSSED=%s "
-                     "PLAYER_HEALTH=%u PLAYER_DEAD=%s\n",
+                      "ACCESS_DENIED=%s GATE_OPEN=%s GATE_CROSSED=%s "
+                      "PLAYER_HEALTH=%u PLAYER_DEAD=%s\n",
                      slice.shot_hit ? "YES" : "NO",
                      slice.nonlethal_hit ? "YES" : "NO",
                      slice.body_created ? "YES" : "NO",
@@ -4173,10 +4264,19 @@ int RunComposition(const GameConfig& config) {
                      slice.body_discovered ? "YES" : "NO",
                      slice.access_attempted ? "YES" : "NO",
                      slice.access_denied ? "YES" : "NO",
-                     slice.gate_open ? "YES" : "NO",
-                     slice.gate_crossed ? "YES" : "NO",
-                     static_cast<unsigned>(services.player->Health()),
-                     services.player->Dead() ? "YES" : "NO");
+                      slice.gate_open ? "YES" : "NO",
+                      slice.gate_crossed ? "YES" : "NO",
+                      static_cast<unsigned>(services.player->Health()),
+                      services.player->Dead() ? "YES" : "NO");
+        std::fprintf(stderr,
+                     "TRANSITION_DENIED=%s PLAYER_RESTARTED=%s "
+                     "FACT_R1_GUARD_DEAD=%s FACT_CHAPTER_SECURITY_CHECKPOINT=%s "
+                     "FACILITY_ALERT_LEVEL=%u\n",
+                     slice.transition_denied ? "YES" : "NO",
+                     slice.player_restarted ? "YES" : "NO",
+                     fact_is_true("fact_r1_guard_dead") ? "YES" : "NO",
+                     fact_is_true("fact_chapter_security_checkpoint") ? "YES" : "NO",
+                     static_cast<unsigned>(services.systemic->AlertLevel()));
         std::fprintf(stderr, "BADGE_HELD_BY_PLAYER=%s\n",
                      badge_held_by_player ? "YES" : "NO");
         std::fprintf(stderr, "CLEANER_RELATIONSHIP=%s CLEANER_HELP_COVERUP=%s\n",
@@ -4196,12 +4296,13 @@ int RunComposition(const GameConfig& config) {
         }
         std::fprintf(stderr, "TERMINAL_ATTEMPTED=%s TERMINAL_DENIED=%s "
                             "CLEANER_RESPONSE=%s PLAYER_DIED=%s "
-                            "PLAYER_RECOVERED=%s\n",
+                            "PLAYER_RECOVERED=%s PLAYER_RESTARTED=%s\n",
                      slice.terminal_attempted ? "YES" : "NO",
                      slice.terminal_denied ? "YES" : "NO",
                      slice.cleaner_response ? "YES" : "NO",
                      slice.player_died ? "YES" : "NO",
-                     slice.player_recovered ? "YES" : "NO");
+                     slice.player_recovered ? "YES" : "NO",
+                     slice.player_restarted ? "YES" : "NO");
         std::fprintf(stderr, "NARRATOR_TYPOGRAPHY_ACTIVE=%s\n",
                      render->NarratorTypographyActive() ? "YES" : "NO");
         std::fprintf(stderr, "NARRATIVE_VISIBLE_ACTION=%s\n",
