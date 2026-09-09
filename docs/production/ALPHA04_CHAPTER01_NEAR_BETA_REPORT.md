@@ -90,10 +90,10 @@ source content. Counts below are receipts, not permanent API guarantees.
 |---|---|
 | Debug configure/build | PASS |
 | Debug CTest | PASS, 2/2 |
-| Debug direct unit executable | PASS, 208 tests, 0 failed |
+| Debug direct unit executable | PASS, 209 tests, 0 failed |
 | Release configure/build | PASS |
 | Release CTest | PASS, 2/2 with `-C Release` |
-| Release direct unit executable | PASS, 208 tests, 0 failed |
+| Release direct unit executable | PASS, 209 tests, 0 failed |
 | Public-header standalone executable | PASS |
 | `contentc.py --check` | PASS |
 | Content compiler tests | PASS, 13/13 |
@@ -116,9 +116,9 @@ live state, not a fake successful load.
 
 The Release benchmark reports the tool's actual
 `worst_1pct_avg_ms` field; it is not relabeled as p99. Recorded current values
-include approximately 0.025 ms systemic lookup, 0.222 ms systemic update,
-1.247 ms character render workload, and 2.032 ms integrated character runtime
-frame proxy with platform writes excluded. This is not end-to-end 120 Hz proof.
+include 0.014 ms systemic lookup, 0.206 ms systemic update, 1.051 ms
+character render workload, and 1.635 ms integrated character runtime frame
+proxy with platform writes excluded. This is not end-to-end 120 Hz proof.
 
 ## Package and negative-probe evidence
 

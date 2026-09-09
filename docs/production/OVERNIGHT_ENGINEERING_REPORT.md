@@ -158,7 +158,7 @@ records, 0 current Fatal, and 0 current P0. The current Alpha-04 engineering
 receipt is `docs/production/ALPHA04_CHAPTER01_NEAR_BETA_REPORT.md`.
 
 Fresh local receipts at this implementation content are Debug/Release build
-and CTest, 208/208 direct tests in each configuration, content 13/13,
+and CTest, 209/209 direct tests in each configuration, content 13/13,
 systemic schema 10/10, invalid seed, static audit COUNT=0, contract, Debug/
 Release smoke, 19/19 replay gate, 36-row scenario classification, 8/8 save
 fault rollback probes, package positive/negative smoke, and Release benchmark.
