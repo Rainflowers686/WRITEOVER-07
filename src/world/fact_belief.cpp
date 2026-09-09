@@ -105,7 +105,7 @@ bool FactStore::Load(Deserializer& d) {
         f.id = ReadId<FactId>(d);
         f.subject_entity = ReadId<EntityId>(d);
         const uint8_t predicate = d.ReadU8();
-        if (predicate > static_cast<uint8_t>(PredicateType::Count)) {
+        if (predicate >= static_cast<uint8_t>(PredicateType::Count)) {
             d.MarkError();
             return false;
         }

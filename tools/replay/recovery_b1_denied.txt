@@ -1,9 +1,41 @@
-# Counterfactual B1 route: approach the same service reader without taking
-# officer_davis's badge; the reader must deny access and leave the gate closed.
+# Counterfactual B1 route: use the same authored approach to the service
+# terminal/reader, but never search/take officer_davis's badge.  The reader
+# must deny access and leave the gate closed.
 0 W down
 0 SHIFT down
-1 MOUSEMOVE -120 0
-450 W up
-450 SHIFT up
-451 F down
-452 F up
+1 MOUSEMOVE -177 0
+390 W up
+390 SHIFT up
+351 MOUSEMOVE -48 0
+352 W down
+426 W up
+427 V down
+428 V up
+429 W down
+512 W up
+513 S down
+530 S up
+530 MOUSEMOVE 0 200
+537 MOUSEMOVE 1120 0
+538 W down
+586 W up
+850 MOUSEMOVE 956 0
+# Reuse the normal B1 terminal approach without the body/badge actions.
+900 MOUSEMOVE -113 0
+902 MOUSEMOVE -604 0
+903 MOUSEMOVE 0 -175
+920 F down
+921 F up
+# Turn toward the service reader and make a real denied access attempt.
+922 MOUSEMOVE 960 0
+1200 D down
+1230 D up
+1240 W down
+1240 SHIFT down
+1370 F down
+1371 F up
+1450 W up
+1450 SHIFT up
+1451 MOUSEMOVE 1047 0
+1470 F down
+1471 F up

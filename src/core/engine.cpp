@@ -1,5 +1,6 @@
 #include "writeover/core/engine.h"
 
+#include <algorithm>
 #include <chrono>
 #include <thread>
 
@@ -18,6 +19,7 @@ int Engine::Run(uint64_t max_frames) {
 
     Duration accumulator(0.0);
     auto previous = WallClock::now();
+    auto last_presentation = previous;
 
     uint64_t sim_ticks = 0;
     while (running_) {
@@ -73,9 +75,25 @@ int Engine::Run(uint64_t max_frames) {
         // the newest snapshot; the final stepped iteration also covers
         // finite smoke/replay runs.
         if (stepped && render_ != nullptr) {
+            bool present = true;
+            if (context_.settings != nullptr &&
+                context_.settings->frame_rate_cap != 0) {
+                const uint8_t capped_hz = static_cast<uint8_t>(std::min<int>(
+                    context_.settings->frame_rate_cap, 120));
+                const double interval_ms =
+                    1000.0 / static_cast<double>(std::max<int>(capped_hz, 1));
+                const double since_last_ms =
+                    std::chrono::duration_cast<Duration>(
+                        WallClock::now() - last_presentation).count();
+                present = since_last_ms + 0.1 >= interval_ms;
+            }
+            if (!present) {
+                continue;
+            }
             const float alpha = static_cast<float>(
                 accumulator.count() / fixed_dt_ms);
             render_->RenderFrame(sim_ticks, alpha < 1.0f ? alpha : 0.0f);
+            last_presentation = WallClock::now();
         }
     }
 

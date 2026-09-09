@@ -216,8 +216,12 @@ bool SaveAllSevenSectionsLegal() {
 bool SaveDuplicateSectionRejected() {
     std::vector<SaveSection> sections;
     sections.push_back({SaveSectionId::Rng, std::vector<uint8_t>{1, 2, 3}});
-    sections.push_back({SaveSectionId::Rng, std::vector<uint8_t>{4, 5, 6}});
+    sections.push_back({SaveSectionId::World, std::vector<uint8_t>{4, 5, 6}});
+    // Compose a valid wire first, then make the serialized section ids
+    // adversarial.  ComposeSaveBuffer itself correctly rejects duplicates;
+    // this test exercises the independent parser boundary.
     std::vector<uint8_t> wire = ComposeSaveBuffer(sections);
+    WO_CHECK(!wire.empty());
     // Patch second section id to duplicate the first (both Rng).
     wire[24] = static_cast<uint8_t>(SaveSectionId::Rng);  // first section id
     // Second section header starts after first section: 24 + 12 + 3.
@@ -232,8 +236,9 @@ bool SaveDuplicateSectionRejected() {
 bool SaveUnknownSectionRejected() {
     std::vector<SaveSection> sections;
     sections.push_back({SaveSectionId::Rng, std::vector<uint8_t>{1, 2, 3}});
-    sections.push_back({static_cast<SaveSectionId>(99), std::vector<uint8_t>{4, 5, 6}});
+    sections.push_back({SaveSectionId::World, std::vector<uint8_t>{4, 5, 6}});
     std::vector<uint8_t> wire = ComposeSaveBuffer(sections);
+    WO_CHECK(!wire.empty());
     // Patch second section id to 99 (unknown).
     wire[24 + 12 + 3] = 99;
     const auto parsed = ParseSaveBuffer(wire.data(), wire.size());

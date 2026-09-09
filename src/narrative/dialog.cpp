@@ -5,6 +5,13 @@
 namespace writeover {
 
 void DialogueQueue::Push(const SubtitleLine& line) {
+    // Keep the producer side bounded by the same limit used by Load().  The
+    // queue is a presentation buffer, so dropping the oldest stale line is
+    // preferable to creating a save that cannot be restored.
+    constexpr size_t kMaxDialogueLines = 512;
+    if (queue_.size() >= kMaxDialogueLines) {
+        queue_.pop_front();
+    }
     queue_.push_back(line);
 }
 

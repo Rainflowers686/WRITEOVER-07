@@ -24,7 +24,7 @@ def check(name, ok):
 
 
 def compile_to(tmp, room_json, facts_json=None, storylets_json=None,
-               npcs_json=None, scene_json=None):
+               npcs_json=None, scene_json=None, inject_default=True):
     """Writes authoring JSON into tmp and runs _compile_all; returns False if
     any compile error was recorded."""
     rooms = tmp / "rooms"
@@ -47,7 +47,17 @@ def compile_to(tmp, room_json, facts_json=None, storylets_json=None,
         "n1\tFixture narrator text.\n",
         encoding="utf-8",
     )
-    (rooms / "r1.json").write_text(json.dumps(room_json), encoding="utf-8")
+    # Small fixtures historically omit the explicit sparse-grid policy.  Keep
+    # those legacy fixtures focused on their individual assertion, while a
+    # dedicated regression below verifies that production authoring without a
+    # defaultCell is rejected.
+    room_for_test = dict(room_json)
+    if inject_default:
+        room_for_test.setdefault(
+            "defaultCell",
+            {"floor": 0.0, "ceiling": 4.0, "material": "wall",
+             "light": 255, "flags": []})
+    (rooms / "r1.json").write_text(json.dumps(room_for_test), encoding="utf-8")
     if facts_json is not None:
         (facts / "f1.json").write_text(json.dumps(facts_json), encoding="utf-8")
     if storylets_json is not None:
@@ -260,6 +270,84 @@ def test_scene_spatial_validation():
                              for e in errs))
 
 
+def test_sparse_room_requires_default_policy():
+    room = {"schemaVersion": 1, "gridWidth": 2, "gridHeight": 2,
+            "cells": [{"col": 0, "row": 0, "flags": []}]}
+    with tempfile.TemporaryDirectory() as tmp:
+        ok, errs = compile_to(Path(tmp), room, inject_default=False)
+        check("sparse_room_requires_default_policy",
+              not ok and any("requires explicit defaultCell policy" in e
+                             for e in errs))
+
+
+def test_duplicate_room_cell_rejected():
+    room = {
+        "schemaVersion": 1, "gridWidth": 1, "gridHeight": 1,
+        "cells": [
+            {"col": 0, "row": 0, "flags": ["solid"]},
+            {"col": 0, "row": 0, "flags": []},
+        ],
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        ok, errs = compile_to(Path(tmp), room)
+        check("duplicate_room_cell_rejected",
+              not ok and any("duplicate cell definition (0,0)" in e
+                             for e in errs))
+
+
+def test_nonfinite_room_geometry_rejected():
+    room = {
+        "schemaVersion": 1, "gridWidth": 1, "gridHeight": 1,
+        "cells": [{"col": 0, "row": 0, "floor": float("nan"),
+                   "flags": []}],
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        ok, errs = compile_to(Path(tmp), room)
+        check("nonfinite_room_geometry_rejected",
+              not ok and any("floor and ceiling must be finite" in e
+                             for e in errs))
+
+
+def test_malformed_room_values_report_content_error():
+    room = {
+        "schemaVersion": 1, "gridWidth": 1, "gridHeight": 1,
+        "cells": [{"col": 0, "row": 0, "light": "bright", "flags": []}],
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        ok, errs = compile_to(Path(tmp), room)
+        check("malformed_room_values_report_content_error",
+              not ok and any("light must be an integer" in e for e in errs))
+
+
+def test_patrol_point_entity_overlap_rejected():
+    scene = {
+        "schemaVersion": 1,
+        "entities": [{
+            "id": "cart", "kind": "cart", "room": "r1",
+            "position": {"x": 1.0, "y": 1.0, "z": 0.0},
+            "radius": 1.0, "height": 1.0, "visual": "crate",
+        }],
+        "transitions": [],
+        "patrolRoutes": [{
+            "npcRef": "npc", "room": "r1",
+            "points": [{"x": 1.0, "y": 1.0, "z": 0.0}],
+        }],
+    }
+    room = {
+        "schemaVersion": 1, "gridWidth": 3, "gridHeight": 3,
+        "cells": [],
+        "defaultCell": {"floor": 0.0, "ceiling": 4.0,
+                         "material": "concrete", "light": 100, "flags": []},
+    }
+    npcs = {"schemaVersion": 1, "npcs": [{"id": "npc"}]}
+    with tempfile.TemporaryDirectory() as tmp:
+        ok, errs = compile_to(Path(tmp), room, npcs_json=npcs,
+                              scene_json=scene)
+        check("patrol_point_entity_overlap_rejected",
+              not ok and any("overlaps placed entity 'cart' footprint" in e
+                             for e in errs))
+
+
 if __name__ == "__main__":
     test_light_zero_preserved()
     test_stable_ids_survive_insertion()
@@ -269,5 +357,10 @@ if __name__ == "__main__":
     test_invalid_npc_profile_rejected()
     test_npc_profile_binary_emitted()
     test_scene_spatial_validation()
-    print(f"{8 - len(FAILURES)}/8 content tests passed")
+    test_sparse_room_requires_default_policy()
+    test_duplicate_room_cell_rejected()
+    test_nonfinite_room_geometry_rejected()
+    test_malformed_room_values_report_content_error()
+    test_patrol_point_entity_overlap_rejected()
+    print(f"{13 - len(FAILURES)}/13 content tests passed")
     sys.exit(1 if FAILURES else 0)

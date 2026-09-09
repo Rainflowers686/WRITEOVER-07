@@ -7,6 +7,7 @@
 #include "writeover/world/room.h"
 
 #include <cmath>
+#include <limits>
 
 namespace writeover {
 
@@ -163,6 +164,58 @@ bool RoomExcessiveStoryletRefsRejected() {
     return out.IsError();
 }
 
+bool RoomRejectsNonFiniteGeometry() {
+    Room room;
+    room.id = RoomId::New(3);
+    room.grid = Grid(1, 1);
+    room.spawn_point = Vec3{1.0f, 1.0f,
+                            std::numeric_limits<float>::quiet_NaN()};
+    std::vector<uint8_t> bytes;
+    Serializer s(bytes);
+    SerializeRoom(s, room);
+    Deserializer d(bytes.data(), bytes.size());
+    return DeserializeRoom(d).IsError();
+}
+
+bool RoomRejectsTrailingBytes() {
+    Room room;
+    room.id = RoomId::New(4);
+    room.grid = Grid(1, 1);
+    room.spawn_point = Vec3{0.5f, 0.5f, 0.0f};
+    std::vector<uint8_t> bytes;
+    Serializer s(bytes);
+    SerializeRoom(s, room);
+    bytes.push_back(0xA5);
+    Deserializer d(bytes.data(), bytes.size());
+    return DeserializeRoom(d).IsError();
+}
+
+bool FactRejectsPredicateSentinel() {
+    std::vector<uint8_t> bytes;
+    Serializer s(bytes);
+    s.WriteU32(1);
+    WriteId(s, FactId::New(1));
+    WriteId(s, EntityId::New(2));
+    s.WriteU8(static_cast<uint8_t>(PredicateType::Count));
+    s.WriteU8(0);
+    Deserializer d(bytes.data(), bytes.size());
+    FactStore facts;
+    return !facts.Load(d) && d.HasError();
+}
+
+bool InfrastructureRejectsLockedOpenDoor() {
+    std::vector<uint8_t> bytes;
+    Serializer s(bytes);
+    s.WriteU32(1);
+    WriteId(s, DoorId::New(1));
+    s.WriteU8(1);  // open
+    s.WriteU8(1);  // locked: invalid invariant
+    s.WriteU32(0);
+    Deserializer d(bytes.data(), bytes.size());
+    InfrastructureSystem infra;
+    return !infra.Load(d) && d.HasError();
+}
+
 } // namespace
 
 void RegisterWorldTests(TestHarness& test) {
@@ -175,6 +228,10 @@ void RegisterWorldTests(TestHarness& test) {
     test.Add("map_validator.spawn_fits", &MapValidatorCatchesSolid);
     test.Add("room.excessive_npc_refs_rejected", &RoomExcessiveNpcRefsRejected);
     test.Add("room.excessive_storylet_refs_rejected", &RoomExcessiveStoryletRefsRejected);
+    test.Add("room.non_finite_geometry_rejected", &RoomRejectsNonFiniteGeometry);
+    test.Add("room.trailing_bytes_rejected", &RoomRejectsTrailingBytes);
+    test.Add("fact.predicate_sentinel_rejected", &FactRejectsPredicateSentinel);
+    test.Add("infrastructure.locked_open_rejected", &InfrastructureRejectsLockedOpenDoor);
 }
 
 } // namespace writeover

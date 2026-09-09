@@ -24,7 +24,7 @@
     {"id":"staff_to_elevator","sourceRoom":"room_restroom_staff","bounds":{"minX":16.0,"maxX":9999.0,"minY":-9999.0,"maxY":9999.0},"destinationRoom":"room_elevator_lobby","destinationSpawn":{"x":2.5,"y":6.5,"z":0.0},"destinationYaw":0.0,"unavailableMessage":"Elevator route unavailable."}
   ],
   "patrolRoutes": [
-    {"npcRef":"cleaner_b1","room":"room_b1_revival","points":[{"x":15.5,"y":4.0,"z":0.0},{"x":15.5,"y":5.5,"z":0.0},{"x":15.5,"y":7.5,"z":0.0},{"x":15.5,"y":5.5,"z":0.0}]},
+    {"npcRef":"cleaner_b1","room":"room_b1_revival","points":[{"x":15.5,"y":4.0,"z":0.0},{"x":15.5,"y":4.5,"z":0.0},{"x":15.5,"y":5.0,"z":0.0},{"x":15.5,"y":4.5,"z":0.0}]},
     {"npcRef":"guard_7","room":"room_1f_security","points":[{"x":15.5,"y":8.5,"z":0.0},{"x":18.5,"y":8.5,"z":0.0},{"x":18.5,"y":11.5,"z":0.0},{"x":15.5,"y":11.5,"z":0.0}]},
     {"npcRef":"maintenance_tech","room":"room_b1_revival","points":[{"x":4.5,"y":4.5,"z":0.0},{"x":6.5,"y":4.5,"z":0.0},{"x":6.5,"y":7.5,"z":0.0}]}
   ]

@@ -1,5 +1,6 @@
 #include "writeover/common/serialize.h"
 
+#include <array>
 #include <cstring>
 
 namespace writeover {
@@ -110,18 +111,20 @@ std::string Deserializer::ReadString() {
 }
 
 uint32_t Crc32(const uint8_t* data, size_t n) {
-    static uint32_t table[256] = {};
-    static bool initialized = false;
-    if (!initialized) {
-        for (uint32_t i = 0; i < 256; ++i) {
-            uint32_t c = i;
-            for (int k = 0; k < 8; ++k) {
-                c = (c & 1) ? (0xEDB88320u ^ (c >> 1)) : (c >> 1);
+    const auto& table = []() -> const std::array<uint32_t, 256>& {
+        static const std::array<uint32_t, 256> value = [] {
+            std::array<uint32_t, 256> generated{};
+            for (uint32_t i = 0; i < 256; ++i) {
+                uint32_t c = i;
+                for (int k = 0; k < 8; ++k) {
+                    c = (c & 1) ? (0xEDB88320u ^ (c >> 1)) : (c >> 1);
+                }
+                generated[i] = c;
             }
-            table[i] = c;
-        }
-        initialized = true;
-    }
+            return generated;
+        }();
+        return value;
+    }();
     uint32_t crc = 0xFFFFFFFFu;
     for (size_t i = 0; i < n; ++i) {
         crc = table[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);

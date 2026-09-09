@@ -21,8 +21,10 @@ Usage:
 import argparse
 import json
 import math
+import os
 import struct
 import sys
+import tempfile
 from pathlib import Path
 
 WOC_MAGIC = 0x574F4331  # "WOC1"
@@ -376,11 +378,16 @@ def _load_room_specs(room_paths):
             if (isinstance(col, int) and not isinstance(col, bool) and
                     isinstance(row, int) and not isinstance(row, bool) and
                     0 <= col < width and 0 <= row < height):
-                cells[(col, row)] = cell
+                # Keep the first definition for spatial diagnostics.  The
+                # authoritative room compiler rejects duplicates below; this
+                # prevents a malformed file from changing scene validation by
+                # last-write-wins behaviour before that error is reported.
+                cells.setdefault((col, row), cell)
         specs[room_path.stem] = {
             "width": width,
             "height": height,
             "cells": cells,
+            "default_cell": data.get("defaultCell"),
         }
     return specs
 
@@ -392,7 +399,9 @@ def _scene_room_point_status(room_spec, point):
     if not (0.0 <= x < room_spec["width"] and
             0.0 <= y < room_spec["height"]):
         return "outside"
-    cell = room_spec["cells"].get((int(math.floor(x)), int(math.floor(y))), {})
+    cell = room_spec["cells"].get(
+        (int(math.floor(x)), int(math.floor(y))),
+        room_spec.get("default_cell") or {})
     flags = cell.get("flags", [])
     if isinstance(flags, list) and ("solid" in flags or "door" in flags):
         return "solid"
@@ -428,6 +437,7 @@ def validate_scene_file(path: Path, room_ids, npc_registry, room_specs=None):
         fail(path.name, "patrolRoutes must be a list with at most 64 entries")
         routes = []
     seen = set()
+    entity_footprints = []
     for index, entity in enumerate(entities):
         p = f"{path.name}:entities[{index}]"
         if not isinstance(entity, dict):
@@ -456,6 +466,10 @@ def validate_scene_file(path: Path, room_ids, npc_registry, room_specs=None):
                 fail(p, f"{key} must be finite")
         if float(entity.get("radius", 0.0)) <= 0.0 or float(entity.get("height", 0.0)) <= 0.0:
             fail(p, "radius and height must be positive")
+        elif (room in room_ids and all(_finite_number(value) for value in position)):
+            entity_footprints.append((room, eid or f"entity[{index}]",
+                                      position[0], position[1],
+                                      float(entity.get("radius", 0.0))))
         _scene_int(entity, "systemicId", p)
         _scene_int(entity, "linkId", p)
     transition_seen = set()
@@ -526,6 +540,15 @@ def validate_scene_file(path: Path, room_ids, npc_registry, room_specs=None):
                 if route.get("room") in room_ids and room_specs is not None:
                     _validate_scene_point(room_specs.get(route["room"]),
                                           point_value, point_path, "point", True)
+                for entity_room, entity_id, entity_x, entity_y, entity_radius in entity_footprints:
+                    if route.get("room") != entity_room:
+                        continue
+                    dx = point_value[0] - entity_x
+                    dy = point_value[1] - entity_y
+                    if dx * dx + dy * dy <= entity_radius * entity_radius:
+                        fail(point_path,
+                             f"patrol point overlaps placed entity '{entity_id}' footprint")
+                        break
     return data
 
 
@@ -593,19 +616,88 @@ def compile_room(json_path: Path, out_dir: Path, npc_registry, storylet_registry
         return
 
     name = data.get("displayName", data.get("id", "room"))
-    w = int(data.get("gridWidth", 0))
-    h = int(data.get("gridHeight", 0))
+    w_raw = data.get("gridWidth", 0)
+    h_raw = data.get("gridHeight", 0)
+    if (not isinstance(w_raw, int) or isinstance(w_raw, bool) or
+            not isinstance(h_raw, int) or isinstance(h_raw, bool)):
+        fail(json_path.name, "gridWidth/gridHeight must be integers")
+        return
+    w = w_raw
+    h = h_raw
     if w <= 0 or h <= 0 or w > 64 or h > 64:
         fail(json_path.name, "gridWidth/gridHeight must be 1..64")
         return
 
-    cell_map = {}
-    for c in data.get("cells", []):
-        cell_map[(int(c["col"]), int(c["row"]))] = c
-
     materials = ["wall", "metal", "glass", "dirt", "concrete",
                  "wood", "grate", "hazard"]
     flags_map = {"solid": 1, "door": 2, "breakable": 4, "special": 8}
+
+    def validate_cell(cell, path, coordinates):
+        if not isinstance(cell, dict):
+            fail(path, "cell must be an object")
+            return False
+        if coordinates:
+            col = cell.get("col")
+            row = cell.get("row")
+            if (not isinstance(col, int) or isinstance(col, bool) or
+                    not isinstance(row, int) or isinstance(row, bool) or
+                    not 0 <= col < w or not 0 <= row < h):
+                fail(path, "col/row must be integers inside room bounds")
+                return False
+        floor = cell.get("floor", 0.0)
+        ceiling = cell.get("ceiling", 4.0)
+        if not _finite_number(floor) or not _finite_number(ceiling):
+            fail(path, "floor and ceiling must be finite")
+        elif float(ceiling) <= float(floor):
+            fail(path, "ceiling must be greater than floor")
+        material = cell.get("material", "wall")
+        if material not in materials:
+            fail(path, f"unknown material '{material}'")
+        light = cell.get("light", 255)
+        if (not isinstance(light, int) or isinstance(light, bool) or
+                not 0 <= light <= 255):
+            fail(path, "light must be an integer in 0..255")
+        flags = cell.get("flags", [])
+        if not isinstance(flags, list) or any(flag not in flags_map for flag in flags):
+            fail(path, "flags must be a list of known values")
+        return True
+
+    cells = data.get("cells", [])
+    if not isinstance(cells, list):
+        fail(json_path.name, "cells must be a list")
+        cells = []
+    cell_map = {}
+    for index, c in enumerate(cells):
+        cell_path = f"{json_path.name}:cells[{index}]"
+        if not validate_cell(c, cell_path, True):
+            continue
+        key = (c["col"], c["row"])
+        if key in cell_map:
+            fail(cell_path, f"duplicate cell definition ({key[0]},{key[1]})")
+            continue
+        cell_map[key] = c
+
+    default_cell = data.get("defaultCell")
+    if len(cell_map) < w * h and default_cell is None:
+        fail(json_path.name,
+             "sparse room requires explicit defaultCell policy")
+    elif default_cell is not None:
+        validate_cell(default_cell, f"{json_path.name}:defaultCell", False)
+
+    spawn = data.get("spawnPoint", {"x": 1.5, "y": 1.5, "z": 0.0, "yaw": 0.0})
+    if not isinstance(spawn, dict):
+        fail(json_path.name, "spawnPoint must be an object")
+        spawn = {"x": 0.0, "y": 0.0, "z": 0.0, "yaw": 0.0}
+    for field in ("x", "y", "z", "yaw"):
+        if not _finite_number(spawn.get(field, 0.0)):
+            fail(json_path.name, f"spawnPoint.{field} must be finite")
+
+    # Do not emit a partial artifact for a malformed room.  The top-level
+    # compiler stages every artifact, so a failed compile cannot replace a
+    # previously valid runtime binary.
+    if any(error.startswith(f"{json_path.name}:") or error == json_path.name
+           for error in ERRORS):
+        return
 
     body = bytearray()
     # Stable RoomId from FNV-1a64 over the canonical room id string.
@@ -615,13 +707,12 @@ def compile_room(json_path: Path, out_dir: Path, npc_registry, storylet_registry
     body += struct.pack("<Q", room_id)
     body += utf8(name)
     body += struct.pack("<ii", w, h)
-    spawn = data.get("spawnPoint", {"x": 1.5, "y": 1.5, "z": 0.0, "yaw": 0.0})
     body += struct.pack("<ffff", float(spawn["x"]), float(spawn["y"]),
                         float(spawn["z"]), float(spawn.get("yaw", 0.0)))
     body += struct.pack("<I", w * h)
     for row in range(h):
         for col in range(w):
-            cell = cell_map.get((col, row), {})
+            cell = cell_map.get((col, row), default_cell or {})
             floor = float(cell.get("floor", 0.0))
             ceiling = float(cell.get("ceiling", 4.0))
             material = materials.index(cell.get("material", "wall")) \
@@ -794,10 +885,12 @@ def main():
     # non-deterministic compilation).
     check_errors = 0
     if args.check:
-        import tempfile
         with tempfile.TemporaryDirectory() as tmp:
             tmp_dir = Path(tmp)
-            _compile_all(data_dir, tmp_dir)
+            try:
+                _compile_all(data_dir, tmp_dir)
+            except Exception as exc:
+                fail("compiler", f"malformed content: {exc}")
             if ERRORS:
                 for err in ERRORS:
                     print(f"CONTENT ERROR: {err}", file=sys.stderr)
@@ -821,7 +914,27 @@ def main():
         print(f"contentc --check: OK (deterministic recompile matches)")
         sys.exit(0)
 
-    _compile_all(data_dir, out_dir)
+    # Compile into a sibling staging tree first.  Authoring errors therefore
+    # cannot leave a half-updated set of binaries or stale files from a prior
+    # successful compile.  Each validated artifact is then installed with an
+    # atomic same-volume replace.
+    try:
+        with tempfile.TemporaryDirectory(prefix=".contentc-stage-",
+                                          dir=str(out_dir.parent)) as tmp:
+            staged = Path(tmp)
+            _compile_all(data_dir, staged)
+            if ERRORS:
+                for err in ERRORS:
+                    print(f"CONTENT ERROR: {err}", file=sys.stderr)
+                sys.exit(1)
+            for produced in sorted(staged.rglob("*")):
+                if not produced.is_file():
+                    continue
+                destination = out_dir / produced.relative_to(staged)
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                os.replace(str(produced), str(destination))
+    except Exception as exc:
+        fail("compiler", f"malformed content or atomic install failure: {exc}")
     if ERRORS:
         for err in ERRORS:
             print(f"CONTENT ERROR: {err}", file=sys.stderr)

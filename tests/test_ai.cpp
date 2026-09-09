@@ -290,6 +290,47 @@ bool AutonomousPatrolUsesGridRouteAndMotor() {
     return true;
 }
 
+bool AutonomousMotorKeepsPersonalSpaceFromPlayer() {
+    Grid grid = MakeViewGrid();
+    GridWorldQuery query(&grid);
+    SystemicWorld systemic;
+    EventBus events;
+    DeterministicRNG rng(0x40a);
+    AutonomousNpcSystem runtime;
+    runtime.Attach(&systemic, &events, &rng);
+
+    NPCInstance npc;
+    npc.id = NpcId::New(410);
+    npc.position = Vec3{1.5f, 3.5f, 0.0f};
+    npc.state = NPCState::Patrol;
+    WO_CHECK(runtime.AddNpc(npc, RoomId::New(1)));
+    runtime.SetWorldQuery(&query);
+    runtime.SetActiveRoom(RoomId::New(1));
+    // Keep perception out of this counterfactual.  The player is still an
+    // authoritative dynamic obstacle for the motor, even when the NPC has
+    // no reason to react to the player's presence.
+    runtime.SetPlayerPose(Vec3{3.5f, 3.5f, 0.0f}, kEyeStand);
+    runtime.SetPlayerVisibility(0.0f);
+    WO_CHECK(runtime.SetPatrolRoute(npc.id,
+                                    {Vec3{6.5f, 3.5f, 0.0f},
+                                     Vec3{1.5f, 3.5f, 0.0f}}));
+
+    const Vec3 start = runtime.Npcs().front().instance.position;
+    for (uint64_t frame = 0; frame <= 720; ++frame) {
+        runtime.Tick(frame);
+        const Vec3 position = runtime.Npcs().front().instance.position;
+        const float dx = position.x - 3.5f;
+        const float dy = position.y - 3.5f;
+        // 0.42 m NPC radius + 0.35 m player radius, with a small numerical
+        // margin.  The motor may route around the player, but never enter it.
+        WO_CHECK(dx * dx + dy * dy >= 0.77f * 0.77f - 0.0001f);
+    }
+    const Vec3 end = runtime.Npcs().front().instance.position;
+    WO_CHECK(std::fabs(end.x - start.x) > 0.25f ||
+             std::fabs(end.y - start.y) > 0.25f);
+    return true;
+}
+
 bool AutonomousGuardCombatRepeatsAndHonoursLineOfSight() {
     Grid grid = MakeViewGrid();
     GridWorldQuery query(&grid);
@@ -378,7 +419,9 @@ bool AutonomousGuardReplansWhenPlayerMovesOutsideRange() {
     WO_CHECK(runtime.AddNpc(guard, RoomId::New(1)));
     runtime.SetWorldQuery(&query);
     runtime.SetActiveRoom(RoomId::New(1));
-    runtime.SetPlayerPose(Vec3{11.5f, 1.5f, 0.0f}, kEyeStand);
+    // Start outside the guard's 12 m weapon envelope but inside its authored
+    // sight range so the combat motor has a real approach to perform.
+    runtime.SetPlayerPose(Vec3{15.5f, 1.5f, 0.0f}, kEyeStand);
     runtime.Tick(12);
     WO_CHECK(runtime.Npcs().front().instance.state == NPCState::Combat);
     const Vec3 first_goal_start = runtime.Npcs().front().instance.position;
@@ -1000,6 +1043,8 @@ void RegisterAiTests(TestHarness& test) {
     test.Add("ai.incapacitated_cleaner_cannot_witness",
              &AutonomousIncapacitatedCleanerCannotWitness);
     test.Add("ai.patrol_grid_route_motor", &AutonomousPatrolUsesGridRouteAndMotor);
+    test.Add("ai.motor_keeps_player_personal_space",
+             &AutonomousMotorKeepsPersonalSpaceFromPlayer);
     test.Add("ai.guard_combat_los_and_cadence",
              &AutonomousGuardCombatRepeatsAndHonoursLineOfSight);
     test.Add("ai.guard_replans_moving_target",

@@ -25,6 +25,18 @@ namespace writeover {
 
 namespace {
 
+bool QueryConsoleSurface(HANDLE output, int& width, int& height) {
+    if (output == nullptr || output == INVALID_HANDLE_VALUE) return false;
+    CONSOLE_SCREEN_BUFFER_INFO info{};
+    if (!GetConsoleScreenBufferInfo(output, &info)) return false;
+    const int w = static_cast<int>(info.srWindow.Right - info.srWindow.Left + 1);
+    const int h = static_cast<int>(info.srWindow.Bottom - info.srWindow.Top + 1);
+    if (w <= 0 || h <= 0) return false;
+    width = w;
+    height = h;
+    return true;
+}
+
 // 16-color ANSI palette for the Win32 fallback (F-25): full RGB->index
 // nearest-neighbor quantization, not the old "red bit only" heuristic.
 struct Ansi16Color {
@@ -97,12 +109,17 @@ public:
         }
         if (!vt_output) return false;
 #endif
+        int surface_width = width;
+        int surface_height = height;
+#if defined(_WIN32)
+        (void)QueryConsoleSurface(output, surface_width, surface_height);
+#endif
         width_ = width;
         height_ = height;
         caps_.ansi_escape = true;
         caps_.true_color = true;
-        caps_.max_width = width;
-        caps_.max_height = height;
+        caps_.max_width = surface_width;
+        caps_.max_height = surface_height;
         caps_.char_aspect = 0.5f;  // default; manual calibration may adjust
         return true;
     }
@@ -110,7 +127,9 @@ public:
     void Shutdown() override {}
 
     bool Submit(const CharCell* buffer, int width, int height) override {
-        if (buffer == nullptr) {
+        if (buffer == nullptr || width <= 0 || height <= 0 ||
+            (caps_.max_width > 0 && width > caps_.max_width) ||
+            (caps_.max_height > 0 && height > caps_.max_height)) {
             return false;
         }
         std::string out;
@@ -145,15 +164,18 @@ class Win32WriteConsoleBackend final : public ITerminalBackend {
 public:
     bool Init(int width, int height) override {
 #if defined(_WIN32)
-        width_ = width;
-        height_ = height;
         out_ = GetStdHandle(STD_OUTPUT_HANDLE);
         if (out_ == nullptr || out_ == INVALID_HANDLE_VALUE) {
             return false;
         }
+        int surface_width = width;
+        int surface_height = height;
+        (void)QueryConsoleSurface(out_, surface_width, surface_height);
+        width_ = width;
+        height_ = height;
         caps_.win32_native = true;
-        caps_.max_width = width;
-        caps_.max_height = height;
+        caps_.max_width = surface_width;
+        caps_.max_height = surface_height;
         return true;
 #else
         (void)width;
@@ -166,7 +188,9 @@ public:
 
     bool Submit(const CharCell* buffer, int width, int height) override {
 #if defined(_WIN32)
-        if (out_ == nullptr || buffer == nullptr) {
+        if (out_ == nullptr || buffer == nullptr || width <= 0 || height <= 0 ||
+            (caps_.max_width > 0 && width > caps_.max_width) ||
+            (caps_.max_height > 0 && height > caps_.max_height)) {
             return false;
         }
         const size_t count = static_cast<size_t>(width) * height;
@@ -186,10 +210,10 @@ public:
         SMALL_RECT region{0, 0,
                           static_cast<SHORT>(width - 1),
                           static_cast<SHORT>(height - 1)};
-        (void)WriteConsoleOutputW(out_, cells.data(), COORD{static_cast<SHORT>(width),
-                                                            static_cast<SHORT>(height)},
-                                  origin, &region);
-        return true;
+        return WriteConsoleOutputW(
+                   out_, cells.data(),
+                   COORD{static_cast<SHORT>(width), static_cast<SHORT>(height)},
+                   origin, &region) != FALSE;
 #else
         (void)buffer;
         (void)width;

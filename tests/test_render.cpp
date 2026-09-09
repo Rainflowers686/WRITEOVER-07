@@ -1524,6 +1524,14 @@ bool SpatialInteractionRayPitchAndOcclusion() {
     const AABB ceiling_target{{1.8f, 1.30f, 2.0f},
                               {2.3f, 1.70f, 2.8f}};
     WO_CHECK(IntersectRayAabb(eye, up_ray, ceiling_target, distance));
+    // A containing interaction proxy must return its forward exit distance,
+    // not zero.  Zero would make a nearby proxy win every nearest-target
+    // comparison merely because the player's eye starts inside its AABB.
+    const AABB containing_target{{0.0f, 1.0f, 1.2f},
+                                 {1.0f, 2.0f, 2.0f}};
+    const Vec3 forward_ray{1.0f, 0.0f, 0.0f};
+    WO_CHECK(IntersectRayAabb(eye, forward_ray, containing_target, distance));
+    WO_CHECK_NEAR(distance, 0.5f, 0.01f);
     const CameraProjection down_camera(eye, 0.0f, -0.35f, width, height,
                                        focal, kCharacterCellAspect);
     const Vec3 down_ray = down_camera.RayDirectionAt(center_x, center_y);

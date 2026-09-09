@@ -13,7 +13,29 @@ const char* kSaveExtension = ".wo07";
 } // namespace
 
 std::vector<uint8_t> ComposeSaveBuffer(const std::vector<SaveSection>& sections) {
+    constexpr size_t kHeaderBytes = 24;
+    constexpr size_t kFooterBytes = 4;
+    if (sections.size() > static_cast<size_t>(SaveSectionId::Count)) {
+        return {};
+    }
+    size_t expected_size = kHeaderBytes + kFooterBytes;
+    uint32_t seen_section_ids[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+    for (const auto& section : sections) {
+        const uint32_t id = static_cast<uint32_t>(section.id);
+        if (id >= static_cast<uint32_t>(SaveSectionId::Count) ||
+            seen_section_ids[id] != 0 ||
+            section.data.size() > static_cast<size_t>(UINT32_MAX) ||
+            section.data.size() > kMaxSaveSizeBytes - kHeaderBytes - kFooterBytes ||
+            expected_size > kMaxSaveSizeBytes - kFooterBytes - 12 -
+                                 section.data.size()) {
+            return {};
+        }
+        seen_section_ids[id] = 1;
+        expected_size += 12 + section.data.size();
+    }
+
     std::vector<uint8_t> out;
+    out.reserve(expected_size);
     Serializer s(out);
 
     SaveFileHeader header;
@@ -30,7 +52,7 @@ std::vector<uint8_t> ComposeSaveBuffer(const std::vector<SaveSection>& sections)
     s.WriteU32(header.reserved1);
     s.WriteU64(header.reserved2);
 
-    const size_t header_size = 24;  // fixed wire header
+    const size_t header_size = kHeaderBytes;  // fixed wire header
     for (const auto& section : sections) {
         const uint32_t crc = Crc32(section.data.data(), section.data.size());
         s.WriteU32(static_cast<uint32_t>(section.id));
@@ -43,6 +65,10 @@ std::vector<uint8_t> ComposeSaveBuffer(const std::vector<SaveSection>& sections)
     const uint32_t footer_crc = Crc32(out.data() + header_size, out.size() - header_size);
     Serializer footer(out);
     footer.WriteU32(footer_crc);
+
+    if (out.size() > kMaxSaveSizeBytes) {
+        return {};
+    }
 
     return out;
 }
@@ -145,6 +171,10 @@ Result<std::vector<SaveSection>> ParseSaveBuffer(const uint8_t* data, size_t siz
 Result<void> SaveManager::SaveWorld(const std::string& path,
                                     const std::vector<SaveSection>& sections) {
     const std::vector<uint8_t> buffer = ComposeSaveBuffer(sections);
+    if (buffer.empty()) {
+        return Result<void>::Err(kSaveMagic + 12,
+                                 "save buffer exceeds bounded format");
+    }
     const std::string tmp = path + kSaveExtension + ".tmp";
     const std::string final = path + kSaveExtension;
     auto written = WriteFileBinary(tmp, buffer);

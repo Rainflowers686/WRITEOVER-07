@@ -923,15 +923,6 @@
     },
     {
       "col": 5,
-      "row": 5,
-      "floor": 0.0,
-      "ceiling": 4.0,
-      "material": "concrete",
-      "light": 180,
-      "flags": []
-    },
-    {
-      "col": 5,
       "row": 6,
       "floor": 0.0,
       "ceiling": 4.0,
@@ -1081,15 +1072,6 @@
     {
       "col": 6,
       "row": 4,
-      "floor": 0.0,
-      "ceiling": 4.0,
-      "material": "concrete",
-      "light": 180,
-      "flags": []
-    },
-    {
-      "col": 6,
-      "row": 5,
       "floor": 0.0,
       "ceiling": 4.0,
       "material": "concrete",
@@ -1789,24 +1771,6 @@
     },
     {
       "col": 10,
-      "row": 9,
-      "floor": 0.0,
-      "ceiling": 4.0,
-      "material": "concrete",
-      "light": 120,
-      "flags": []
-    },
-    {
-      "col": 10,
-      "row": 10,
-      "floor": 0.0,
-      "ceiling": 4.0,
-      "material": "concrete",
-      "light": 120,
-      "flags": []
-    },
-    {
-      "col": 10,
       "row": 11,
       "floor": 0.0,
       "ceiling": 4.0,
@@ -1947,24 +1911,6 @@
     {
       "col": 11,
       "row": 8,
-      "floor": 0.0,
-      "ceiling": 4.0,
-      "material": "concrete",
-      "light": 120,
-      "flags": []
-    },
-    {
-      "col": 11,
-      "row": 9,
-      "floor": 0.0,
-      "ceiling": 4.0,
-      "material": "concrete",
-      "light": 120,
-      "flags": []
-    },
-    {
-      "col": 11,
-      "row": 10,
       "floor": 0.0,
       "ceiling": 4.0,
       "material": "concrete",

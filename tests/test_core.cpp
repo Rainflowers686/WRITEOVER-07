@@ -45,6 +45,13 @@ bool TruncatedRejected() {
     return parsed.IsError();
 }
 
+bool OversizedSaveRejectedBeforeWrite() {
+    std::vector<uint8_t> oversized(8 * 1024 * 1024, 0x5A);
+    const std::vector<uint8_t> buffer = ComposeSaveBuffer(
+        {{SaveSectionId::World, std::move(oversized)}});
+    return buffer.empty();
+}
+
 bool SettingsKeyValueRoundTrip() {
     SettingsRegistry registry;
     Settings s = Settings::Defaults();
@@ -192,12 +199,31 @@ bool EnginePresentsOncePerFixedStep() {
     return module.ticks == 1 && render.frames == 1;
 }
 
+bool EngineHonorsPresentationCap() {
+    SimClock clock;
+    Settings settings = Settings::Defaults();
+    settings.frame_rate_cap = 30;
+    EngineContext context;
+    context.clock = &clock;
+    context.settings = &settings;
+    Engine engine;
+    engine.SetContext(context);
+    CountingModule module;
+    CountingRender render;
+    engine.RegisterModule(&module);
+    engine.SetRenderModule(&render);
+    WO_CHECK_EQ(engine.Run(8), 0);
+    // Simulation remains fixed-step; the cap only reduces presentation calls.
+    return module.ticks == 8 && render.frames > 0 && render.frames < module.ticks;
+}
+
 } // namespace
 
 void RegisterCoreTests(TestHarness& test) {
     test.Add("save.compose_parse_round_trip", &ComposeParseRoundTrip);
     test.Add("save.corrupt_rejected", &CorruptRejected);
     test.Add("save.truncated_rejected", &TruncatedRejected);
+    test.Add("save.oversized_rejected_before_write", &OversizedSaveRejectedBeforeWrite);
     test.Add("settings.encode_decode", &SettingsEncodeDecode);
     test.Add("settings.key_value_disk", &SettingsKeyValueRoundTrip);
     test.Add("settings.unbound_key_round_trip", &SettingsUnboundKeyRoundTrip);
@@ -205,6 +231,7 @@ void RegisterCoreTests(TestHarness& test) {
     test.Add("settings.legacy_binding_migrates_to_gameplay", &SettingsLegacyBindingMigratesToGameplay);
     test.Add("profile.round_trip", &ProfileRoundTrip);
     test.Add("engine.presents_once_per_fixed_step", &EnginePresentsOncePerFixedStep);
+    test.Add("engine.presentation_cap_is_render_only", &EngineHonorsPresentationCap);
 }
 
 } // namespace writeover

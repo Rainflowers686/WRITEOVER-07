@@ -23,6 +23,12 @@ Write-Host "Compiling authored content (JSON -> compiled binaries)..."
 python tools/contentc/contentc.py --data-dir data --out-dir data
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+Write-Host "Compiling systemic seed (JSON -> runtime binary)..."
+python tools/systemic/compile_systemic_seed.py `
+    --src data/systemic/systemic_seed.json `
+    --out data/systemic/systemic_seed.bin
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Write-Host "Configuring debug preset..."
 cmake --preset debug
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

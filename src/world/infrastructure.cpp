@@ -120,6 +120,10 @@ bool InfrastructureSystem::Load(Deserializer& d) {
         }
         door.open = open != 0;
         door.locked = locked != 0;
+        if (door.open && door.locked) {
+            d.MarkError();
+            return false;
+        }
         for (const auto& existing : doors) {
             if (existing.id == door.id) {
                 d.MarkError();

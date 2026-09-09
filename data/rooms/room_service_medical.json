@@ -6,6 +6,7 @@
   "gridHeight": 14,
   "cellSize": 1.0,
   "spawnPoint": { "x": 2.5, "y": 7.5, "z": 0.0, "yaw": 0.0 },
+  "defaultCell": { "floor": 0.0, "ceiling": 4.0, "material": "wall", "light": 255, "flags": [] },
   "cells": [
     { "col": 0, "row": 0, "material": "metal", "light": 105, "flags": ["solid"] },
     { "col": 1, "row": 0, "material": "metal", "light": 105, "flags": ["solid"] },

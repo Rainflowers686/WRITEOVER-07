@@ -117,6 +117,11 @@ public:
         DWORD mode = 0;
         if (GetConsoleMode(input_handle_, &mode)) {
             old_mode_ = mode;  // save for restore on Shutdown
+            // ENABLE_QUICK_EDIT_MODE is only writable when
+            // ENABLE_EXTENDED_FLAGS is present. Without the companion flag,
+            // the console can keep quick-edit enabled and swallow mouse
+            // button input while the game believes it owns the stream.
+            mode |= ENABLE_EXTENDED_FLAGS;
             mode &= ~ENABLE_QUICK_EDIT_MODE;
             mode &= ~ENABLE_INSERT_MODE;
             // Enable window input so FOCUS_EVENT records are generated.

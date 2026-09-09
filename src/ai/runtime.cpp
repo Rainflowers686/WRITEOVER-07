@@ -21,7 +21,11 @@ constexpr float kNpcRadius = 0.42f;
 constexpr float kNpcHeight = 1.80f;
 constexpr float kNpcMotorSpeed = 1.20f;
 constexpr float kNavigationArrivalRadius = 0.80f;
-constexpr float kGuardCombatRange = 9.0f;
+// Guard range follows the authored medium sight envelope.  A shorter
+// independent combat range made a correctly perceived player at the edge of
+// the guard's documented 12 m envelope look invisible until the guard happened
+// to path all the way in.
+constexpr float kGuardCombatRange = PerceptionSystem::kMediumSightRange;
 constexpr uint64_t kGuardAttackPeriodFrames = 60;
 
 enum NavigationTask : uint8_t {
@@ -67,6 +71,44 @@ bool RayHitsNpc(const FireRequest& request, const RuntimeNpc& runtime,
 bool Finite(const Vec3& value) {
     return std::isfinite(value.x) && std::isfinite(value.y) &&
            std::isfinite(value.z);
+}
+
+bool OverlapsPlayerPersonalSpace(const Vec3& actor_feet,
+                                 const Vec3& player_feet,
+                                 float actor_radius,
+                                 float actor_height) {
+    if (!Finite(actor_feet) || !Finite(player_feet) ||
+        !std::isfinite(actor_radius) || !std::isfinite(actor_height) ||
+        actor_radius <= 0.0f || actor_height <= 0.0f) {
+        return false;
+    }
+    constexpr float kMotorPlayerRadius = 0.35f;
+    constexpr float kMotorPlayerHeight = 1.80f;
+    if (player_feet.z >= actor_feet.z + actor_height ||
+        player_feet.z + kMotorPlayerHeight <= actor_feet.z) {
+        return false;
+    }
+    const float dx = actor_feet.x - player_feet.x;
+    const float dy = actor_feet.y - player_feet.y;
+    const float combined_radius = actor_radius + kMotorPlayerRadius;
+    return dx * dx + dy * dy < combined_radius * combined_radius;
+}
+
+bool PassesPlayerVisibility(float sight_confidence, float player_visibility) {
+    // Perception already includes the single distance falloff.  Applying the
+    // visibility factor to that value as a second distance-like attenuation
+    // made guards become blind at the far end of their authored range.  Keep
+    // normal visibility on the authored confidence threshold and reserve a
+    // bounded extra threshold only for the deliberately very-low visibility
+    // counterfactual (crouched/still/dark).
+    const float visibility = std::clamp(player_visibility, 0.0f, 1.0f);
+    constexpr float kBaseThreshold = 0.15f;
+    constexpr float kLowVisibilityKnee = 0.20f;
+    constexpr float kLowVisibilityPenalty = 8.0f;
+    const float threshold = kBaseThreshold +
+        std::max(0.0f, kLowVisibilityKnee - visibility) *
+            kLowVisibilityPenalty;
+    return sight_confidence >= threshold;
 }
 
 } // namespace
@@ -151,6 +193,15 @@ bool AutonomousNpcSystem::PlanRoute(RuntimeNpc& runtime, const Vec3& target) {
         const Vec3 center{static_cast<float>(cell.col) + 0.5f,
                           static_cast<float>(cell.row) + 0.5f,
                           data.floor_height};
+        // The player is a bounded dynamic obstacle for ordinary NPC work and
+        // patrol routes.  Combat may deliberately approach the player, but
+        // non-combat motor tasks must not route through the player's personal
+        // space and leave the player permanently wedged by the NPC collider.
+        if (runtime.navigation_task != kNavigationCombat && !(cell == start) &&
+            OverlapsPlayerPersonalSpace(center, player_position_,
+                                        kNpcRadius, kNpcHeight)) {
+            return false;
+        }
         const AABB body{{center.x - kNpcRadius, center.y - kNpcRadius, center.z},
                         {center.x + kNpcRadius, center.y + kNpcRadius,
                          center.z + kNpcHeight}};
@@ -233,6 +284,17 @@ bool AutonomousNpcSystem::MoveAlongRoute(RuntimeNpc& runtime,
     const AABB body{{candidate.x - kNpcRadius, candidate.y - kNpcRadius, candidate.z},
                     {candidate.x + kNpcRadius, candidate.y + kNpcRadius,
                      candidate.z + kNpcHeight}};
+    if (runtime.navigation_task != kNavigationCombat &&
+        player_target_active_ &&
+        OverlapsPlayerPersonalSpace(candidate, player_position_,
+                                    kNpcRadius, kNpcHeight)) {
+        runtime.navigation_path.clear();
+        runtime.navigation_cursor = 0;
+        if (!PlanRoute(runtime, runtime.navigation_goal)) {
+            runtime.route_failed = true;
+        }
+        return false;
+    }
     if (world_query_ != nullptr && world_query_->AabbBlocked(body)) {
         runtime.navigation_path.clear();
         runtime.navigation_cursor = 0;
@@ -393,8 +455,8 @@ bool AutonomousNpcSystem::CanSeePlayer(const RuntimeNpc& runtime) const {
         runtime.instance, *world_query_, player_position_, player_eye_z_, {},
         std::numeric_limits<uint32_t>::max());
     if (!perception.sees_player) return false;
-    perception.sight_confidence *= player_visibility_;
-    return perception.sight_confidence >= 0.15f;
+    return PassesPlayerVisibility(perception.sight_confidence,
+                                  player_visibility_);
 }
 
 void AutonomousNpcSystem::RunDecision(uint64_t frame) {
@@ -443,8 +505,10 @@ void AutonomousNpcSystem::RunDecision(uint64_t frame) {
             perception.sees_player = false;
         }
         if (perception.sees_player) {
-            perception.sight_confidence *= player_visibility_;
-            if (perception.sight_confidence < 0.15f) perception.sees_player = false;
+            if (!PassesPlayerVisibility(perception.sight_confidence,
+                                        player_visibility_)) {
+                perception.sees_player = false;
+            }
         }
         const bool newly_sees_player = perception.sees_player && !runtime.player_observed;
         runtime.player_observed = perception.sees_player;

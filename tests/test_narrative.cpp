@@ -121,6 +121,24 @@ bool DialogQueueExpiry() {
     return queue.ActiveLines(200).empty();
 }
 
+bool DialogQueueBounded() {
+    DialogueQueue queue;
+    for (uint32_t i = 0; i < 513; ++i) {
+        SubtitleLine line;
+        line.text = "line_" + std::to_string(i);
+        line.start_frame = i;
+        line.ttl_frames = 120;
+        line.speaker_id = NarratorSpeakerId();
+        queue.Push(line);
+    }
+    WO_CHECK_EQ(static_cast<int64_t>(queue.Count()), 512);
+    const auto active = queue.ActiveLines(512);
+    // The producer-side cap drops the stale oldest line rather than creating
+    // a queue that the bounded save/load format cannot restore.
+    WO_CHECK(active.empty() || active.front().text != "line_0");
+    return queue.Count() == 512;
+}
+
 bool JudgeCheckpointBasics() {
     JudgeController judge;
     judge.Enable(0xABCD);
@@ -249,6 +267,7 @@ void RegisterNarrativeTests(TestHarness& test) {
     test.Add("narrator.cannot_mutate_facts", &NarratorPowerKeepsFactsTruthful);
     test.Add("causality.ledger_ring", &CausalityLedgerRing);
     test.Add("dialog.queue_expiry", &DialogQueueExpiry);
+    test.Add("dialog.queue_bounded", &DialogQueueBounded);
     test.Add("judge.checkpoint_basics", &JudgeCheckpointBasics);
     test.Add("storylet.world_command_round_trip", &WorldCommandActionRoundTrip);
     test.Add("storylet.load_rejects_duplicate_and_invalid_records",

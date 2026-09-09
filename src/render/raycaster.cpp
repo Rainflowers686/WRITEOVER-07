@@ -313,7 +313,7 @@ bool IntersectRayAabb(const Vec3& origin, const Vec3& direction,
         return false;
     }
 
-    float near_distance = 0.0f;
+    float near_distance = -std::numeric_limits<float>::infinity();
     float far_distance = std::numeric_limits<float>::infinity();
     const float o[3] = {origin.x, origin.y, origin.z};
     const float d[3] = {direction.x, direction.y, direction.z};
@@ -335,7 +335,11 @@ bool IntersectRayAabb(const Vec3& origin, const Vec3& direction,
         if (near_distance > far_distance + kEpsPosition) return false;
     }
     if (!std::isfinite(far_distance) || far_distance < 0.0f) return false;
-    out_distance = std::max(0.0f, near_distance);
+    // A ray that starts inside a target has no positive entry distance.  Use
+    // the forward exit distance instead of returning zero, so containing
+    // interaction proxies cannot win every nearest-target comparison merely
+    // because the player's eye overlaps their AABB.
+    out_distance = near_distance >= 0.0f ? near_distance : far_distance;
     return std::isfinite(out_distance);
 }
 

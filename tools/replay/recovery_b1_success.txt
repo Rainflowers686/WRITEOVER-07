@@ -22,7 +22,7 @@
 537 MOUSEMOVE 1120 0
 538 W down
 850 W up
-850 MOUSEMOVE 266 0
+850 MOUSEMOVE 956 0
 851 F down
 852 F up
 # Fire the selected pistol after the non-lethal/body route.  This is a real
@@ -31,32 +31,27 @@
 900 MOUSELEFT down
 901 MOUSELEFT up
 900 MOUSEMOVE -113 0
-901 W down
-901 SHIFT down
-1040 W up
-1040 SHIFT up
-1041 F down
-1042 F up
-1060 MOUSEMOVE 1058 0
-1061 W down
-1061 SHIFT down
-1308 W up
-1308 SHIFT up
-1309 F down
-1310 F up
-# Center on the one-cell service-door opening before advancing.  The player
-# collider must actually pass through the opening; opening the latch alone is
-# not the checkpoint.
-1315 D down
-1327 D up
-1330 W down
-1330 SHIFT down
-1400 W up
-1400 SHIFT up
-1401 MOUSEMOVE 1035 0
-1450 F down
-1451 F up
-1500 F5 down
-1501 F5 up
-1620 F9 down
-1621 F9 up
+902 MOUSEMOVE -604 0
+903 MOUSEMOVE 0 -175
+920 F down
+921 F up
+# Hold in the B1 corridor long enough for the cleaner's real arrival,
+# inspection, and response before approaching the checkpoint.
+922 MOUSEMOVE 960 0
+1190 D down
+1198 D up
+1200 W down
+1200 SHIFT down
+1330 F down
+1331 F up
+# Cross the now-open service passage before saving.  The player collider must
+# actually pass through the opening; opening the latch alone is not enough.
+1450 W up
+1450 SHIFT up
+1451 MOUSEMOVE 1047 0
+1470 F down
+1471 F up
+1550 F5 down
+1551 F5 up
+1700 F9 down
+1701 F9 up

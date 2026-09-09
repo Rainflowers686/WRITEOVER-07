@@ -2,6 +2,8 @@
 
 #include "writeover/common/io.h"
 
+#include <cmath>
+
 namespace writeover {
 
 void SerializeRoom(Serializer& s, const Room& room) {
@@ -57,6 +59,13 @@ Result<Room> DeserializeRoom(Deserializer& d) {
     room.spawn_point.y = d.ReadF32();
     room.spawn_point.z = d.ReadF32();
     room.spawn_yaw = d.ReadF32();
+    if (d.HasError() || !std::isfinite(room.spawn_point.x) ||
+        !std::isfinite(room.spawn_point.y) ||
+        !std::isfinite(room.spawn_point.z) ||
+        !std::isfinite(room.spawn_yaw)) {
+        return Result<Room>::Err(kWocMagic + 4,
+                                 "room spawn transform is not finite");
+    }
 
     room.grid = Grid(w, h);
     const uint32_t cell_count = d.ReadU32();
@@ -71,6 +80,12 @@ Result<Room> DeserializeRoom(Deserializer& d) {
         cell.material = d.ReadU8();
         cell.light = d.ReadU8();
         cell.flags = d.ReadU8();
+        if (d.HasError() || !std::isfinite(cell.floor_height) ||
+            !std::isfinite(cell.ceiling_height) ||
+            cell.ceiling_height <= cell.floor_height) {
+            return Result<Room>::Err(kWocMagic + 4,
+                                     "room cell heights are invalid");
+        }
     }
 
     // Issue D.1 / E.1: NPC / storylet refs. Excessive counts are a hard
@@ -90,7 +105,7 @@ Result<Room> DeserializeRoom(Deserializer& d) {
         room.storylet_refs.push_back(ReadId<StringId>(d));
     }
 
-    if (d.HasError()) {
+    if (d.HasError() || !d.AtEnd()) {
         return Result<Room>::Err(kWocMagic + 7, "room file truncated or corrupted");
     }
     return Result<Room>::Ok(std::move(room));
