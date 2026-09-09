@@ -844,11 +844,11 @@ bool AutonomousCleanerDurableHistoryChangesDiscoveryResponse() {
         bool saw_cover_up = false;
         for (const auto& event : systemic.SystemEvents()) {
             saw_medical = saw_medical ||
-                event.type == SystemicEventType::MedicalCall &&
-                event.actor == cleaner_entity;
+                (event.type == SystemicEventType::MedicalCall &&
+                 event.actor == cleaner_entity);
             saw_cover_up = saw_cover_up ||
-                event.type == SystemicEventType::HelpCoverUp &&
-                event.actor == cleaner_entity;
+                (event.type == SystemicEventType::HelpCoverUp &&
+                 event.actor == cleaner_entity);
         }
         return trusted_history ? saw_cover_up && !saw_medical
                                 : saw_medical && !saw_cover_up;
