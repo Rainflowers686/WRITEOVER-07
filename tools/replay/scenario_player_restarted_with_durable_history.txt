@@ -1,0 +1,26 @@
+# Establish a real directed cleaner relationship, then allow the authored
+# B1 guard to kill the player before any save. F9 must restart the room while
+# retaining the systemic relationship record.
+0 W down
+0 SHIFT down
+1 MOUSEMOVE -177 0
+351 MOUSEMOVE -48 0
+390 W up
+390 SHIFT up
+391 MOUSEMOVE -350 0
+391 W down
+391 SHIFT down
+485 W up
+485 SHIFT up
+486 MOUSEMOVE -856 0
+500 F down
+501 F up
+# Walk toward the authored officer without firing. The guard's real combat
+# loop should then kill the player; the relationship must survive the restart.
+560 MOUSEMOVE -477 0
+560 W down
+560 SHIFT down
+700 W up
+700 SHIFT up
+2500 F9 down
+2501 F9 up

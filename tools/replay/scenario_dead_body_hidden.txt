@@ -1,0 +1,53 @@
+# Lethal B1 counterfactual: kill the authored guard, search the dead body,
+# drag it to the authored cleaning cart, and hide it through the real body
+# transaction. This is deliberately separate from the non-lethal recovery
+# fixture so BodyStatus::Dead plus HiddenInContainer is exercised.
+0 W down
+0 SHIFT down
+1 MOUSEMOVE -177 0
+390 W up
+390 SHIFT up
+351 MOUSEMOVE -48 0
+352 W down
+426 W up
+427 NUM1 down
+428 NUM1 up
+429 MOUSELEFT down
+430 MOUSELEFT up
+446 MOUSELEFT down
+447 MOUSELEFT up
+463 MOUSELEFT down
+464 MOUSELEFT up
+480 MOUSELEFT down
+481 MOUSELEFT up
+497 MOUSELEFT down
+498 MOUSELEFT up
+514 MOUSELEFT down
+515 MOUSELEFT up
+531 MOUSELEFT down
+532 MOUSELEFT up
+548 MOUSELEFT down
+549 MOUSELEFT up
+565 MOUSELEFT down
+566 MOUSELEFT up
+582 MOUSELEFT down
+583 MOUSELEFT up
+599 MOUSELEFT down
+600 MOUSELEFT up
+# Approach and search the dead body.
+670 W down
+770 W up
+770 MOUSEMOVE 0 200
+772 F down
+773 F up
+# Begin dragging, turn toward the authored cleaning cart, and complete the
+# same room-local movement transaction used by the quiet recovery route.
+775 F down
+776 F up
+777 MOUSEMOVE 1120 0
+778 W down
+1080 W up
+1081 W down
+1200 W up
+1201 F down
+1202 F up

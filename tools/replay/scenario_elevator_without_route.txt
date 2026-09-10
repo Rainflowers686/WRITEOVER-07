@@ -1,0 +1,17 @@
+# Enter the authored elevator lobby directly, then face the restricted door
+# without completing either medical route. The checkpoint must refuse entry
+# and leave the chapter completion fact unset.
+0 W down
+220 W up
+221 A down
+257 A up
+# Stop short of the authored door, then take the last approach used by the
+# normal lobby route so the door can be focused without crossing it.
+310 W down
+344 W up
+# Match the authored lobby approach: the restricted door is now centered in
+# the interaction ray, but neither route fact has been earned.
+380 F down
+381 F up
+450 F down
+451 F up

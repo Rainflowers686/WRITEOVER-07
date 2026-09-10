@@ -1,0 +1,9 @@
+# Start in the authored Security room and move diagonally behind the
+# interior wall at column 13. The guard remains in the right-hand patrol area;
+# the player is present in the same room but never becomes a visible target.
+0 W down
+0 A down
+150 W up
+150 A up
+151 W down
+410 W up

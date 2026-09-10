@@ -2242,6 +2242,7 @@ int RunComposition(const GameConfig& config) {
         bool cleaner_response = false;
         bool shot_hit = false;
         bool nonlethal_hit = false;
+        bool badge_revoked = false;
         bool terminal_attempted = false;
         bool terminal_denied = false;
         bool player_died = false;
@@ -2253,6 +2254,8 @@ int RunComposition(const GameConfig& config) {
         bool gate_unlocked = false;
         bool gate_open = false;
         bool gate_crossed = false;
+        bool elevator_entry_attempted = false;
+        bool elevator_entry_denied = false;
         bool normal_quit_requested = false;
     } slice;
     slice.cart = ContainerId::New(cart_entity->systemic_id);
@@ -2598,6 +2601,33 @@ int RunComposition(const GameConfig& config) {
         const bool camera_observes_current_room =
             camera_source != nullptr && camera_source->online &&
             camera_source->room == services.world->LoadedRoom().id;
+        bool b1_terminal_session_active = false;
+        if (camera_observes_current_room &&
+            services.player->CurrentRoom() == "room_b1_revival") {
+            for (const auto& session : services.systemic->TerminalSessions()) {
+                if (session.terminal == slice.terminal &&
+                    session.user == slice.player && session.active) {
+                    b1_terminal_session_active = true;
+                    break;
+                }
+            }
+        }
+        const ItemRecord* badge_record = slice.badge.IsValid()
+                                              ? services.systemic->GetItem(slice.badge)
+                                              : nullptr;
+        const bool badge_held_by_player =
+            badge_record != nullptr &&
+            services.systemic->ItemHeldBy(slice.badge, slice.player);
+        if (camera_observes_current_room && b1_terminal_session_active &&
+            badge_held_by_player && badge_record != nullptr &&
+            !badge_record->revoked &&
+            services.systemic->RevokeCredential(
+                slice.badge, services.player->CurrentFrame())) {
+            slice.badge_revoked = true;
+            render->SetSubtitleOnce(
+                "CAMERA ALERT: your badge was revoked. Reload before the checkpoint.",
+                220, 55);
+        }
         if (camera_observes_current_room &&
             services.systemic->AlertLevel() < FacilityAlertLevel::Suspicious) {
             services.systemic->SetAlert(FacilityAlertLevel::Suspicious,
@@ -3202,6 +3232,13 @@ int RunComposition(const GameConfig& config) {
                services.systemic->ItemHeldBy(slice.badge, slice.player) &&
                services.systemic->ReaderAcceptsItem(slice.badge, 2);
     };
+    const auto player_holds_revoked_badge = [&] {
+        const ItemRecord* badge = slice.badge.IsValid()
+                                      ? services.systemic->GetItem(slice.badge)
+                                      : nullptr;
+        return badge != nullptr && badge->revoked &&
+               services.systemic->ItemHeldBy(slice.badge, slice.player);
+    };
     const auto terminal_session_active = [&](TerminalId terminal_id) {
         for (const auto& session : services.systemic->TerminalSessions()) {
             if (session.terminal == terminal_id && session.user == slice.player &&
@@ -3363,6 +3400,9 @@ int RunComposition(const GameConfig& config) {
         const bool has_badge = slice.badge.IsValid() &&
             services.systemic->ItemHeldBy(slice.badge, slice.player);
         if (room == "room_b1_revival") {
+            if (player_holds_revoked_badge()) {
+                return std::string("B1: Badge revoked; reload before the checkpoint");
+            }
             if (const BodyRecord* body = services.systemic->GetBody(slice.body);
                 body != nullptr && body->disposition == BodyDisposition::Exposed) {
                 if (!body->searched) return std::string("B1: Search the downed guard");
@@ -3446,6 +3486,9 @@ int RunComposition(const GameConfig& config) {
                 case SceneEntityKind::Camera:
                     return std::string("[F] DISABLE CAMERA");
                 case SceneEntityKind::Terminal:
+                    if (player_holds_revoked_badge()) {
+                        return std::string("[F] USE TERMINAL (BADGE REVOKED)");
+                    }
                     return slice.badge.IsValid() &&
                                    services.systemic->ItemHeldBy(slice.badge, slice.player)
                                ? std::string("[F] USE TERMINAL")
@@ -3676,11 +3719,17 @@ int RunComposition(const GameConfig& config) {
 
             if (focused.kind == B1TargetKind::Gate) {
                 slice.access_attempted = true;
+                const bool badge_held = slice.badge.IsValid() &&
+                    services.systemic->ItemHeldBy(slice.badge, player);
                 if (!player_holds_valid_badge()) {
                     slice.access_denied = true;
                     services.world->SetBooleanFact(
                         RuntimeFactId("fact_b1_gate_denied"), player, true);
-                    render->SetSubtitleOnce("ACCESS DENIED. The reader needs your held badge.", 180);
+                    render->SetSubtitleOnce(
+                        badge_held && player_holds_revoked_badge()
+                            ? "ACCESS DENIED. The held badge is revoked; reload before the checkpoint."
+                            : "ACCESS DENIED. The reader needs your held badge.",
+                        180);
                 } else if (!services.world->B1GateOpen()) {
                     (void)services.world->UnlockB1Gate();
                     if (services.world->OpenB1Gate() || services.world->B1GateOpen()) {
@@ -3775,7 +3824,15 @@ int RunComposition(const GameConfig& config) {
             if (focused.kind == B1TargetKind::Terminal) {
                 slice.terminal_attempted = true;
                 slice.terminal_session = terminal_session_is_active();
-                if (!slice.terminal_session && player_holds_valid_badge()) {
+                if (player_holds_revoked_badge()) {
+                    slice.badge_revoked = true;
+                    slice.terminal_denied = true;
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_b1_gate_denied"), player, true);
+                    render->SetSubtitleOnce(
+                        "TERMINAL: badge revoked; the active session no longer authorizes access.",
+                        180);
+                } else if (!slice.terminal_session && player_holds_valid_badge()) {
                     TerminalSession session;
                     session.terminal = slice.terminal;
                     session.user = player;
@@ -4017,10 +4074,12 @@ int RunComposition(const GameConfig& config) {
 
         if (services.player->CurrentRoom() == "room_elevator_lobby") {
             if (focused_scene_entity("elevator_restricted_door")) {
+                slice.elevator_entry_attempted = true;
                 const bool route_authorized =
                     fact_is_true("fact_chapter_staff_route") ||
                     fact_is_true("fact_chapter_security_checkpoint");
                 if (!route_authorized) {
+                    slice.elevator_entry_denied = true;
                     render->SetSubtitleOnce(
                         "ELEVATOR: the checkpoint record is incomplete.", 160);
                 } else if (!fact_is_true("fact_chapter_checkpoint_reached")) {
@@ -4218,6 +4277,21 @@ int RunComposition(const GameConfig& config) {
         const bool scenario_camera_offline_replay =
             config.replay_path.find("scenario_camera_offline") !=
             std::string::npos;
+        const bool scenario_dead_body_hidden_replay =
+            config.replay_path.find("scenario_dead_body_hidden") !=
+            std::string::npos;
+        const bool scenario_terminal_badge_revoked_replay =
+            config.replay_path.find("scenario_terminal_active_badge_revoked") !=
+            std::string::npos;
+        const bool scenario_durable_history_replay =
+            config.replay_path.find("scenario_player_restarted_with_durable_history") !=
+            std::string::npos;
+        const bool scenario_wall_blocked_los_replay =
+            config.replay_path.find("scenario_wall_blocked_guard_los") !=
+            std::string::npos;
+        const bool scenario_elevator_without_route_replay =
+            config.replay_path.find("scenario_elevator_without_route") !=
+            std::string::npos;
         const bool badge_held_by_player =
             slice.badge.IsValid() &&
             services.systemic->ItemHeldBy(slice.badge, slice.player);
@@ -4236,6 +4310,37 @@ int RunComposition(const GameConfig& config) {
             cleaner_relationship != nullptr &&
             cleaner_relationship->trust > 0.55f &&
             cleaner_relationship->debt > 0.35f;
+        const bool durable_history_preserved =
+            slice.player_restarted && cleaner_relationship_established;
+        const ItemRecord* badge_record = slice.badge.IsValid()
+                                              ? services.systemic->GetItem(slice.badge)
+                                              : nullptr;
+        const bool badge_revoked =
+            (slice.badge_revoked ||
+             (badge_record != nullptr && badge_record->revoked));
+        const BodyRecord* body = services.systemic->GetBody(slice.body);
+        const bool dead_body_hidden =
+            body != nullptr && body->status == BodyStatus::Dead &&
+            body->disposition == BodyDisposition::HiddenInContainer;
+        const bool guard_line_of_sight_blocked = [&] {
+            if (services.player->CurrentRoom() != "room_1f_security") return false;
+            for (const auto& runtime : services.ai->Npcs()) {
+                if (runtime.instance.id != slice.security_guard_npc ||
+                    runtime.room != services.world->LoadedRoom().id ||
+                    runtime.instance.state == NPCState::Dead ||
+                    runtime.instance.state == NPCState::Stunned) {
+                    continue;
+                }
+                const Vec3 guard_eye{
+                    runtime.instance.position.x, runtime.instance.position.y,
+                    runtime.instance.position.z +
+                        GetPostureParams(Posture::Stand).eye_height};
+                const Vec3 player_eye = services.player->Locomotion().EyePosition();
+                return !services.world->Query().LineOfSight(
+                    guard_eye, player_eye, player_eye.z);
+            }
+            return false;
+        }();
         const bool narrative_visible_action =
             services.narrative->PresentedActionCount() > 0 &&
             !services.narrative->LastPresentedText().empty();
@@ -4283,6 +4388,25 @@ int RunComposition(const GameConfig& config) {
                    services.ai->GuardAttackCount() == 0)
             : scenario_camera_offline_replay
                 ? fact_is_true("fact_b1_camera_disabled")
+            : scenario_dead_body_hidden_replay
+                ? (dead_body_hidden && slice.body_hidden && !slice.nonlethal_hit &&
+                   badge_held_by_player)
+            : scenario_terminal_badge_revoked_replay
+                ? (slice.terminal_session && slice.terminal_denied &&
+                   badge_revoked && !slice.gate_open && !slice.gate_crossed)
+            : scenario_durable_history_replay
+                ? (slice.player_died && slice.player_restarted &&
+                   durable_history_preserved && !services.player->Dead() &&
+                   !replay_load_ok)
+            : scenario_wall_blocked_los_replay
+                ? (guard_line_of_sight_blocked &&
+                   services.ai->GuardAttackCount() == 0 &&
+                   services.player->Health() == 100)
+            : scenario_elevator_without_route_replay
+                ? (services.player->CurrentRoom() == "room_elevator_lobby" &&
+                   slice.elevator_entry_attempted &&
+                   slice.elevator_entry_denied &&
+                   !fact_is_true("fact_chapter_checkpoint_reached"))
             : chapter_systemic_replay
             ? (chapter_route_complete && fact_is_true("fact_chapter_quiet_route") &&
                fact_is_true("fact_chapter_staff_route") &&
@@ -4475,14 +4599,16 @@ int RunComposition(const GameConfig& config) {
         std::fprintf(stderr, "QUEST_PRESENTATION_VISIBLE=%s OBJECTIVE=%s\n",
                      quest_presentation_visible ? "YES" : "NO",
                      render->ObjectiveText().c_str());
-        const BodyRecord* body = services.systemic->GetBody(slice.body);
         if (body != nullptr) {
             const ItemRecord* badge = slice.badge.IsValid()
                                           ? services.systemic->GetItem(slice.badge)
                                           : nullptr;
             std::fprintf(stderr,
-                         "BODY_STATE=disposition_%u drag_%u searched_%s "
+                         "BODY_STATUS=%s BODY_STATE=disposition_%u drag_%u searched_%s "
                          "BADGE_HOLDER=%llu TERMINAL_SESSION=%s\n",
+                         body->status == BodyStatus::Dead ? "DEAD" :
+                         body->status == BodyStatus::Unconscious ? "UNCONSCIOUS" :
+                         body->status == BodyStatus::Injured ? "INJURED" : "ALIVE",
                          static_cast<unsigned>(body->disposition),
                          static_cast<unsigned>(body->drag_status),
                          body->searched ? "YES" : "NO",
@@ -4492,6 +4618,15 @@ int RunComposition(const GameConfig& config) {
                                  : 0),
                          slice.terminal_session ? "YES" : "NO");
         }
+        std::fprintf(stderr, "BADGE_REVOKED=%s DURABLE_HISTORY_PRESERVED=%s\n",
+                     badge_revoked ? "YES" : "NO",
+                     durable_history_preserved ? "YES" : "NO");
+        std::fprintf(stderr,
+                     "GUARD_LINE_OF_SIGHT_BLOCKED=%s ELEVATOR_ENTRY_ATTEMPTED=%s "
+                     "ELEVATOR_ENTRY_DENIED=%s\n",
+                     guard_line_of_sight_blocked ? "YES" : "NO",
+                     slice.elevator_entry_attempted ? "YES" : "NO",
+                     slice.elevator_entry_denied ? "YES" : "NO");
         const Vec3& player_position = services.player->Locomotion().position;
         std::fprintf(stderr, "PLAYER_STATE=room_%s pos_%.3f_%.3f_%.3f\n",
                      services.player->CurrentRoom().c_str(), player_position.x,
