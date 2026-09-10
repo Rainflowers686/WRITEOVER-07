@@ -328,3 +328,48 @@ REMOTE_CI_AFTER_CORRECTION = PASS (run 34396017075, rerun attempt 2)
 FRONTEND_TERMINAL_ACCEPTANCE = PENDING_MANUAL
 FINAL_STATUS = READY_FOR_RAIN_GAMEPLAY_SYSTEM_REVIEW
 ```
+
+## Alpha-04B near-beta current-head addendum
+
+This addendum records the bounded Alpha-04B continuation. It does not rewrite
+the historical Alpha-04 or Audit-02B entries above.
+
+```text
+START_HEAD = e8109310ce5c6499d6792fe1fd892075702abd6b
+IMPLEMENTATION_HEAD = bfe82ed6d9bc468b01f5f69898cf2ebc20b38ec4
+BRANCH = main
+IMPLEMENTATION_PUSH = YES
+REMOTE_CI = PASS (run 34438350915; exact implementation head; all five jobs)
+```
+
+| Capability | Alpha-04B current status | Evidence / boundary |
+|---|---|---|
+| `ONBOARDING_SUPPRESSION` | `VERIFIED` | B1/calibration onboarding ends after finite non-zero player movement or actual interaction. |
+| `OBJECTIVE_PRESENTATION` | `VERIFIED_BOUNDED` | Existing objective receipt remains separate from completed-quest active-objective state. |
+| `INTERACTION_CLARITY` | `VERIFIED_BOUNDED` | Existing prompts and target interaction remain unchanged; this continuation adds no generic interaction framework. |
+| `AI_STATE_LEGIBILITY` | `VERIFIED_BOUNDED` | Existing Patrol/Investigate/Alert/Combat states receive low-priority natural-language cues; internal IDs are not displayed. |
+| `SECOND_DELAYED_CONSEQUENCE` | `VERIFIED_BOUNDED` | Online B1 camera consumes loud action into Suspicious facility alert; offline camera yields durable `BLIND_SPOT`. |
+| `PATROL` | `VERIFIED_BOUNDED` | Existing patrol motor remains covered; new test proves Investigate returns to Patrol and continues moving. |
+| `INVESTIGATE` | `VERIFIED_BOUNDED` | Reachable noise is routed to, inspected, and followed by a real state transition; no teleport claim. |
+| `GUARD_COMBAT` | `VERIFIED_BOUNDED_HEALTH_PROOF_ONLY` | Room/LOS/range/cadence health behavior remains current; this is not complete enemy combat AI. |
+| `MEMORY_BEHAVIOR` | `VERIFIED` | Existing Cleaner relationship/history changes later response and remains durable through save/load receipts. |
+| `CAMERA_CONSEQUENCE` | `VERIFIED_BOUNDED` | Online/offline counterfactual is asserted in Release scenario/replay fixtures. |
+| `FULL_REPLAY_GATE` | `VERIFIED` | Release gate runs 21 cases: 5 Recovery, 4 Alpha, 6 Chapter One, 3 current regression fixtures, and normal quit. |
+| `SCENARIO_MATRIX` | `VERIFIED_BOUNDED` | 36 rows: 30 executed PASS, 1 invalid by game rules, 5 valid states explicitly not covered. |
+| `SAVE_FAULT_MATRIX` | `VERIFIED` | All eight final-commit stages roll back after injected failure; failed load remains an expected failed probe. |
+| `PACKAGE_RUNTIME_ASSETS` | `VERIFIED_BOUNDED` | Current package contains required authored runtime resources; package smoke fails when required art is removed. |
+| `BENCHMARK` | `VERIFIED_BOUNDED` | Release proxy remains within existing budgets; `worst_1pct_avg_ms` is not called p99 and terminal writes are excluded from the integrated proxy. |
+| `TERMINAL_NORMAL_LAUNCH` | `PENDING_MANUAL` | Non-foreground probes honestly report compatibility fallback; foreground Windows Terminal acceptance remains unverified. |
+| `MANUAL_PLAY` | `PENDING_MANUAL` | No first-time human near-beta session was inferred from replay output. |
+| `COMPLETE_ENEMY_COMBAT` | `NOT_CLAIMED` | Bounded Guard health/damage proof is intentionally not promoted to a complete combat-AI claim. |
+
+Current automated truth fields:
+
+```text
+OPEN_FATAL = 0
+OPEN_P0 = 0
+OPEN_NORMAL_PLAY_P1 = 0 for the bounded current route
+VALID_AUTOMATED_COVERAGE_GAPS = 5
+FINAL_STATUS = READY_FOR_RAIN_CHAPTER01_NEAR_BETA_REVIEW
+USER_ACCEPTANCE = PENDING
+```
