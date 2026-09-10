@@ -373,3 +373,110 @@ VALID_AUTOMATED_COVERAGE_GAPS = 5
 FINAL_STATUS = READY_FOR_RAIN_CHAPTER01_NEAR_BETA_REVIEW
 USER_ACCEPTANCE = PENDING
 ```
+
+## Alpha-04C — Chapter One objective closure and manual-readiness receipt
+
+This is an additive current-head receipt. Earlier Alpha-01/02/03/04/04B
+sections remain historical records and are not rewritten. The implementation
+head for this pass is `e334f159e75ec95f453d5339344dd10e5d706b5f`; the
+documentation-only receipt is prepared for a normal `main` push after the
+local gates below. `FINAL_HEAD` in the companion report means the last
+content-bearing implementation head; the final documentation commit and its
+exact remote CI head are recorded in the closing Git receipt.
+
+| Capability | Alpha-04C current status | Evidence / boundary |
+|---|---|---|
+| `CHAPTER01_MANUAL_READY` | `VERIFIED_BOUNDED` | The current bounded Chapter One route has actionable objectives, truthful prompts, explicit route consequences, save/death recovery and a reproducible package smoke. This means ready for Rain's manual acceptance, not manual acceptance passed. |
+| `SCENARIO_EXECUTION_COVERAGE` | `VERIFIED_BOUNDED` | 36 rows are classified; 35 execute with passing semantic receipts (20 success, 11 denial, 1 recoverable failure, 3 death/restart), and 1 is invalid by current game rules. |
+| `VALID_UNAUTOMATED_SCENARIOS` | `VERIFIED` | The five Alpha-04B legal uncovered rows are now backed by real current-runtime fixtures; no legal row remains unautomated in the 36-row matrix. |
+| `ONBOARDING` | `VERIFIED` | The movement/interaction hint ends only after finite non-zero movement or a real interaction. |
+| `HELP_CONTROLS` | `VERIFIED_BOUNDED` | Release help/readme documents the active Chapter One controls; right mouse is explicitly reserved because ADS is disabled. |
+| `OBJECTIVE_CLARITY` | `VERIFIED_BOUNDED` | Objectives use short, actionable room-specific instructions and resolve to `Chapter One complete` after the elevator checkpoint. |
+| `INTERACTION_PROMPT_TRUTH` | `VERIFIED_BOUNDED` | Body, cart, camera, terminal, reader, doors, NPC and elevator prompts are resolved through the existing camera/ray focus and current runtime state. |
+| `MESSAGE_PRIORITY` | `VERIFIED_BOUNDED` | Existing bounded subtitle priority keeps access, damage, death, body and checkpoint feedback above incidental NPC speech. |
+| `INTERNAL_ID_LEAKAGE` | `VERIFIED` | Normal player-facing text scan found no fact/storylet/enum/replay identifiers; development diagnostics remain a separate F3 mode. |
+| `QUIET_ROUTE` | `VERIFIED_BOUNDED` | Non-lethal body handling plus concealment reaches the authored staff passage and quiet route fact. |
+| `AGGRESSIVE_ROUTE` | `VERIFIED_BOUNDED` | A loud lethal route reaches the authored Security encounter and records the aggressive route/security checkpoint state. |
+| `ROUTE_DIFFERENCES` | `VERIFIED_BOUNDED` | Quiet/aggressive choice changes body disposition, Cleaner response, staff/security access and later security state; camera online/offline adds a separate downstream distinction. |
+| `SOFTLOCK_RESILIENCE` | `VERIFIED_BOUNDED` | No current bounded-route soft-lock remains; missing badge, terminal, route and elevator checkpoint states deny with recovery text rather than silently advancing. |
+| `ROUTE_SKIP_RESILIENCE` | `VERIFIED_BOUNDED` | B1 terminal skipping and elevator entry without a route fact are expected denials with no false checkpoint/completion. |
+| `DELAYED_CONSEQUENCE_CLEANER` | `VERIFIED` | Cleaner relationship/history and hidden-body discovery change the later response and survive the current save/load route receipts. |
+| `DELAYED_CONSEQUENCE_CAMERA_OR_SECOND` | `VERIFIED_BOUNDED` | An online B1 camera turns a loud action into a Suspicious facility response and can revoke an active held badge; disabling it first produces a durable blind spot. |
+| `MEDICAL_GAMEPLAY` | `VERIFIED_BOUNDED` | Medical intake is a real terminal interaction and gates the authored staff/security route choice. |
+| `STAFF_GAMEPLAY` | `VERIFIED_BOUNDED` | The staff passage exposes the shift-change clue and provides a real quiet service-door route to the elevator lobby. |
+| `SECURITY_GAMEPLAY` | `VERIFIED_BOUNDED` | Badge, stealth, bribe, stunner and pistol/LOS paths are exercised within the authored room; this remains bounded combat proof. |
+| `ELEVATOR_GAMEPLAY` | `VERIFIED_BOUNDED` | The restricted elevator door denies incomplete route records and records the Chapter One checkpoint/completion once when authorized. |
+| `AI_STATE_LEGIBILITY` | `VERIFIED_BOUNDED` | Existing Patrol, Investigate, Alert and Combat states emit short contextual player-facing cues without raw state IDs. |
+| `PATROL_INVESTIGATE_RESUME` | `VERIFIED` | Direct AI regression and current route evidence cover physical investigation, inspection and return to Patrol movement. |
+| `MULTI_STIMULUS_BEHAVIOR` | `VERIFIED_BOUNDED` | Camera, gunshot, body and visibility combinations have deterministic semantic receipts; no general arbitration framework is claimed. |
+| `ALERT_LEGIBILITY` | `VERIFIED_BOUNDED` | Online-camera alert and offline blind-spot counterfactuals are asserted by current replay fixtures and route objectives. |
+| `COMBAT_FEEDBACK` | `VERIFIED_BOUNDED` | Current cues distinguish firing, hit/stun/death, detection, damage, LOS break and recovery; final combat/audio polish remains deferred. |
+| `DEATH_RESTART` | `VERIFIED` | No-save death restarts the room; checkpoint death/load recovers the authored state and retains durable history where applicable. |
+| `CHECKPOINT_UX` | `VERIFIED_BOUNDED` | Checkpoint facts and one-shot messages are covered by route/replay receipts; manual comprehension is still pending. |
+| `NORMAL_QUIT` | `VERIFIED` | Esc pause plus Q quit and the normal-quit replay restore the terminal and exit successfully. |
+| `SAVE_ROUTE_ROUNDTRIP` | `VERIFIED_BOUNDED` | Quiet, aggressive, memory, camera, body, pre-elevator and active-system route states are covered by current save/load receipts; transient motion resumes under existing bounded semantics. |
+| `BACKTRACKING` | `VERIFIED_BOUNDED` | Chapter backtrack and staff/medical return receipts pass; no duplicate route checkpoint or body reset was observed. |
+| `DETERMINISM` | `VERIFIED` | Quiet, aggressive, Cleaner-memory, camera-consequence and multi-stimulus routes produce identical normalized semantic receipts on repeated seeded runs. |
+| `LONG_SIM_BOUNDEDNESS` | `VERIFIED_BOUNDED` | A 12,000-frame Chapter backtrack simulation completed with stable route/event/memory observations; no unbounded growth was observed. |
+| `PACKAGE_SELF_CONTAINMENT` | `VERIFIED_BOUNDED` | Clean Windows package smoke resolves executable-relative data, authored character/text resources and user-data separation from an extracted package. |
+| `CWD_INDEPENDENCE` | `VERIFIED_BOUNDED` | Package smoke launches from an unrelated working directory. |
+| `CLASSROOM_PACKAGE_CANDIDATE` | `VERIFIED_BOUNDED` | A clean local Windows candidate passed positive smoke and missing-resource negative probes; the disposable task-created staging/archive was removed after validation. |
+| `MANUAL_FOREGROUND_PLAY` | `PENDING_MANUAL` | No controllable foreground Windows Terminal/human session was used as evidence in this run. |
+| `MEASURED_HUMAN_DURATION` | `PENDING_MANUAL` | Requires Rain's first-time Chapter One session and timing receipt. |
+| `WINDOWS_TERMINAL_ACCEPTANCE` | `PENDING_MANUAL` | Non-foreground smoke reports a compatibility fallback; it is not foreground Windows Terminal acceptance. |
+| `FRONTEND_VISUAL_ACCEPTANCE` | `PENDING_MANUAL` | No visual/manual PASS is inferred from pipe output or replay logs. |
+| `FINAL_ART` | `DEFER_ASTRA` | Final character, weapon and scene beauty are outside this functional objective pass. |
+| `FINAL_PROSE` | `DEFER_ASTRA` | Literary dialogue and narrator polish are outside this functional objective pass. |
+| `FINAL_AUDIO` | `DEFER_ASTRA` | Final sound/music design is outside this functional objective pass. |
+
+Current Alpha-04C truth fields:
+
+```text
+CHAPTER01_MANUAL_READY = VERIFIED_BOUNDED
+SCENARIO_EXECUTION_COVERAGE = VERIFIED_BOUNDED (36 total / 35 executed / 1 invalid)
+VALID_UNAUTOMATED_SCENARIOS = VERIFIED (0)
+ONBOARDING = VERIFIED
+HELP_CONTROLS = VERIFIED_BOUNDED
+OBJECTIVE_CLARITY = VERIFIED_BOUNDED
+INTERACTION_PROMPT_TRUTH = VERIFIED_BOUNDED
+MESSAGE_PRIORITY = VERIFIED_BOUNDED
+INTERNAL_ID_LEAKAGE = VERIFIED
+QUIET_ROUTE = VERIFIED_BOUNDED
+AGGRESSIVE_ROUTE = VERIFIED_BOUNDED
+ROUTE_DIFFERENCES = VERIFIED_BOUNDED
+SOFTLOCK_RESILIENCE = VERIFIED_BOUNDED
+ROUTE_SKIP_RESILIENCE = VERIFIED_BOUNDED
+DELAYED_CONSEQUENCE_CLEANER = VERIFIED
+DELAYED_CONSEQUENCE_CAMERA_OR_SECOND = VERIFIED_BOUNDED
+MEDICAL_GAMEPLAY = VERIFIED_BOUNDED
+STAFF_GAMEPLAY = VERIFIED_BOUNDED
+SECURITY_GAMEPLAY = VERIFIED_BOUNDED
+ELEVATOR_GAMEPLAY = VERIFIED_BOUNDED
+AI_STATE_LEGIBILITY = VERIFIED_BOUNDED
+PATROL_INVESTIGATE_RESUME = VERIFIED
+MULTI_STIMULUS_BEHAVIOR = VERIFIED_BOUNDED
+ALERT_LEGIBILITY = VERIFIED_BOUNDED
+COMBAT_FEEDBACK = VERIFIED_BOUNDED
+DEATH_RESTART = VERIFIED
+CHECKPOINT_UX = VERIFIED_BOUNDED
+NORMAL_QUIT = VERIFIED
+SAVE_ROUTE_ROUNDTRIP = VERIFIED_BOUNDED
+BACKTRACKING = VERIFIED_BOUNDED
+DETERMINISM = VERIFIED
+LONG_SIM_BOUNDEDNESS = VERIFIED_BOUNDED
+PACKAGE_SELF_CONTAINMENT = VERIFIED_BOUNDED
+CWD_INDEPENDENCE = VERIFIED_BOUNDED
+CLASSROOM_PACKAGE_CANDIDATE = VERIFIED_BOUNDED
+MANUAL_FOREGROUND_PLAY = PENDING_MANUAL
+MEASURED_HUMAN_DURATION = PENDING_MANUAL
+WINDOWS_TERMINAL_ACCEPTANCE = PENDING_MANUAL
+FRONTEND_VISUAL_ACCEPTANCE = PENDING_MANUAL
+FINAL_ART = DEFER_ASTRA
+FINAL_PROSE = DEFER_ASTRA
+FINAL_AUDIO = DEFER_ASTRA
+FINAL_STATUS = READY_FOR_RAIN_CHAPTER01_MANUAL_ACCEPTANCE
+```
+
+The final status is a bounded engineering readiness status. It is not
+`MANUAL_ACCEPTANCE_PASS`, `CHAPTER01_GOLD`, `PRODUCT_GOLD`, `VISUAL_GOLD`, or
+`READY_FOR_PUBLIC_RELEASE`.
