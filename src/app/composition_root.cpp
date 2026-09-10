@@ -544,6 +544,7 @@ public:
         dead_ = dead || health == 0;
     }
     uint64_t CurrentFrame() const { return current_frame_; }
+    bool MovementDemonstrated() const { return movement_demonstrated_; }
 
     void ApplySettingsBindings(const Settings& st) {
         for (size_t c = 0; c < kInputContextCount; ++c) {
@@ -630,8 +631,15 @@ public:
         const bool sprint =
             !sprint_forbidden &&
             input_.action_down[static_cast<size_t>(GameAction::Sprint)];
+        const Vec3 position_before_motion = locomotion_.position;
         IntegrateLocomotion(locomotion_, move, sprint, *world_query_,
                             SimClock::kFixedDeltaTime);
+        const float moved_x = locomotion_.position.x - position_before_motion.x;
+        const float moved_y = locomotion_.position.y - position_before_motion.y;
+        if (std::isfinite(moved_x) && std::isfinite(moved_y) &&
+            (moved_x * moved_x + moved_y * moved_y) > 0.000001f) {
+            movement_demonstrated_ = true;
+        }
         // A malformed runtime position must not leave the player falling or
         // propagating non-finite coordinates forever.  The owning world
         // supplies the current room's authored recovery point; this is a
@@ -809,6 +817,7 @@ private:
     bool paused_ = false;
     uint16_t health_ = 100;
     bool dead_ = false;
+    bool movement_demonstrated_ = false;
     uint64_t current_frame_ = 0;
     RuntimeTimeGate* time_gate_ = nullptr;
 };
@@ -1073,7 +1082,20 @@ public:
         override_pitch_ = pitch;
     }
     void SetDebugOverlay(bool enabled) { debug_overlay_ = enabled; }
-    void SetSubtitleOnce(const std::string& text, uint64_t frames) { subtitle_override_ = text; subtitle_override_remaining_ = frames; }
+    // Critical player-facing feedback must not be replaced by a lower-value
+    // notification arriving later in the same event window. This is a
+    // bounded priority seam, not a second message system: equal priorities
+    // remain last-writer-wins so existing interaction text stays responsive.
+    void SetSubtitleOnce(const std::string& text, uint64_t frames,
+                         uint8_t priority = 50) {
+        if (subtitle_override_remaining_ > 0 &&
+            priority < subtitle_override_priority_) {
+            return;
+        }
+        subtitle_override_ = text;
+        subtitle_override_remaining_ = frames;
+        subtitle_override_priority_ = priority;
+    }
     void TriggerNarratorIntrusion(uint64_t frames) {
         narrator_intrusion_remaining_ = frames;
         narrator_intrusion_total_ = frames;
@@ -1324,6 +1346,53 @@ public:
                 }
             }
         }
+        // Keep the bounded NPC state legible without exposing internal enum
+        // names.  This is deliberately placed below scene-intro/incidental
+        // text and above dialogue/critical overrides: it is a low-priority
+        // cue, not another message system.
+        if (subtitle_.empty() && npcs_ != nullptr) {
+            const RuntimeNpc* nearest = nullptr;
+            float nearest_distance_sq = 64.0f;
+            for (const auto& runtime : *npcs_) {
+                if (runtime.room != active_room_ ||
+                    runtime.instance.state == NPCState::Dead ||
+                    runtime.instance.state == NPCState::Stunned) {
+                    continue;
+                }
+                const float dx = player_pos_.x - runtime.instance.position.x;
+                const float dy = player_pos_.y - runtime.instance.position.y;
+                const float distance_sq = dx * dx + dy * dy;
+                if (distance_sq < nearest_distance_sq) {
+                    nearest = &runtime;
+                    nearest_distance_sq = distance_sq;
+                }
+            }
+            if (nearest != nullptr) {
+                const char* role = nearest->instance.role == Role::Guard
+                                       ? "Security"
+                                       : nearest->instance.role == Role::Cleaner
+                                           ? "Maintenance"
+                                           : nearest->instance.role == Role::Technician
+                                               ? "Technical staff"
+                                               : "Staff";
+                switch (nearest->instance.state) {
+                case NPCState::Patrol:
+                    subtitle_ = std::string(role) + ": route in progress.";
+                    break;
+                case NPCState::Investigate:
+                    subtitle_ = std::string(role) + ": checking the disturbance.";
+                    break;
+                case NPCState::Alert:
+                    subtitle_ = std::string(role) + ": has noticed something.";
+                    break;
+                case NPCState::Combat:
+                    subtitle_ = "Security: guard is engaging.";
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
         if (dialogue_ != nullptr) {
             const auto active_lines = dialogue_->ActiveLines(
                 static_cast<uint32_t>(std::min<uint64_t>(
@@ -1332,7 +1401,12 @@ public:
         }
         if (subtitle_override_remaining_ > 0) {
             subtitle_ = subtitle_override_;
-            if (!paused) --subtitle_override_remaining_;
+            if (!paused) {
+                --subtitle_override_remaining_;
+                if (subtitle_override_remaining_ == 0) {
+                    subtitle_override_priority_ = 0;
+                }
+            }
         }
         if (debug_overlay_) {
             subtitle_ = "F3 DEBUG | pos " + std::to_string(player_pos_.x) + "," +
@@ -1575,6 +1649,7 @@ private:
     bool debug_overlay_ = false;
     std::string subtitle_override_;
     uint64_t subtitle_override_remaining_ = 0;
+    uint8_t subtitle_override_priority_ = 0;
     uint64_t narrator_intrusion_remaining_ = 0;
     uint64_t narrator_intrusion_total_ = 0;
     uint64_t shot_flash_remaining_ = 0;
@@ -2202,7 +2277,8 @@ int RunComposition(const GameConfig& config) {
             render->SetSubtitleOnce(services.player->Dead()
                                         ? "YOU ARE DOWN. F9 loads a checkpoint or restarts this room."
                                         : "IMPACT. Health is now authoritative.",
-                                    services.player->Dead() ? 240 : 90);
+                                    services.player->Dead() ? 240 : 90,
+                                    services.player->Dead() ? 100 : 80);
         });
     if (services.world->HasLoadedRoom() && services.world->IsB1Loaded()) {
         slice.b1_room = services.world->LoadedRoom().id;
@@ -2486,7 +2562,7 @@ int RunComposition(const GameConfig& config) {
         render->SetSubtitleOnce(feedback.target_stunned
                                     ? "Target down. Search the body before moving on."
                                     : "Target dead. The scene is now evidence.",
-                                180);
+                                180, 80);
     };
     services.ai->SetShotFeedbackCallback([&](const ShotFeedback& feedback) {
         render->TriggerShotFeedback(feedback);
@@ -2499,7 +2575,9 @@ int RunComposition(const GameConfig& config) {
             const std::string text = speech->line == StringId::New(0xB1003)
                 ? "SECURITY: Stop. Identify yourself."
                 : "NPC: communication received.";
-            render->SetSubtitleOnce(text, 150);
+            // Speech is useful context, but it must not erase damage, death,
+            // access, or body-state feedback that arrived in the same window.
+            render->SetSubtitleOnce(text, 150, 20);
         });
     services.player->SetFireCallback([&](const FireRequest& request,
                                           const WeaponDef& weapon) {
@@ -2511,6 +2589,23 @@ int RunComposition(const GameConfig& config) {
                                         slice.player, true);
         services.world->SetBooleanFact(RuntimeFactId("fact_b1_loud_action"),
                                         slice.player, true);
+        // A loud action is a real world consequence only while the authored
+        // B1 camera is online. The camera-offline counterfactual remains a
+        // durable blind spot, while the online case raises the existing
+        // facility alert state consumed by the later Security objective.
+        const ObservationSource* camera_source =
+            services.systemic->GetObservationSource(slice.camera);
+        const bool camera_observes_current_room =
+            camera_source != nullptr && camera_source->online &&
+            camera_source->room == services.world->LoadedRoom().id;
+        if (camera_observes_current_room &&
+            services.systemic->AlertLevel() < FacilityAlertLevel::Suspicious) {
+            services.systemic->SetAlert(FacilityAlertLevel::Suspicious,
+                                        {services.world->LoadedRoom().id},
+                                        services.player->CurrentFrame());
+            render->SetSubtitleOnce(
+                "The active camera caught the disturbance.", 120, 45);
+        }
     });
 
     auto switch_room = [&](const std::string& id, const Vec3& spawn_point,
@@ -3320,6 +3415,7 @@ int RunComposition(const GameConfig& config) {
         return std::string("Explore the marked service route");
     });
     render->SetObjectivePresentationPrefix("B1:");
+    bool interaction_demonstrated = false;
     render->SetInteractionPromptSource([&] {
         const std::string& room = services.player->CurrentRoom();
         if (room == "room_b1_revival") {
@@ -3370,7 +3466,9 @@ int RunComposition(const GameConfig& config) {
                                : std::string("[F] TALK");
                 }
             }
-            if (services.player->CurrentFrame() < 360) {
+            if (services.player->CurrentFrame() < 360 &&
+                !services.player->MovementDemonstrated() &&
+                !interaction_demonstrated) {
                 return std::string("WASD MOVE | MOUSE LOOK | F INTERACT | LMB FIRE");
             }
             return std::string{};
@@ -3385,7 +3483,9 @@ int RunComposition(const GameConfig& config) {
             if (focused_scene_entity("calibration_service_door")) {
                 return std::string("[F] ENTER MEDICAL SERVICE");
             }
-            return services.player->CurrentFrame() < 360
+            return services.player->CurrentFrame() < 360 &&
+                           !services.player->MovementDemonstrated() &&
+                           !interaction_demonstrated
                        ? std::string("WASD MOVE | MOUSE LOOK | F INTERACT")
                        : std::string{};
         }
@@ -3447,6 +3547,7 @@ int RunComposition(const GameConfig& config) {
         return std::string{};
     });
     services.player->SetInteractCallback([&] {
+        interaction_demonstrated = true;
         const Vec3& p = services.player->Locomotion().position;
         const uint64_t frame = services.player->CurrentFrame();
         const EntityId player = slice.player;
@@ -4111,6 +4212,12 @@ int RunComposition(const GameConfig& config) {
         const bool chapter_terminal_skip_replay =
             config.replay_path.find("chapter01_terminal_skip_denied") !=
             std::string::npos;
+        const bool scenario_guard_other_room_replay =
+            config.replay_path.find("scenario_guard_other_room") !=
+            std::string::npos;
+        const bool scenario_camera_offline_replay =
+            config.replay_path.find("scenario_camera_offline") !=
+            std::string::npos;
         const bool badge_held_by_player =
             slice.badge.IsValid() &&
             services.systemic->ItemHeldBy(slice.badge, slice.player);
@@ -4134,6 +4241,14 @@ int RunComposition(const GameConfig& config) {
             !services.narrative->LastPresentedText().empty();
         const bool quest_presented_during_route = render->ObjectiveWasPresented();
         const bool quest_presentation_visible = render->ObjectiveVisible();
+        const bool b1_loud_action = fact_is_true("fact_b1_loud_action");
+        const bool b1_camera_offline = fact_is_true("fact_b1_camera_disabled");
+        const char* camera_surveillance_response =
+            !b1_loud_action ? "NO_LOUD_ACTION" :
+            b1_camera_offline ? "BLIND_SPOT" :
+            static_cast<uint8_t>(services.systemic->AlertLevel()) >=
+                    static_cast<uint8_t>(FacilityAlertLevel::Suspicious)
+                ? "SECURITY_ALERT" : "NO_ALERT";
         const QuestRecord* chapter_quest =
             services.systemic->GetQuest(slice.chapter_quest);
         const bool chapter_quest_completed =
@@ -4162,6 +4277,12 @@ int RunComposition(const GameConfig& config) {
             visited_room("room_elevator_lobby");
         const bool expected_state_reached = normal_quit_replay
             ? slice.normal_quit_requested
+            : scenario_guard_other_room_replay
+                ? (services.player->CurrentRoom() == "room_service_medical" &&
+                   services.player->Health() == 100 &&
+                   services.ai->GuardAttackCount() == 0)
+            : scenario_camera_offline_replay
+                ? fact_is_true("fact_b1_camera_disabled")
             : chapter_systemic_replay
             ? (chapter_route_complete && fact_is_true("fact_chapter_quiet_route") &&
                fact_is_true("fact_chapter_staff_route") &&
@@ -4298,13 +4419,25 @@ int RunComposition(const GameConfig& config) {
                      "TRANSITION_DENIED=%s PLAYER_RESTARTED=%s "
                      "NORMAL_QUIT_REQUESTED=%s "
                      "FACT_R1_GUARD_DEAD=%s FACT_CHAPTER_SECURITY_CHECKPOINT=%s "
-                     "FACILITY_ALERT_LEVEL=%u\n",
+                     "FACT_B1_CAMERA_DISABLED=%s FACT_CHAPTER_MEDICAL_ASSESSED=%s "
+                     "FACT_CHAPTER_QUIET_ROUTE=%s FACT_CHAPTER_AGGRESSIVE_ROUTE=%s "
+                     "FACT_CHAPTER_STAFF_ROUTE=%s FACILITY_ALERT_LEVEL=%u "
+                     "CAMERA_SURVEILLANCE_RESPONSE=%s "
+                     "GUARD_ATTACKS=%zu BACKTRACK_MEDICAL=%s\n",
                      slice.transition_denied ? "YES" : "NO",
                      slice.player_restarted ? "YES" : "NO",
                      slice.normal_quit_requested ? "YES" : "NO",
                      fact_is_true("fact_r1_guard_dead") ? "YES" : "NO",
                      fact_is_true("fact_chapter_security_checkpoint") ? "YES" : "NO",
-                     static_cast<unsigned>(services.systemic->AlertLevel()));
+                     fact_is_true("fact_b1_camera_disabled") ? "YES" : "NO",
+                     fact_is_true("fact_chapter_medical_assessed") ? "YES" : "NO",
+                     fact_is_true("fact_chapter_quiet_route") ? "YES" : "NO",
+                     fact_is_true("fact_chapter_aggressive_route") ? "YES" : "NO",
+                     fact_is_true("fact_chapter_staff_route") ? "YES" : "NO",
+                     static_cast<unsigned>(services.systemic->AlertLevel()),
+                     camera_surveillance_response,
+                     services.ai->GuardAttackCount(),
+                     backtracked_medical ? "YES" : "NO");
         std::fprintf(stderr, "BADGE_HELD_BY_PLAYER=%s\n",
                      badge_held_by_player ? "YES" : "NO");
         std::fprintf(stderr, "CLEANER_RELATIONSHIP=%s CLEANER_HELP_COVERUP=%s\n",

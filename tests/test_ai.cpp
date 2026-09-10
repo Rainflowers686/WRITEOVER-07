@@ -566,6 +566,66 @@ bool AutonomousInvestigateRoutesNoiseWithoutTeleporting() {
     return true;
 }
 
+bool AutonomousInvestigateResumesPatrolAfterInspection() {
+    Grid grid(8, 7);
+    for (int32_t row = 0; row < grid.Height(); ++row) {
+        for (int32_t col = 0; col < grid.Width(); ++col) {
+            grid.SetCell(col, row, GridCell{});
+        }
+    }
+    GridWorldQuery query(&grid);
+    SystemicWorld systemic;
+    EventBus events;
+    DeterministicRNG rng(0x406);
+    AutonomousNpcSystem runtime;
+    runtime.Attach(&systemic, &events, &rng);
+
+    NPCInstance npc;
+    npc.id = NpcId::New(406);
+    npc.position = Vec3{1.5f, 1.5f, 0.0f};
+    npc.state = NPCState::Patrol;
+    WO_CHECK(runtime.AddNpc(npc, RoomId::New(1)));
+    runtime.SetWorldQuery(&query);
+    runtime.SetActiveRoom(RoomId::New(1));
+    // Isolate the delayed noise consequence from player sight. This test is
+    // about the state sequence, not a guard combat decision.
+    runtime.SetPlayerPose(Vec3{1.5f, 6.5f, 0.0f}, kEyeStand);
+    runtime.SetPlayerTargetActive(false);
+    WO_CHECK(runtime.SetPatrolRoute(npc.id,
+                                    {Vec3{1.5f, 1.5f, 0.0f},
+                                     Vec3{6.5f, 1.5f, 0.0f}}));
+
+    events.Post(EventWeaponFire{EntityId::New(1), WeaponSlot::Pistol,
+                                Vec3{4.5f, 1.5f, kEyeStand}, 0.0f, 0.0f,
+                                0.9f},
+                EventKind::Notification, EntityId::New(1), EntityId::Invalid(),
+                EventId::Invalid(), 12);
+    events.Dispatch();
+    events.Dispatch();
+
+    bool saw_investigate = false;
+    bool saw_patrol_after_inspection = false;
+    Vec3 position_at_resume{};
+    for (uint64_t frame = 12; frame <= 1200; ++frame) {
+        runtime.Tick(frame);
+        const NPCState state = runtime.Npcs().front().instance.state;
+        if (state == NPCState::Investigate) saw_investigate = true;
+        if (saw_investigate && state == NPCState::Patrol) {
+            saw_patrol_after_inspection = true;
+            position_at_resume = runtime.Npcs().front().instance.position;
+            break;
+        }
+    }
+    WO_CHECK(saw_investigate);
+    WO_CHECK(saw_patrol_after_inspection);
+
+    for (uint64_t frame = 1201; frame <= 1800; ++frame) runtime.Tick(frame);
+    const Vec3 after_resume = runtime.Npcs().front().instance.position;
+    WO_CHECK(std::fabs(after_resume.x - position_at_resume.x) > 0.25f ||
+             std::fabs(after_resume.y - position_at_resume.y) > 0.25f);
+    return true;
+}
+
 bool AutonomousFullNpcSpeaksOnSightTransitionOnly() {
     Grid grid = MakeViewGrid();
     GridWorldQuery query(&grid);
@@ -1052,6 +1112,8 @@ void RegisterAiTests(TestHarness& test) {
     test.Add("ai.visibility_counterfactual", &AutonomousVisibilityChangesCombatCounterfactual);
     test.Add("ai.investigate_routes_noise_without_teleporting",
              &AutonomousInvestigateRoutesNoiseWithoutTeleporting);
+    test.Add("ai.investigate_resumes_patrol_after_inspection",
+             &AutonomousInvestigateResumesPatrolAfterInspection);
     test.Add("ai.load_unknown_npc_is_atomic",
              &AutonomousLoadDoesNotPartiallyMutateOnUnknownNpc);
 }

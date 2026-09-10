@@ -29,6 +29,8 @@ $cases = @(
     @{ Name = "chapter01_security_bypass"; File = "chapter01_security_bypass.txt"; Frames = 3500; Room = "" },
     @{ Name = "chapter01_no_save_death"; File = "chapter01_no_save_death.txt"; Frames = 3000; Room = "room_1f_security" },
     @{ Name = "chapter01_terminal_skip_denied"; File = "chapter01_terminal_skip_denied.txt"; Frames = 2000; Room = "" },
+    @{ Name = "scenario_guard_other_room"; File = "scenario_guard_other_room.txt"; Frames = 120; Room = "room_service_medical" },
+    @{ Name = "scenario_camera_offline"; File = "scenario_camera_offline.txt"; Frames = 1200; Room = "" },
     @{ Name = "normal_quit"; File = "normal_quit.txt"; Frames = 0; Room = "" }
 )
 

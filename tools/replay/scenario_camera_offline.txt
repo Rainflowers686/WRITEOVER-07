@@ -1,0 +1,11 @@
+# Camera consequence setup: traverse the authored B1 room to the ceiling
+# camera, look up, and disable it before leaving the room.
+0 W down
+375 W up
+376 A down
+845 A up
+846 MOUSEMOVE 0 -200
+847 F down
+848 F up
+900 MOUSELEFT down
+901 MOUSELEFT up

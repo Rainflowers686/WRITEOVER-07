@@ -1,0 +1,4 @@
+# Negative room-isolation scenario: start in Medical while the authored
+# security Guard remains in room_1f_security.  No cross-room attack may occur.
+0 W down
+60 W up
