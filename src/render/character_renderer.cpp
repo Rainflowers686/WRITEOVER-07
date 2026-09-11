@@ -82,7 +82,7 @@ InkPalette Palette(CharacterInk ink) {
     case CharacterInk::Security:
         return {{106, 132, 148}, {214, 232, 224}, {37, 57, 72}, {224, 164, 58}};
     case CharacterInk::FullHuman:
-        return {{166, 124, 151}, {246, 218, 202}, {54, 42, 60}, {102, 214, 199}};
+        return {{156, 174, 164}, {236, 224, 204}, {64, 73, 70}, {102, 198, 177}};
     case CharacterInk::Maintenance:
         return {{142, 116, 68}, {224, 190, 106}, {55, 48, 40}, {89, 205, 181}};
     case CharacterInk::Terminal:
@@ -1198,7 +1198,9 @@ void DrawWeaponViewmodel(CharCell* cells, int cell_w, int cell_h,
                                             0, source_width - 1);
             if (source_x >= static_cast<int>(row.size())) continue;
             const char32_t glyph = row[static_cast<size_t>(source_x)];
-            if (glyph == U' ' || !IsSingleWidthGlyph(glyph)) continue;
+            const CharacterCellOpacity opacity = asset->OpacityAt(source_x, source_y);
+            if (opacity == CharacterCellOpacity::Transparent ||
+                !IsSingleWidthGlyph(glyph)) continue;
             const Color fg = (glyph == U'=' || glyph == U'>' || glyph == U'*')
                 ? ScaleColor(palette.accent, options.high_contrast ? 1.08f : 1.0f, 245)
                 : SpriteForeground(*asset, glyph, 2.0f, 255, options);
@@ -1206,7 +1208,8 @@ void DrawWeaponViewmodel(CharCell* cells, int cell_w, int cell_h,
             const int y = base_y + dy;
             if (x < 0 || y < 0 || x >= cell_w || y >= cell_h) continue;
             cells[static_cast<size_t>(y) * cell_w + x] =
-                MakeCell(glyph, fg, {5, 9, 14}, 0x01);
+                MakeCell(opacity == CharacterCellOpacity::OpaqueEmpty ? U' ' : glyph,
+                         fg, {5, 9, 14}, 0x01);
         }
     }
 }

@@ -843,7 +843,8 @@ bool CharacterArtPolishHasAuthoredResolution() {
         const CharacterArtAsset* pistol = bank.FindPistol(frame);
         WO_CHECK(pistol != nullptr);
         WO_CHECK(pistol->Height() >= 24 && pistol->Height() <= 28);
-        WO_CHECK(pistol->Width() >= 50);
+        // Authored hand/slide resolution, not a mandate for the old wide apron.
+        WO_CHECK(pistol->Width() >= 24 && pistol->Width() <= 48);
     }
     return true;
 }
@@ -867,9 +868,14 @@ bool CharacterDirectionalAssetsAndLodHysteresis() {
                 bank.Find(kind, lod, CharacterFacing::Back);
             const CharacterArtAsset* side =
                 bank.Find(kind, lod, CharacterFacing::SideRight);
+            const CharacterArtAsset* left =
+                bank.Find(kind, lod, CharacterFacing::SideLeft);
             WO_CHECK(front != nullptr);
             WO_CHECK(back != nullptr);
             WO_CHECK(side != nullptr);
+            WO_CHECK(left != nullptr);
+            WO_CHECK(left->facing == CharacterFacing::SideLeft);
+            WO_CHECK(left->rows != side->rows);
             if (front == nullptr || back == nullptr || side == nullptr) continue;
             // Directional art must be an authored lookup, not the old
             // camera-facing asset with an eye suppression transform.
@@ -913,6 +919,26 @@ bool CharacterWeaponSlotsHaveDistinctAuthoredArt() {
         WO_CHECK(pistol->rows != smg->rows);
         WO_CHECK(pistol->rows != stunner->rows);
         WO_CHECK(smg->rows != stunner->rows);
+        // Occupied blanks occlude only the authored metal/hand volume; real
+        // surrounding whitespace must keep the world. Check every hero pose.
+        for (const WeaponSlot slot : {WeaponSlot::Pistol, WeaponSlot::Stunner}) {
+            constexpr int width = 240;
+            constexpr int height = 67;
+            std::vector<CharCell> buffer(static_cast<size_t>(width) * height);
+            for (auto& cell : buffer) cell.code_point = U'W';
+            DrawWeaponViewmodel(buffer.data(), width, height, bank, slot, frame, 0.0f);
+            int occupied_blanks = 0;
+            int world_cells = 0;
+            for (const auto& cell : buffer) {
+                occupied_blanks += cell.code_point == U' ';
+                world_cells += cell.code_point == U'W';
+                WO_CHECK(cell.code_point != U'~');
+            }
+            WO_CHECK(occupied_blanks > 0);
+            WO_CHECK(world_cells > width * height * 9 / 10);
+            WO_CHECK(buffer[static_cast<size_t>(height / 2) * width + width / 2]
+                         .code_point == U'W');
+        }
     }
     return true;
 }
@@ -951,11 +977,11 @@ bool CharacterPistolUsesSceneGripAnchor() {
     // The grip/hand anchor places the full authored pose inward from the
     // lower-right edge.  The old right-rectangle placement would start near
     // the 80% width line and leave the muzzle detached from the scene centre.
-    WO_CHECK(first_x >= 135 && first_x <= 168);
+    WO_CHECK(first_x >= 135 && first_x <= 182);
     WO_CHECK(last_x >= 190 && last_x <= 212);
     WO_CHECK(first_y >= 35 && first_y <= 44);
     WO_CHECK(last_y >= 64 && last_y < height);
-    WO_CHECK(last_x - first_x >= 40);
+    WO_CHECK(last_x - first_x >= 24 && last_x - first_x <= 76);
     return true;
 }
 

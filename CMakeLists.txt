@@ -200,6 +200,10 @@ target_compile_definitions(writeover_app PRIVATE
 # Tools
 # ---------------------------------------------------------------------------
 if(WO_BUILD_TOOLS)
+    add_executable(writeover_art_review tools/art_review/main.cpp)
+    target_link_libraries(writeover_art_review PRIVATE writeover_common writeover_render)
+    writeover_configure_target(writeover_art_review)
+
     add_executable(writeover_bench tools/bench/main.cpp)
     target_link_libraries(writeover_bench PRIVATE writeover_common writeover_systemic writeover_world writeover_player writeover_ai writeover_render)
     writeover_configure_target(writeover_bench)
