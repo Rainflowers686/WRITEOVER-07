@@ -111,16 +111,16 @@ int main(int argc, char** argv) {
     if (!bank.Load(argv[1])) return 3;
     const std::array<Case, 16> cases{{
         {"Near / front / 1.8m", 1.8f, kPi},
-        {"Near / left / 1.8m", 1.8f, kPi * 0.5f},
-        {"Near / right / 1.8m", 1.8f, -kPi * 0.5f},
+        {"Near / screen right / 1.8m", 1.8f, kPi * 0.5f},
+        {"Near / screen left / 1.8m", 1.8f, -kPi * 0.5f},
         {"Near / back / 1.8m", 1.8f, 0.0f},
         {"Mid / front / 5m", 5.0f, kPi},
-        {"Mid / left / 5m", 5.0f, kPi * 0.5f},
-        {"Mid / right / 5m", 5.0f, -kPi * 0.5f},
+        {"Mid / screen right / 5m", 5.0f, kPi * 0.5f},
+        {"Mid / screen left / 5m", 5.0f, -kPi * 0.5f},
         {"Mid / back / 5m", 5.0f, 0.0f},
         {"Far / front / 13m", 13.0f, kPi},
-        {"Far / left / 13m", 13.0f, kPi * 0.5f},
-        {"Far / right / 13m", 13.0f, -kPi * 0.5f},
+        {"Far / screen right / 13m", 13.0f, kPi * 0.5f},
+        {"Far / screen left / 13m", 13.0f, -kPi * 0.5f},
         {"Far / back / 13m", 13.0f, 0.0f},
         {"Partial low wall / 3m", 3.0f, kPi, true},
         {"Two actors / 2.6m", 2.6f, kPi, false, true},
@@ -139,7 +139,7 @@ int main(int argc, char** argv) {
         for (size_t panel = 0; panel < cases.size(); ++panel) {
             if (panel < 12) {
                 const std::array<CharacterFacing, 4> expected{{CharacterFacing::Front,
-                    CharacterFacing::SideLeft, CharacterFacing::SideRight,
+                    CharacterFacing::SideRight, CharacterFacing::SideLeft,
                     CharacterFacing::Back}};
                 const auto& c = cases[panel];
                 const Vec3 viewer{1.5f, 8.5f, kEyeStand};
@@ -149,6 +149,15 @@ int main(int argc, char** argv) {
                 const auto* asset = bank.Find(kinds[kind], lod, facing);
                 if (facing != expected[panel % 4] || asset == nullptr ||
                     asset->facing != facing || asset->lod != lod) return 5;
+                if (panel % 4 == 1 || panel % 4 == 2) {
+                    const CameraProjection camera(viewer, 0.0f, 0.0f,
+                        kWidth, kHeight, 0.5f * kHeight, kCharacterCellAspect);
+                    const Vec3 tip{actor.x + std::cos(c.yaw) * 0.5f,
+                        actor.y + std::sin(c.yaw) * 0.5f, actor.z};
+                    const float heading = camera.ScreenX(tip) - camera.ScreenX(actor);
+                    if ((facing == CharacterFacing::SideLeft) != (heading < 0.0f))
+                        return 7;
+                }
                 std::printf("FACING_MAP kind=%zu distance=%.1f yaw=%.4f viewer=(1.5,8.5) "
                             "actor=(%.1f,8.5) selected=%s exact_asset=YES\n",
                             kind, c.distance, c.yaw, actor.x, FacingName(facing));

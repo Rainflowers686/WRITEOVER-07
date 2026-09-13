@@ -6,7 +6,7 @@
     {"id":"security_monitor_b","kind":"crate","room":"room_1f_security","position":{"x":10.5,"y":8.5,"z":1.02},"yaw":0,"radius":0.24,"height":0.82,"visual":"terminal","systemicId":0,"linkId":0},
     {"id":"security_monitor_c","kind":"crate","room":"room_1f_security","position":{"x":9.3,"y":8.5,"z":1.02},"yaw":0,"radius":0.24,"height":0.7,"visual":"terminal","systemicId":0,"linkId":0},
     {"id":"security_rack_display","kind":"crate","room":"room_1f_security","position":{"x":3.5,"y":4.05,"z":1.25},"yaw":0,"radius":0.24,"height":0.64,"visual":"terminal","systemicId":0,"linkId":0},
-    {"id":"b1_bed_vitals","kind":"crate","room":"room_b1_revival","position":{"x":9.25,"y":15.8,"z":1.25},"yaw":0,"radius":0.24,"height":0.9,"visual":"terminal","systemicId":0,"linkId":0},
+    {"id":"b1_bed_vitals","kind":"crate","room":"room_b1_revival","position":{"x":9.25,"y":16.2,"z":1.25},"yaw":0,"radius":0.24,"height":0.9,"visual":"terminal","systemicId":0,"linkId":0},
     {"id":"b1_bed_vitals_rear","kind":"crate","room":"room_b1_revival","position":{"x":13.6,"y":16.1,"z":0.62},"yaw":0,"radius":0.24,"height":0.95,"visual":"terminal","systemicId":0,"linkId":0},
     {"id":"b1_diagnostic_display","kind":"crate","room":"room_b1_revival","position":{"x":10.5,"y":5.7,"z":0.95},"yaw":0,"radius":0.24,"height":0.78,"visual":"terminal","systemicId":0,"linkId":0},
     {"id":"medical_intake_display","kind":"crate","room":"room_service_medical","position":{"x":5.5,"y":3.5,"z":0.86},"yaw":0,"radius":0.24,"height":0.76,"visual":"terminal","systemicId":0,"linkId":0},

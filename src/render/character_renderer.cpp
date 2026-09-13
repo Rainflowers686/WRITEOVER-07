@@ -471,20 +471,32 @@ char32_t WallGlyph(uint8_t material, float distance, float surface_u,
 CharCell WallCell(const OccludingSegment& segment, float surface_u,
                   float surface_z,
                   const CharacterRenderOptions& options) {
-    const Color base = MaterialBase(segment.material);
-    const float light_level = 0.27f + 0.73f * (segment.light / 255.0f);
+    const bool service_housing = segment.material == 6 &&
+        (segment.flag == SegCeilingRise || segment.flag == SegCeilingDrop);
+    // Low service clearances are galvanized overhead housings. Preserve
+    // their authored geometry and simulation light; lift only this material's
+    // presentation so the passage does not appear as a missing black patch.
+    const Color base = MaterialBase(service_housing ? 1 : segment.material);
+    const float light_level = service_housing
+        ? 0.68f + 0.32f * (segment.light / 255.0f)
+        : 0.27f + 0.73f * (segment.light / 255.0f);
     const float fog = 0.38f + 0.62f * Saturate(1.0f - segment.distance / 40.0f);
     float scale = light_level * fog * (options.high_contrast ? 1.10f : 1.0f);
     if (segment.flag == SegFloorRise || segment.flag == SegFloorDrop) scale *= 0.86f;
-    if (segment.flag == SegCeilingRise || segment.flag == SegCeilingDrop) scale *= 0.70f;
+    if (segment.flag == SegCeilingRise || segment.flag == SegCeilingDrop)
+        scale *= service_housing ? 0.95f : 0.70f;
     // The upper light, inset edge and lower grime change glyph luminance,
     // not the background rectangle. Even monochrome keeps the construction.
     const float panel_u = surface_u - std::floor(surface_u / 2.0f) * 2.0f;
     const float bevel = panel_u < 0.09f ? 1.16f : panel_u > 1.90f ? 0.70f : 0.96f;
     const float height_light = surface_z < 0.25f ? 0.52f :
         (surface_z > 2.5f ? 1.16f : 0.9f);
-    const char32_t glyph = WallGlyph(segment.material, segment.distance,
-                                      surface_u, surface_z, segment.flag);
+    const bool housing_lip = service_housing &&
+        (std::fabs(surface_z - segment.bottom_z) < 0.065f ||
+         std::fabs(surface_z - segment.top_z) < 0.065f);
+    const char32_t glyph = housing_lip ? U'═'
+        : WallGlyph(segment.material, segment.distance,
+                    surface_u, surface_z, segment.flag);
     const float detail = glyph == U'░' || glyph == U'·' || glyph == U':'
         ? 0.70f : 0.94f;
     const Color fg = ScaleColor(base, scale * bevel * height_light * detail, 196);
@@ -1155,8 +1167,11 @@ CharacterFacing SelectCharacterFacing(float actor_yaw,
     const float absolute = std::fabs(relative);
     if (absolute <= kCharacterPi * 0.25f) return CharacterFacing::Front;
     if (absolute >= kCharacterPi * 0.75f) return CharacterFacing::Back;
-    return relative > 0.0f ? CharacterFacing::SideRight
-                           : CharacterFacing::SideLeft;
+    // Side names describe the authored image's facing direction. Relative
+    // to a viewer looking toward the actor, positive relative yaw projects
+    // the actor's forward vector to screen-left (not screen-right).
+    return relative > 0.0f ? CharacterFacing::SideLeft
+                           : CharacterFacing::SideRight;
 }
 
 void RenderCharacterFrame(const GridCell* cells, int grid_w, int grid_h,

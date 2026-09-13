@@ -1235,6 +1235,35 @@ bool CharacterRaisedSurfaceHasFiniteExtent() {
     return true;
 }
 
+bool CharacterLowServiceDuctRemainsLegible() {
+    Grid grid = MakeOpenGrid(10, 9);
+    for (int row = 3; row <= 5; ++row) {
+        GridCell duct = grid.GetCell(4, row);
+        duct.ceiling_height = 1.2f;
+        duct.material = 6;
+        duct.light = 60;
+        grid.SetCell(4, row, duct);
+    }
+    constexpr int width = 80;
+    constexpr int height = 40;
+    CharacterView view;
+    view.origin = Vec3{1.5f, 4.5f, kEyeStand};
+    std::vector<CharCell> frame(width * height);
+    RenderCharacterFrame(grid.Data().data(), grid.Width(), grid.Height(),
+                         view, frame.data(), width, height, 24.0f);
+    const auto& face = frame[17 * width + width / 2];
+    const float contrast = 0.2126f * (face.fg_r - face.bg_r) +
+        0.7152f * (face.fg_g - face.bg_g) +
+        0.0722f * (face.fg_b - face.bg_b);
+    std::printf("CHARACTER_SERVICE_DUCT glyph=U+%04X ink_contrast=%.2f\n",
+                static_cast<unsigned>(face.code_point), contrast);
+    // B1's low passage must read as a solid overhead housing, not a black
+    // missing patch. This checks glyph contrast, not colour-only structure.
+    WO_CHECK(face.code_point != U' ');
+    WO_CHECK(contrast > 20.0f);
+    return true;
+}
+
 bool CharacterPistolKeepsTransparentWhitespace() {
     CharacterArtBank bank;
     const int w = 80;
@@ -1499,14 +1528,28 @@ bool SpatialActorFacingOrbit() {
              CharacterFacing::Front);
     WO_CHECK(SelectCharacterFacing(0.0f, actor,
                                    Vec3{actor.x, actor.y + 3.0f, 1.6f}) ==
-             CharacterFacing::SideLeft);
+             CharacterFacing::SideRight);
     WO_CHECK(SelectCharacterFacing(0.0f, actor,
                                    Vec3{actor.x - 3.0f, actor.y, 1.6f}) ==
              CharacterFacing::Back);
     WO_CHECK(SelectCharacterFacing(0.0f, actor,
                                    Vec3{actor.x, actor.y - 3.0f, 1.6f}) ==
-             CharacterFacing::SideRight);
-    (void)half_pi;
+             CharacterFacing::SideLeft);
+    // File names alone cannot certify facing. Project the actor's forward
+    // vector with the production camera: the authored nose/boot direction
+    // must agree with that screen-space heading, not the viewer's body side.
+    const Vec3 viewer{actor.x - 3.0f, actor.y, 1.6f};
+    const CameraProjection camera(viewer, 0.0f, 0.0f, 120, 48, 24.0f, 0.5f);
+    for (float yaw : {-half_pi, half_pi}) {
+        const Vec3 tip{actor.x + std::cos(yaw) * 0.5f,
+                        actor.y + std::sin(yaw) * 0.5f, actor.z};
+        const float screen_heading = camera.ScreenX(tip) - camera.ScreenX(actor);
+        const CharacterFacing expected = screen_heading < 0.0f
+            ? CharacterFacing::SideLeft : CharacterFacing::SideRight;
+        std::printf("CHARACTER_FACING_HEADING yaw=%.4f screen_delta=%.2f\n",
+                    yaw, screen_heading);
+        WO_CHECK(SelectCharacterFacing(yaw, actor, viewer) == expected);
+    }
     return true;
 }
 
@@ -1801,6 +1844,8 @@ void RegisterRenderTests(TestHarness& test) {
              &CharacterWallPatternUsesWorldCoordinates);
     test.Add("character.raised_surface_finite_extent",
              &CharacterRaisedSurfaceHasFiniteExtent);
+    test.Add("character.low_service_duct_legible",
+             &CharacterLowServiceDuctRemainsLegible);
     test.Add("character.pistol_transparency", &CharacterPistolKeepsTransparentWhitespace);
     test.Add("character.portrait_bounded_char_art", &CharacterPortraitIsBoundedCharArt);
     test.Add("spatial.camera_projection_contract",

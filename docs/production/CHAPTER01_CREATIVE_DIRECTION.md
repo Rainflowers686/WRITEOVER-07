@@ -45,6 +45,11 @@ renderer now reconstructs finite planes from the existing DDA transitions,
 shares their occlusion with sprites, and uses camera-forward wall depth.
 This is a bounded CharCell renderer correction, not a new rendering architecture.
 The near-reader action shares HUD visibility and keeps nearest-target ordering.
+Low service housings retain their physical clearance and simulation light.
+Their galvanized surface and edge lip have bounded presentation contrast so
+the overhead mass reads as architecture rather than a missing black patch.
+The final integrated reference directory is
+`evidence/chapter01_creative_polish/contract_final_material/`.
 
 ## The facility edits the record; people live with the event
 
@@ -65,6 +70,10 @@ eye-line, jaw and neck, an open coat and a relaxed stance; never an emoticon.
 Profiles change head, chest width, arm placement, equipment and leg overlap;
 backs show the nape, shoulder blades, coat seam or equipment, not a frontal face.
 Left/right are separate authored drawings, not mirrored frontal art.
+SideLeft/SideRight describe the direction the authored image faces on screen,
+not the anatomical side visible to the viewer. Verify the projected actor
+heading as well as the selected enum, asset and inspection label: matching
+file names alone can conceal an inverted selector.
 
 Each distance has its own drawing. Near adds construction, not a bigger face.
 Bodies lie across the floor: a curled knee and supporting arm for unconscious,
@@ -118,6 +127,8 @@ addresses the person rather than the badge. No shared generic comedian voice.
 - B1: observation beds/headwall, calibration bench, cart lane and framed reader
   exit. The opening person and tool precede the explanation. Keep the navigable
   centre and original low-service passage; do not turn beds into corridor clutter.
+  In particular, keep the initial eastward walking lane clear of bed ends and
+  place bedside displays on their actual supporting headwalls.
 - Calibration: diagnostic bank, test rail and one onward framed service route.
 - Medical: intake counter, treatment bed/vitals and supply storage; readable
   choices to Staff/Security, clinical colour without sterile emptiness.

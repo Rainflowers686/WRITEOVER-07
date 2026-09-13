@@ -1162,7 +1162,7 @@
     {
       "col": 6,
       "row": 15,
-      "floor": 0.62,
+      "floor": 0.0,
       "ceiling": 3.6,
       "material": "concrete",
       "light": 206,
@@ -1328,7 +1328,7 @@
     {
       "col": 7,
       "row": 15,
-      "floor": 0.62,
+      "floor": 0.0,
       "ceiling": 3.6,
       "material": "concrete",
       "light": 206,
@@ -1494,7 +1494,7 @@
     {
       "col": 8,
       "row": 15,
-      "floor": 0.62,
+      "floor": 0.0,
       "ceiling": 3.6,
       "material": "concrete",
       "light": 206,
@@ -1660,7 +1660,7 @@
     {
       "col": 9,
       "row": 15,
-      "floor": 1.25,
+      "floor": 0.0,
       "ceiling": 3.6,
       "material": "glass",
       "light": 180,
@@ -1956,7 +1956,7 @@
     {
       "col": 11,
       "row": 15,
-      "floor": 0.62,
+      "floor": 0.0,
       "ceiling": 3.6,
       "material": "concrete",
       "light": 183,
@@ -2122,7 +2122,7 @@
     {
       "col": 12,
       "row": 15,
-      "floor": 0.62,
+      "floor": 0.0,
       "ceiling": 3.6,
       "material": "concrete",
       "light": 183,
@@ -2288,7 +2288,7 @@
     {
       "col": 13,
       "row": 15,
-      "floor": 0.62,
+      "floor": 0.0,
       "ceiling": 3.6,
       "material": "concrete",
       "light": 183,
