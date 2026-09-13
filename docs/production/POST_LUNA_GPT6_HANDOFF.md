@@ -148,7 +148,7 @@ Record the exact command and result in the audit manifest.
 
 ## REMAINING_PACKAGE_WORK
 
-The current Release package was built from `cabe74303da5ab12e74607b135629646b5d7bc1e`
+The current Release package was built from `c760abd8c25dacd2b82f25e83ccffc2b1a4939ea`
 and passed clean-package smoke, executable-relative data, manifest/hash,
 secret-scan and user-data-separation checks. Rebuild only if source/content
 changes; no public release is implied.
