@@ -3,6 +3,7 @@
 #include "writeover/render/benchmark.h"
 #include "writeover/render/character_renderer.h"
 #include "writeover/render/frame_encoder.h"
+#include "writeover/render/hud.h"
 #include "writeover/render/raycaster.h"
 #include "writeover/render/reference_renderer.h"
 #include "writeover/render/production_renderer.h"
@@ -836,7 +837,9 @@ bool CharacterArtPolishHasAuthoredResolution() {
     WO_CHECK(mid != nullptr);
     WO_CHECK(near != nullptr);
     WO_CHECK(mid->Height() >= 14 && mid->Height() <= 18);
-    WO_CHECK(near->Height() >= 22 && near->Height() <= 28);
+    // The approved anatomy pass uses 30-32 rows to keep a restrained head
+    // above shoulders, coat, pelvis and weight-bearing legs.
+    WO_CHECK(near->Height() >= 30 && near->Height() <= 36);
 
     for (const auto frame : {PistolFrame::IdleA, PistolFrame::IdleB,
                              PistolFrame::Fire, PistolFrame::Reload}) {
@@ -1192,11 +1195,11 @@ bool CharacterWallPatternUsesWorldCoordinates() {
         return frame;
     };
 
-    const auto seam_frame = render(2.96f);
-    const auto panel_frame = render(3.18f);
+    const auto seam_frame = render(3.96f);
+    const auto panel_frame = render(4.18f);
     const char32_t seam_glyph = seam_frame[18 * width + width / 2].code_point;
     const char32_t panel_glyph = panel_frame[18 * width + width / 2].code_point;
-    std::printf("CHARACTER_WALL_ANCHOR surface_u=2.96/3.18 glyph=U+%04X/U+%04X\n",
+    std::printf("CHARACTER_WALL_ANCHOR surface_u=3.96/4.18 glyph=U+%04X/U+%04X\n",
                 static_cast<unsigned>(seam_glyph),
                 static_cast<unsigned>(panel_glyph));
     // The camera translates along the same wall face while the destination
@@ -1205,6 +1208,31 @@ bool CharacterWallPatternUsesWorldCoordinates() {
     // panel seam.
     WO_CHECK(seam_glyph != panel_glyph);
     return seam_glyph == U'║' || seam_glyph == U'╫';
+}
+
+bool CharacterRaisedSurfaceHasFiniteExtent() {
+    Grid grid = MakeOpenGrid(14, 10);
+    constexpr int width = 96;
+    constexpr int height = 48;
+    const float focal = 24.0f / std::tan(3.14159265f / 6.0f);
+    CharacterView view;
+    view.origin = Vec3{2.5f, 4.5f, kEyeStand};
+    std::vector<CharCell> frame(width * height);
+    for (int col = 4; col <= 6; ++col) {
+        GridCell desk = grid.GetCell(col, 4);
+        desk.floor_height = 0.8f;
+        desk.material = 2;
+        grid.SetCell(col, 4, desk);
+    }
+    RenderCharacterFrame(grid.Data().data(), grid.Width(), grid.Height(),
+                         view, frame.data(), width, height, focal);
+    // This ray meets the desk TOP before its far vertical edge. Projecting
+    // every floor at final_floor_z painted that hidden edge across the top.
+    const auto& top = frame[35 * width + width / 2];
+    std::printf("CHARACTER_FINITE_DESK_TOP glyph=U+%04X\n",
+                static_cast<unsigned>(top.code_point));
+    WO_CHECK(top.code_point == U' ');
+    return true;
 }
 
 bool CharacterPistolKeepsTransparentWhitespace() {
@@ -1272,7 +1300,9 @@ void FillSpatialSentinel(std::vector<CharCell>& frame, char32_t glyph = U'.') {
 }
 
 bool IsSpatialSpriteCell(const CharCell& cell) {
-    return cell.bg_r == 5 && cell.bg_g == 9 && cell.bg_b == 14;
+    // Geometry tests detect writes into their explicit sentinel. Authored
+    // material underpaint need not share one RGB value to be an occupied cell.
+    return cell.bg_r != 41 || cell.bg_g != 47 || cell.bg_b != 53;
 }
 
 int CountSpatialSpriteCells(const std::vector<CharCell>& frame) {
@@ -1367,6 +1397,97 @@ bool SpatialCameraProjectionContract() {
         WO_CHECK(SelectCharacterFacing(0.0f, actor, camera_position) ==
                  fixed_actor_facing);
     }
+    return true;
+}
+
+bool HudSubtitleLayoutIsBounded() {
+    constexpr int width = 120;
+    constexpr int height = 30;
+    std::vector<CharCell> frame(width * height);
+    for (auto& cell : frame) {
+        cell.code_point = U'~';
+        cell.bg_r = 145;
+        cell.bg_g = 113;
+        cell.bg_b = 88;
+    }
+    HudFrame hud;
+    const std::string long_line = std::string(82, 'a') + " calm words continue here.";
+    hud.subtitle = long_line.c_str();
+    hud.objective = "Find the reader";
+    hud.interaction_prompt = "E / Read";
+    HudRenderer{}.Draw(frame.data(), width, height, hud);
+    const auto& reticle = frame[(height / 2) * width + width / 2];
+    WO_CHECK(reticle.code_point == U'·');
+    WO_CHECK(reticle.bg_r == 145 && reticle.bg_g == 113 && reticle.bg_b == 88);
+    WO_CHECK(frame[3 * width + 2].code_point == U'>');
+    WO_CHECK(frame[5 * width + 2].code_point == U'E');
+    WO_CHECK(frame[(height - 4) * width + 2].code_point == U'a');
+    WO_CHECK(frame[(height - 3) * width + 2].code_point == U'w');
+    for (int y : {height - 4, height - 3}) {
+        WO_CHECK(frame[y * width + 1].code_point == U'~');
+        WO_CHECK(frame[y * width + 92].code_point == U'~');
+    }
+    hud.subtitle = nullptr;
+    std::vector<CharCell> small(4, CharCell{});
+    HudRenderer{}.Draw(small.data(), 2, 2, hud);
+    HudRenderer{}.Draw(nullptr, 0, 0, hud);
+    return true;
+}
+
+bool PropFacingDoesNotReverseTerminalText() {
+    CharacterArtBank bank;
+    WO_CHECK(LoadProductionCharacterArtBank(bank));
+    const Grid grid = MakeOpenGrid(12, 8);
+    CharacterView view;
+    view.origin = {2.5f, 3.5f, kEyeStand};
+    std::vector<CharCell> front(kSpatialTestWidth * kSpatialTestHeight);
+    std::vector<CharCell> back(front.size());
+    FillSpatialSentinel(front);
+    FillSpatialSentinel(back);
+    DrawCharacterSprites(view, {{{5.5f, 3.5f, 0.0f}, 1.5f,
+        CharacterSpriteKind::Terminal, 0.0f}}, bank, grid.Data().data(),
+        grid.Width(), grid.Height(), front.data(), kSpatialTestWidth,
+        kSpatialTestHeight, SpatialTestFocal());
+    DrawCharacterSprites(view, {{{5.5f, 3.5f, 0.0f}, 1.5f,
+        CharacterSpriteKind::Terminal, 3.14159265f}}, bank, grid.Data().data(),
+        grid.Width(), grid.Height(), back.data(), kSpatialTestWidth,
+        kSpatialTestHeight, SpatialTestFocal());
+    bool drew = false;
+    for (size_t i = 0; i < front.size(); ++i) {
+        WO_CHECK(front[i].code_point == back[i].code_point);
+        drew = drew || IsSpatialSpriteCell(front[i]);
+    }
+    WO_CHECK(drew);
+    return true;
+}
+
+bool ArchitecturalDoorKeepsWorldPlane() {
+    CharacterArtBank bank;
+    WO_CHECK(LoadProductionCharacterArtBank(bank));
+    const Grid grid = MakeOpenGrid(12, 8);
+    CharacterView view;
+    view.origin = {2.5f, 3.5f, kEyeStand};
+    const auto draw = [&](float yaw, const Grid& room) {
+        std::vector<CharCell> frame(kSpatialTestWidth * kSpatialTestHeight);
+        FillSpatialSentinel(frame);
+        DrawCharacterSprites(view, {{{5.5f, 3.5f, 0.0f}, 2.4f,
+            CharacterSpriteKind::Door, yaw}}, bank, room.Data().data(),
+            room.Width(), room.Height(), frame.data(), kSpatialTestWidth,
+            kSpatialTestHeight, SpatialTestFocal());
+        return frame;
+    };
+    const auto front = draw(0.0f, grid);
+    const auto edge = draw(1.5707963268f, grid);
+    WO_CHECK(CountSpatialSpriteCells(front) > 60);
+    // An edge-on physical plane must not remain a camera-facing rectangle.
+    WO_CHECK(CountSpatialSpriteCells(edge) < CountSpatialSpriteCells(front) / 4);
+    Grid blocked = grid;
+    for (int y = 1; y < blocked.Height() - 1; ++y) {
+        GridCell wall = blocked.GetCell(4, y);
+        wall.flags = CellFlag_Solid;
+        blocked.SetCell(4, y, wall);
+    }
+    WO_CHECK_EQ(CountSpatialSpriteCells(draw(0.0f, blocked)), 0);
     return true;
 }
 
@@ -1632,6 +1753,9 @@ bool SpatialBodyWorldPresentation() {
 }
 
 void RegisterRenderTests(TestHarness& test) {
+    test.Add("hud.subtitle_layout_bounded", &HudSubtitleLayoutIsBounded);
+    test.Add("character.prop_facing_preserves_text", &PropFacingDoesNotReverseTerminalText);
+    test.Add("character.door_world_plane_and_occlusion", &ArchitecturalDoorKeepsWorldPlane);
     test.Add("ray.flat_hits_wall", &RayFlatHitsWall);
     test.Add("ray.low_wall_floor_rise", &RayLowWallSegment);
     test.Add("ray.full_occlusion", &RayFullOcclusion);
@@ -1675,6 +1799,8 @@ void RegisterRenderTests(TestHarness& test) {
              &CharacterSpriteProjectionAtReviewDistances);
     test.Add("character.wall_pattern_world_anchor",
              &CharacterWallPatternUsesWorldCoordinates);
+    test.Add("character.raised_surface_finite_extent",
+             &CharacterRaisedSurfaceHasFiniteExtent);
     test.Add("character.pistol_transparency", &CharacterPistolKeepsTransparentWhitespace);
     test.Add("character.portrait_bounded_char_art", &CharacterPortraitIsBoundedCharArt);
     test.Add("spatial.camera_projection_contract",

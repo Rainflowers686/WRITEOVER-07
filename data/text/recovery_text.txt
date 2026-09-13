@@ -1,17 +1,48 @@
-# Bounded player-facing text resources for the current recovery slice.
+# Chapter One: one records-supervisor narrator, distinct working people.
 # Format: stable content id<TAB>natural-language UTF-8 display text.
-text_r1_01	The weapon is real. The building will remember that you touched it.
-text_r1_02	The checkpoint is listening. Decide what you want it to learn.
-text_r1_narr_01	You have a gun now. That does not make this place yours.
-text_r1_narr_02	A door is only a promise until someone tests the lock.
-text_alpha_camera	The camera is blind for now. The building will remember the gap.
-text_alpha_body	You moved the evidence. That changes who can find it, not what happened.
-text_alpha_loud	The shot carried farther than the room. Security has a new question for you.
-text_alpha_checkpoint	Calibration accepts the route. This is the first checkpoint, not an escape.
-text_alpha_denied	The reader rejected the attempt. A closed door is still a fact.
-text_chapter_calibration	The calibration room is still running. Read the route before you trust it.
-text_chapter_medical_quiet	Medical logged the quiet route. No alarm follows you into the service wing.
-text_chapter_medical_alert	Medical logged the damage. Security will meet you before the elevator does.
-text_chapter_staff	The staff passage opens on a maintenance schedule, not a welcome.
-text_chapter_security	The checkpoint has your face, your badge, and one more reason to remember you.
-text_chapter_complete	The elevator accepts the record. Chapter One ends with the building still awake.
+text_r1_01	A weapon was issued. The record is less certain about you.
+text_r1_02	You are cleared to leave the bed. The room is a separate authorization.
+text_r1_narr_01	A weapon was issued. The record is less certain about you.
+text_r1_narr_02	You are cleared to leave the bed. The room is a separate authorization.
+text_alpha_camera	The camera has stopped supplying answers. That is an answer of its own.
+text_alpha_body	You have changed what the corridor shows. Not what happened.
+text_alpha_loud	That will need an explanation. You need not stay to provide it.
+text_alpha_checkpoint	B1 has released you. Calibration will want its own answer.
+text_alpha_denied	The reader is not confused. It simply has a different account of you.
+text_chapter_calibration	Route verified. That is what the system calls permission to keep moving.
+text_chapter_medical_quiet	Intake recorded. The staff passage is open to you.
+text_chapter_medical_alert	Your intake is recorded. Security still requires a separate explanation.
+text_chapter_staff	You are using the staff passage. Please do not describe it as an exit.
+text_chapter_security	A checkpoint does not need your story. Only an answer it can file.
+text_chapter_complete	Departure recorded. I have not marked you resolved.
+
+# Scene introductions and optional environmental observations use the same bank.
+text_intro_room_b1_revival	SYS/07: Revival complete. Release pending. Find the service route.
+text_intro_room_01_calibration	CALIBRATION / Route verification. One operator at a time.
+text_intro_room_service_medical	MEDICAL / Intake first. Explanations can wait.
+text_intro_room_restroom_staff	STAFF / Please leave this passage as you found it.
+text_intro_room_1f_security	SECURITY / Keep your hands visible. Have an answer ready.
+text_intro_room_elevator_lobby	ELEVATOR / All departures remain on record.
+text_cleaner_greeting	Cleaner: Mind the wet strip. Nobody here looks down.
+text_cleaner_agreement	Cleaner: You kept out of my way. I'll keep the cart out of yours.
+text_technician_greeting	Technician: The reader checks the badge. It doesn't check the face.
+text_doctor_greeting	Dr. Vale: Look at me, not the number. Steady? Find the service reader.
+text_security_greeting	Security: Badge. Then the reader. In that order.
+text_security_challenge	Security: Stop. Identify yourself.
+text_security_granted	Security: Credential accepted. Keep moving.
+text_security_bribe	Security: Through. We did not agree on anything else.
+text_security_bribe_repeat	Security: I said through. Don't make this a conversation.
+text_cleaner_coverup	Cleaner: I found your passenger. Take the clear passage. I'll finish here.
+text_cleaner_medical	Cleaner: He's breathing. Medical, bring a trolley. Not Security.
+text_cleaner_report	Cleaner: Security, B1. This is beyond a cleaning shift.
+text_medical_after_care	MEDICAL / A breathing guard was reported from B1. Intake is preparing a trolley.
+text_medical_after_report	MEDICAL / B1 incident referred to Security. Staff are awaiting instructions.
+text_security_camera_online	Security: B1 camera report. We were told to expect a disturbance.
+text_security_camera_offline	The B1 camera supplied no image. Security still has eyes of its own.
+text_staff_note	Staff notice: Please stop returning the empty mug to Medical.
+text_medical_note	Intake note: Ask their name before checking their badge.
+text_calibration_note	Maintenance note: A green reader light is not a medical clearance.
+text_elevator_complete	Chapter One complete. Departure recorded.
+text_closure_title	C H A P T E R   O N E
+text_closure_departure	DEPARTURE RECORDED
+text_closure_status	SUBJECT 07 / UNRESOLVED

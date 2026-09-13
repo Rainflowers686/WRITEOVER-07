@@ -1,5 +1,6 @@
 param(
-    [string]$Executable = "out/build/release/Release/writeover_app.exe"
+    [string]$Executable = "out/build/release/Release/writeover_app.exe",
+    [string]$EvidenceDirectory = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -59,7 +60,16 @@ $scenarios = @(
     [pscustomobject]@{ Name="objective_presented_before_completion"; Classification="CHAPTER_COMPLETABLE"; Disposition="EXECUTED"; Fixture="chapter01_systemic.txt"; Frames=3600; Room=""; Expected=@("QUEST_PRESENTED_DURING_ROUTE=YES", "QUEST_PRESENTATION_VISIBLE=YES") }
 )
 
-New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
+if ($EvidenceDirectory) {
+    $candidateEvidence = [IO.Path]::GetFullPath((Join-Path $repoRoot $EvidenceDirectory))
+    $allowedEvidence = [IO.Path]::GetFullPath((Join-Path $repoRoot "docs/production/evidence")) + [IO.Path]::DirectorySeparatorChar
+    if (-not $candidateEvidence.StartsWith($allowedEvidence, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Evidence must remain below the canonical production evidence directory."
+    }
+    if (Test-Path -LiteralPath $candidateEvidence) { throw "Choose a new evidence directory; prior runs are protected." }
+    $tempRoot = $candidateEvidence
+}
+New-Item -ItemType Directory -Path $tempRoot | Out-Null
 $results = [System.Collections.Generic.List[object]]::new()
 try {
     foreach ($scenario in $scenarios) {
@@ -133,7 +143,15 @@ try {
     Write-Host "SCENARIO_MATRIX=PASS"
 }
 finally {
-    if (Test-Path -LiteralPath $tempRoot) {
+    if ($EvidenceDirectory) {
+        Write-Host ("EVIDENCE_PRESERVED=" + $tempRoot)
+    } elseif (Test-Path -LiteralPath $tempRoot) {
+        $resolvedTemporary = (Resolve-Path -LiteralPath $tempRoot).Path
+        $expectedParent = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\', '/')
+        if ((Split-Path $resolvedTemporary -Parent) -ne $expectedParent -or
+            (Split-Path $resolvedTemporary -Leaf) -notmatch '^writeover-(recovery-replays|chapter01-scenarios)-[a-f0-9]{32}$') {
+            throw "Refusing cleanup outside the exact task-owned temporary directory."
+        }
         Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
     }
 }

@@ -42,14 +42,14 @@ void PutTag(std::vector<uint8_t>& out, const char (&tag)[5]) {
 
 std::vector<uint8_t> MakeClip(AudioId id, int sample_rate, float volume) {
     const uint64_t key = id.GetValue();
-    const float duration = key == 4 ? 0.34f : (key == 8 ? 0.28f :
+    const float duration = key == 1 ? 0.07f : key == 4 ? 0.34f : (key == 8 ? 0.28f :
                            (key == 5 ? 0.22f : (key == 2 ? 0.16f : 0.09f)));
     const double base_hz = key == 1 ? 420.0 : (key == 2 ? 150.0 :
                           (key == 3 ? 720.0 : (key == 4 ? 90.0 :
                           (key == 5 ? 260.0 : (key == 6 ? 180.0 :
                           (key == 7 ? 980.0 : 55.0))))));
     const size_t sample_count = static_cast<size_t>(
-        std::max(1.0f, duration) * static_cast<float>(sample_rate));
+        std::max(1.0f, duration * static_cast<float>(sample_rate)));
     const float gain = std::clamp(volume, 0.0f, 1.0f) * 0.42f;
 
     std::vector<uint8_t> wav;
@@ -71,16 +71,25 @@ std::vector<uint8_t> MakeClip(AudioId id, int sample_rate, float volume) {
     uint32_t noise = static_cast<uint32_t>(key * 0x9E3779B9u + 17u);
     for (size_t i = 0; i < sample_count; ++i) {
         const double t = static_cast<double>(i) / sample_rate;
-        const float envelope = std::exp(-static_cast<float>(t) /
-                                        std::max(0.025f, duration * 0.55f));
+        const float attack = std::min(1.0f, static_cast<float>(t) / 0.002f);
+        const float release = std::clamp(
+            (duration - static_cast<float>(t)) / 0.015f, 0.0f, 1.0f);
+        const float envelope = attack * release *
+            std::exp(-static_cast<float>(t) / std::max(0.025f, duration * 0.55f));
         const float tone = static_cast<float>(std::sin(2.0 * kPi * base_hz * t));
         noise ^= noise << 13;
         noise ^= noise >> 17;
         noise ^= noise << 5;
-        const float hiss = static_cast<float>(static_cast<int32_t>(noise & 0xFFFFu)) /
+        const float hiss = static_cast<float>(static_cast<int32_t>(noise & 0xFFFFu) - 32768) /
                            32768.0f;
-        const float mix = key == 8 ? (tone * 0.35f + hiss * 0.65f) :
-                          (key == 4 ? tone * 0.65f + hiss * 0.35f : tone);
+        const float electrical = static_cast<float>(std::sin(2.0 * kPi *
+            (t < 0.07 ? 860.0 : 1290.0) * t));
+        const float mix = key == 1 ? tone * 0.22f + hiss * 0.78f
+            : key == 8 ? electrical * 0.88f + hiss * 0.12f
+            : key == 2 ? tone * 0.80f + hiss * 0.20f
+            : key == 7 ? static_cast<float>(std::sin(2.0 * kPi *
+                (t < 0.045 ? 740.0 : 1110.0) * t))
+            : key == 4 ? tone * 0.65f + hiss * 0.35f : tone;
         const int sample = static_cast<int>(std::clamp(
             mix * envelope * gain, -1.0f, 1.0f) * 32767.0f);
         PutU16(wav, static_cast<uint16_t>(static_cast<int16_t>(sample)));

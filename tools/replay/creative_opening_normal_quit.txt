@@ -1,0 +1,7 @@
+# Fixed-input 90-second opening observation; then use the real pause/quit path.
+# The normal_quit receipt certifies shutdown only. The creative gate separately
+# asserts speaker/context and quiet time from the actual rendered subtitle trace.
+10800 ESC down
+10801 ESC up
+10802 Q down
+10803 Q up

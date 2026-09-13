@@ -1,5 +1,51 @@
 # Chapter One — creative direction
 
+## Current acceptance boundary — 2026-09-13
+
+POST_ASTRA_CREATIVE_BASELINE = CHAPTER01_AUTHORED_FPS_20260913.
+This is the protected creative baseline after the owner-approved contract and
+five art/geometry review batches and a final integrated capture after route
+corrections. It is a stylized character-built FPS,
+not photorealism, VISUAL_GOLD or a claim of Rain's subjective acceptance.
+The 17 integrated views, four directional/weapon sheets and completed-route
+ending establish the art direction. Final delivery still requires the regression,
+package and exact-head CI gates in POST_ASTRA_LUNA_HANDOFF.md. Test counts alone
+never establish visual quality.
+
+## Owner-approved visual contract — 2026-09-13
+
+VISUAL_DIRECTION = RESOLVED; do not reopen the framebuffer-paradigm question.
+World output remains CharCell / Unicode. Hand-authored structural and shading
+glyphs (including block shades and box drawing) may combine with restrained
+material colour; individual glyphs need not read as traditional ASCII.
+At a distance: a convincing stylized low-resolution FPS. Up close: unmistakably
+characters. In monochrome: architecture and object silhouettes still stand.
+No RGB, half-block or Braille raster framebuffer; no image-to-character
+quantization; no colour rectangles replacing authored structure.
+
+Author anatomy and mass before texture: human head/shoulder/ribcage/pelvis and
+weight-bearing legs; Security has a heavier helmet/shoulder/vest hierarchy.
+Faces use restrained planes and an unobtrusive eyeline, never punctuation masks.
+Four directions are separate poses, including arm/leg overlap and equipment.
+Pistol/Stunner require body, slide/emitter, grip, hand, wrist and forearm to
+read as a held object. Room work starts with architectural structure, functional
+zones, a focal point, equipment groups and a clear route; small texture is last.
+Do not infer an engine limitation from weak assets. Use the existing production
+path for AUTHOR -> RENDER -> CRITIQUE -> REVISE -> RENDER in each major batch.
+
+## Current implementation checkpoint
+
+Room links now place their visible door on a supporting world wall, with a
+world-fixed plane and the same derived position available to interaction.
+B1's real grid gate owns open/closed visibility; the reader is a separate small
+control. Approach zones remain compatible with the existing route fixtures.
+The desk-top render exposed a genuine height-span limitation: using the last
+floor height for a whole column hid finite raised surfaces. The character
+renderer now reconstructs finite planes from the existing DDA transitions,
+shares their occlusion with sprites, and uses camera-forward wall depth.
+This is a bounded CharCell renderer correction, not a new rendering architecture.
+The near-reader action shares HUD visibility and keeps nearest-target ordering.
+
 ## The facility edits the record; people live with the event
 
 The building is legible, orderly, and indifferent. Its narrator is a records
@@ -10,21 +56,26 @@ The first chapter moves from being processed to choosing what gets recorded.
 ## Character cells, not pixels
 
 Silhouette and negative space carry identity before colour. Security has a
-continuous visor, closed collar, squared vest and separated boots. No visible
-eyes. Maintenance has a low work cap, asymmetric overall strap and tool pocket;
+continuous visor, protected shoulders, a broad vest, waist equipment and
+separated weight-bearing boots. No visible eyes. Maintenance has a low work cap,
+asymmetric overall strap, working arms and tool pocket;
 the same role family covers Cleaner and Technician, whose voices distinguish
-them. Full Human has swept hair, a tilted eye-line, an open coat and a relaxed
-stance; never an emoticon. Profiles are narrow bodies with a projecting head
-and arm, backs show seams and equipment, not disguised frontal faces.
+them and their cart/workstation context. Full Human has swept hair, a restrained
+eye-line, jaw and neck, an open coat and a relaxed stance; never an emoticon.
+Profiles change head, chest width, arm placement, equipment and leg overlap;
+backs show the nape, shoulder blades, coat seam or equipment, not a frontal face.
+Left/right are separate authored drawings, not mirrored frontal art.
 
 Each distance has its own drawing. Near adds construction, not a bigger face.
 Bodies lie across the floor: a curled knee and supporting arm for unconscious,
 extended legs and a slack arm for dead. Shape, not an eye symbol, states the
 difference. Spaces are open air; `~` occupies only enclosed cloth/metal volume.
 
-The pistol has a short inward slide and one enclosed gripping hand. The stunner
-has two contact rails and a battery housing. Both enter from the lower right
-with a narrow wrist; neither is a triangular apron. Existing weapon mechanics,
+The pistol has an inward slide, substantial rear body and one enclosed gripping
+hand. The stunner has two contact rails and a broader battery housing. Each has
+a trigger-area suggestion, thumb/finger fold, wrist and forearm. Both enter from
+the lower right with a clear centre view; neither is a thin line or apron.
+Existing weapon mechanics,
 projection, depth, body position and LOD caps remain authoritative.
 
 ## Palette and reading order
@@ -37,7 +88,9 @@ distinctions: visor, coat, cap, `!`, labels and position survive reduced colour.
 Read the world first, then the focused action, then an actionable objective.
 Vitals stay compact. Subtitles occupy their own bottom margin with bounded
 lines; ordinary patrol must not produce a perpetual status transcript.
-UI states are literal. Narration can be slippery. Never make an objective poetic.
+The reticle preserves the underlying material; it must not punch a black cell
+into a face. UI states are literal. Narration can be slippery. Never make an
+objective poetic.
 
 ## One narrator, varying pressure
 
@@ -51,6 +104,10 @@ framing and omission, but may not assert cameras saw something they did not.
 It is not omniscient: lines depend on actual recorded facts. Capability-gated
 door/power commands are not magical world authority. When unsettled, sentences
 get shorter; it does not acquire a new personality. Silence follows information.
+Scene flags constrain local observations. Leaving a room ends its current short
+line; an unfired old-room line does not become an elevator backlog. The departure
+line is the last automatic chapter statement, followed by silence. Explicit
+interactions may still answer the player. Speech always resolves its real speaker.
 
 Security speaks in imperatives. Cleaner speaks in practical observations and
 small acts of discretion. Technician thinks in connections and faults. Medical
@@ -58,19 +115,31 @@ addresses the person rather than the badge. No shared generic comedian voice.
 
 ## Rooms and route contrast
 
-- B1: wake under observation; orient toward the service route, with a person
-  and a tool visible before explaining a system.
-- Calibration: procedural threshold; diagnostics and one onward service route.
-- Medical: intake and the human cost, with readable choices to Staff/Security.
-- Staff: warm, sparse traces of work; discretion rather than a combat corridor.
-- Security: colder controlled sightline, visor and camera against open space.
-- Elevator: a framed threshold and a pause; departure does not erase the record.
+- B1: observation beds/headwall, calibration bench, cart lane and framed reader
+  exit. The opening person and tool precede the explanation. Keep the navigable
+  centre and original low-service passage; do not turn beds into corridor clutter.
+- Calibration: diagnostic bank, test rail and one onward framed service route.
+- Medical: intake counter, treatment bed/vitals and supply storage; readable
+  choices to Staff/Security, clinical colour without sterile emptiness.
+- Staff: workbench, lockers and break seating around a warm central passage;
+  discretion rather than a combat corridor.
+- Security: L-shaped staffed control desk/monitor group, equipment rack,
+  visitor bench, access gate and preserved guard patrol/cover. The approach
+  must show the desk, not hide it behind a full-height pillar.
+  Keep the counter end out of the east-side walking clearance; the player's
+  collision radius needs space even where a centre point would fit.
+- Elevator: central framed threshold, recessed sides, call control and waiting
+  bench off the walk. Completion displays DEPARTURE RECORDED / SUBJECT 07 —
+  UNRESOLVED from the actual checkpoint fact, with no new cutscene/input lock.
 
 Quiet play is authorship through observation, access and social discretion.
 Aggressive play is pressure and a less negotiable record, not a morality score.
 Three selected payoffs: Cleaner's later discretion, the camera's later Security
 consequence, and the elevator accepting a record it cannot reconcile with you.
-Beat times are editorial estimates, never enforced waiting or filler.
+Beat order: wake/intrigue -> credential obstacle -> body/camera discovery ->
+social or surveillance consequence -> Security pressure or Staff discretion ->
+departure. Beat times are editorial estimates, never enforced waiting or filler.
+The authored fast replay proves flow, not a ten-minute first-time playtest.
 
 ## Sound and limits
 
@@ -80,6 +149,6 @@ Leave space after consequential speech. No new audio engine. Music direction
 only: sparse ventilation-like sustained texture, a narrow rising interval in
 Security, then withdrawal at the elevator; composed music remains external.
 
-No new floor, character class, renderer, content schema, save schema, cutscene
+No new floor, character class, renderer architecture, content schema, save schema, cutscene
 system or public release. Representative rendered frames support art review;
 foreground Terminal play and Rain's subjective acceptance remain separate.

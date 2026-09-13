@@ -839,6 +839,18 @@ public:
     void Shutdown() override {}
 
     void SetFacts(const FactStore* facts) { facts_ = facts; }
+    void SetActiveScene(const std::string& scene) {
+        if (active_scene_ == scene) return;
+        active_scene_ = scene;
+        // Short local observations belong to their scene, not a backlog
+        // that resumes over a later reveal. Durable fired/causality state
+        // remains untouched; load restores its saved queue after room setup.
+        queue_ = DialogueQueue{};
+    }
+    std::string Text(const std::string& id) const { return ResolveTextId(id); }
+    void SetPresentationBusySource(std::function<bool()> source) {
+        presentation_busy_source_ = std::move(source);
+    }
     StoryletEngine& Storylets() { return engine_; }
     DialogueQueue& Subtitles() { return queue_; }
     CausalityLedger& Ledger() { return ledger_; }
@@ -891,8 +903,14 @@ public:
         const uint64_t frame = game_frame_source_
                                    ? game_frame_source_()
                                    : clock.FrameCount();
+        // Do not consume once-only dialogue while another line owns the HUD.
+        // Queue/save formats and world conditions remain unchanged.
+        queue_.Advance(static_cast<uint32_t>(frame));
+        if (queue_.Count() > 0 ||
+            (presentation_busy_source_ && presentation_busy_source_())) return;
+        const std::set<std::string> scene_flags{"scene:" + active_scene_};
         const Storylet* s = engine_.SelectEligible(
-            *facts_, {}, {}, {}, difficulty_, frame);
+            *facts_, {}, {}, scene_flags, difficulty_, frame);
         if (s != nullptr) {
             const Storylet selected = *s;
             // Resolve player-facing text before consuming the once-only
@@ -938,14 +956,14 @@ public:
                         ++presented_action_count_;
                         queue_.Push(SubtitleLine{last_presented_text_,
                                                   static_cast<uint32_t>(frame),
-                                                  240, NarratorSpeakerId(),
+                                                  480, NarratorSpeakerId(),
                                                   value.persona, 0});
                     } else if constexpr (std::is_same_v<Action, DialogAction>) {
                         last_presented_text_ = resolved_text[value.text_id];
                         ++presented_action_count_;
                         queue_.Push(SubtitleLine{last_presented_text_,
                                                   static_cast<uint32_t>(frame),
-                                                  240, NpcId{}, 0, 0});
+                                                  480, NpcId{}, 0, 0});
                     } else if constexpr (std::is_same_v<Action, WorldCommandAction>) {
                         if (world_command_sink_) world_command_sink_(value.command);
                     } else if constexpr (std::is_same_v<Action, EndGameCommand>) {
@@ -1014,15 +1032,44 @@ private:
     DialogueQueue queue_;
     CausalityLedger ledger_;
     const FactStore* facts_ = nullptr;
+    std::string active_scene_;
     std::function<bool()> pause_source_;
     std::function<uint64_t()> game_frame_source_;
     std::function<void(const WorldCommand&)> world_command_sink_;
     uint8_t difficulty_ = 1;
     std::map<std::string, std::string> text_resources_;
+    std::function<bool()> presentation_busy_source_;
     bool text_resolution_error_reported_ = false;
     std::string last_presented_text_;
     size_t presented_action_count_ = 0;
 };
+
+// Shared presentation/interaction placement for chapter exit bays. The scene
+// entity remains the approach-zone authority; the existing grid supplies the
+// supporting wall. No additional layout file, physics or save state is added.
+bool SceneDoorWallPosition(const SceneEntity& entity, const GridCell* cells,
+                           int width, int height, Vec3& position) {
+    if (entity.kind != SceneEntityKind::Door || cells == nullptr) return false;
+    position = entity.position;
+    if (entity.link_id != 0) {
+        const int col = static_cast<int>(std::floor(position.x));
+        const int row = static_cast<int>(std::floor(position.y));
+        if (col < 0 || row < 0 || col >= width || row >= height ||
+            (cells[row * width + col].flags & CellFlag_Solid) == 0) return false;
+        position.x = static_cast<float>(col) - 0.035f;
+        return true;
+    }
+    RayConfig mount;
+    mount.origin_xy = {position.x, position.y};
+    mount.yaw = entity.yaw;
+    mount.max_distance = 8.0f;
+    const RayResult wall = CastColumnRay(mount, cells, width, height);
+    if (!wall.hit_full_occlusion) return false;
+    const float offset = std::max(0.0f, wall.full_occlusion_distance - 0.035f);
+    position.x += std::cos(entity.yaw) * offset;
+    position.y += std::sin(entity.yaw) * offset;
+    return true;
+}
 
 class RenderModule final : public IRenderModule {
 public:
@@ -1063,6 +1110,9 @@ public:
     void SetObjectiveSource(std::function<std::string()> source) {
         objective_source_ = std::move(source);
     }
+    void SetChapterClosureSource(std::function<bool()> source) {
+        chapter_closure_source_ = std::move(source);
+    }
     void SetObjectivePresentationPrefix(std::string prefix) {
         objective_presentation_prefix_ = std::move(prefix);
     }
@@ -1088,12 +1138,13 @@ public:
     // remain last-writer-wins so existing interaction text stays responsive.
     void SetSubtitleOnce(const std::string& text, uint64_t frames,
                          uint8_t priority = 50) {
-        if (subtitle_override_remaining_ > 0 &&
+        const uint64_t frame = game_frame_source_ ? game_frame_source_() : 0;
+        if (frame < subtitle_override_until_ &&
             priority < subtitle_override_priority_) {
             return;
         }
         subtitle_override_ = text;
-        subtitle_override_remaining_ = frames;
+        subtitle_override_until_ = frame + frames;
         subtitle_override_priority_ = priority;
     }
     void TriggerNarratorIntrusion(uint64_t frames) {
@@ -1101,6 +1152,21 @@ public:
         narrator_intrusion_total_ = frames;
     }
     bool NarratorTypographyActive() const { return narrator_intrusion_remaining_ > 0; }
+    void SetTextSource(std::function<std::string(const std::string&)> source) {
+        text_source_ = std::move(source);
+    }
+    bool PresentationBusy() const {
+        const uint64_t frame = game_frame_source_ ? game_frame_source_() : 0;
+        if (npcs_ != nullptr) {
+            for (const auto& npc : *npcs_) {
+                if (npc.room == active_room_ && npc.instance.role == Role::Guard &&
+                    npc.instance.state == NPCState::Combat) return true;
+            }
+        }
+        return frame < subtitle_override_until_ || frame < scene_enter_frame_ + 300 ||
+            (scene_id_ == "room_service_medical" && frame < scene_enter_frame_ + 780);
+    }
+    void SetPresentationTrace(bool enabled) { presentation_trace_ = enabled; }
     bool DebugOverlay() const { return debug_overlay_; }
     bool ObjectiveVisible() const { return !objective_.empty(); }
     // A completed quest may legitimately clear its active objective.  Replay
@@ -1285,6 +1351,24 @@ public:
             if (scene_entities_ != nullptr) {
                 for (const auto& entity : *scene_entities_) {
                     if (entity.room != scene_id_) continue;
+                    if (entity.kind == SceneEntityKind::DoorReader) {
+                        // A reader is a small control at hand height, not a
+                        // second full-size door at the same interaction point.
+                        Vec3 position = entity.position;
+                        position.x -= 0.24f;
+                        position.z = 1.05f;
+                        sprites.push_back(make_world_sprite(entity.stable_id,
+                            position, 0.38f, CharacterSpriteKind::Terminal, entity.yaw));
+                        continue;
+                    }
+                    if (entity.kind == SceneEntityKind::Door) {
+                        Vec3 position;
+                        if (!SceneDoorWallPosition(entity, grid_cells_, grid_w_,
+                                                   grid_h_, position)) continue;
+                        sprites.push_back(make_world_sprite(entity.stable_id,
+                            position, entity.height, entity.visual, entity.yaw));
+                        continue;
+                    }
                     sprites.push_back(make_world_sprite(
                         entity.stable_id, entity.position, entity.height,
                         entity.visual, entity.yaw));
@@ -1296,7 +1380,8 @@ public:
             const WeaponSlot active_slot = ValidWeaponSlot(combat_);
             int vm_state = 0;
             float recoil = 0.0f;
-            if (combat_ != nullptr && game_frame >= combat_->last_shot_frame &&
+            if (combat_ != nullptr && combat_->last_shot_frame > 0 &&
+                game_frame >= combat_->last_shot_frame &&
                 game_frame - combat_->last_shot_frame < 4) {
                 vm_state = 1;
                 recoil = 1.0f - static_cast<float>(game_frame - combat_->last_shot_frame) / 4.0f;
@@ -1316,101 +1401,70 @@ public:
         }
         const uint64_t scene_frame = game_frame >= scene_enter_frame_
                                          ? game_frame - scene_enter_frame_ : 0;
-        if (scene_frame < 300 && scene_id_ == "room_b1_revival") {
-            subtitle_ = "SYS/07: Wake cycle verified. B1 anomaly detected. Proceed to calibration.";
-        } else if (scene_frame < 180 && scene_id_ == "room_01_calibration") {
-            subtitle_ = "CALIBRATION / LOGISTICS: Verify the route. Keep the service door clear.";
-        } else if (scene_frame < 180 && scene_id_ == "room_1f_security") {
-            subtitle_ = "1F SECURITY: Present identity. Watch the cameras.";
-        } else if (scene_frame < 180 && scene_id_ == "room_service_medical") {
-            subtitle_ = "SERVICE / MEDICAL: The building still remembers its staff.";
-        } else if (scene_frame < 180 && scene_id_ == "room_elevator_lobby") {
-            subtitle_ = "ELEVATOR LOBBY: Restricted floors remain listening.";
-        } else {
-            subtitle_ = "";
+        subtitle_.clear();
+        if (scene_frame < 300 && text_source_) {
+            subtitle_ = text_source_("text_intro_" + scene_id_);
         }
-        if (scene_id_ == "room_b1_revival" && npcs_ != nullptr) {
-            for (const auto& runtime : *npcs_) {
-                if (runtime.room != active_room_ ||
-                    (runtime.instance.role != Role::Cleaner &&
-                     runtime.instance.role != Role::Technician) ||
-                    runtime.instance.state == NPCState::Dead ||
-                    runtime.instance.state == NPCState::Stunned) {
-                    continue;
+        // A later room can acknowledge an actual discovery response from
+        // the durable ledger. No timer invents a rescue or a security report.
+        if (scene_id_ == "room_service_medical" && scene_frame < 780 &&
+            scene_frame >= 300 && systemic_ != nullptr && text_source_) {
+            for (auto it = systemic_->SystemEvents().rbegin();
+                 it != systemic_->SystemEvents().rend(); ++it) {
+                if (it->type == SystemicEventType::MedicalCall) {
+                    subtitle_ = text_source_("text_medical_after_care");
+                    break;
                 }
-                const float npc_dx = player_pos_.x - runtime.instance.position.x;
-                const float npc_dy = player_pos_.y - runtime.instance.position.y;
-                if ((npc_dx * npc_dx + npc_dy * npc_dy) < 9.0f) {
-                    subtitle_ = "Maintenance: 07... you are not scheduled to be here.";
+                if (it->type == SystemicEventType::Report &&
+                    std::find(it->tags.begin(), it->tags.end(),
+                              "report_security") != it->tags.end()) {
+                    subtitle_ = text_source_("text_medical_after_report");
                     break;
                 }
             }
         }
-        // Keep the bounded NPC state legible without exposing internal enum
-        // names.  This is deliberately placed below scene-intro/incidental
-        // text and above dialogue/critical overrides: it is a low-priority
-        // cue, not another message system.
-        if (subtitle_.empty() && npcs_ != nullptr) {
-            const RuntimeNpc* nearest = nullptr;
-            float nearest_distance_sq = 64.0f;
-            for (const auto& runtime : *npcs_) {
-                if (runtime.room != active_room_ ||
-                    runtime.instance.state == NPCState::Dead ||
-                    runtime.instance.state == NPCState::Stunned) {
-                    continue;
-                }
-                const float dx = player_pos_.x - runtime.instance.position.x;
-                const float dy = player_pos_.y - runtime.instance.position.y;
-                const float distance_sq = dx * dx + dy * dy;
-                if (distance_sq < nearest_distance_sq) {
-                    nearest = &runtime;
-                    nearest_distance_sq = distance_sq;
-                }
-            }
-            if (nearest != nullptr) {
-                const char* role = nearest->instance.role == Role::Guard
-                                       ? "Security"
-                                       : nearest->instance.role == Role::Cleaner
-                                           ? "Maintenance"
-                                           : nearest->instance.role == Role::Technician
-                                               ? "Technical staff"
-                                               : "Staff";
-                switch (nearest->instance.state) {
-                case NPCState::Patrol:
-                    subtitle_ = std::string(role) + ": route in progress.";
-                    break;
-                case NPCState::Investigate:
-                    subtitle_ = std::string(role) + ": checking the disturbance.";
-                    break;
-                case NPCState::Alert:
-                    subtitle_ = std::string(role) + ": has noticed something.";
-                    break;
-                case NPCState::Combat:
-                    subtitle_ = "Security: guard is engaging.";
-                    break;
-                default:
-                    break;
-                }
+        if (subtitle_.empty() && game_frame >= subtitle_override_until_ &&
+            systemic_ != nullptr && text_source_ &&
+            (dialogue_ == nullptr || dialogue_->Count() == 0)) {
+            for (auto it = systemic_->SystemEvents().rbegin();
+                 it != systemic_->SystemEvents().rend(); ++it) {
+                if (it->location != active_room_ || game_frame < it->frame ||
+                    game_frame - it->frame < 120 || game_frame - it->frame > 1200 ||
+                    it->id == last_discovery_speech_) continue;
+                const char* id = it->type == SystemicEventType::HelpCoverUp
+                    ? "text_cleaner_coverup"
+                    : it->type == SystemicEventType::MedicalCall
+                        ? "text_cleaner_medical"
+                        : it->type == SystemicEventType::Report &&
+                            std::find(it->tags.begin(), it->tags.end(),
+                                      "report_security") != it->tags.end()
+                            ? "text_cleaner_report" : nullptr;
+                if (id == nullptr) continue;
+                SetSubtitleOnce(text_source_(id), 480, 25);
+                last_discovery_speech_ = it->id;
+                break;
             }
         }
+        // Incidental speech is event- or interaction-driven. Proximity and
+        // internal NPC states must not create a permanent subtitle ticker.
         if (dialogue_ != nullptr) {
             const auto active_lines = dialogue_->ActiveLines(
                 static_cast<uint32_t>(std::min<uint64_t>(
                     game_frame, std::numeric_limits<uint32_t>::max())));
             if (!active_lines.empty()) subtitle_ = active_lines.back().text;
         }
-        if (subtitle_override_remaining_ > 0) {
+        if (game_frame < subtitle_override_until_) {
             subtitle_ = subtitle_override_;
-            if (!paused) {
-                --subtitle_override_remaining_;
-                if (subtitle_override_remaining_ == 0) {
-                    subtitle_override_priority_ = 0;
-                }
-            }
         }
         if (debug_overlay_) {
             subtitle_ = "F3 DEBUG | pos " + std::to_string(player_pos_.x) + "," +
                         std::to_string(player_pos_.y) + " yaw " + std::to_string(player_yaw_);
+        }
+        if (presentation_trace_ && subtitle_ != last_traced_subtitle_) {
+            std::fprintf(stderr, "SUBTITLE_TRACE frame=%llu room=%s text=%s\n",
+                static_cast<unsigned long long>(game_frame), scene_id_.c_str(),
+                subtitle_.c_str());
+            last_traced_subtitle_ = subtitle_;
         }
         HudFrame hud;
         hud.health = health_ != nullptr ? *health_ : 100;
@@ -1477,6 +1531,29 @@ public:
         hud.subtitle = settings_ == nullptr || settings_->subtitles
                            ? subtitle_.c_str() : nullptr;
         hud_.Draw(body_.data(), width_, height_, hud);
+        if (chapter_closure_source_ && chapter_closure_source_() && text_source_ &&
+            width_ >= 48 && height_ >= 24) {
+            // The durable checkpoint owns this quiet epilogue, including after
+            // load. It does not pause input, invent a cutscene or run a timer.
+            const std::array<const char*, 3> lines{{"text_closure_title",
+                "text_closure_departure", "text_closure_status"}};
+            for (size_t row = 0; row < lines.size(); ++row) {
+                const std::string text = text_source_(lines[row]);
+                const int count = std::min(static_cast<int>(text.size()), width_ - 8);
+                const int left = (width_ - count) / 2;
+                const int y = height_ / 5 + static_cast<int>(row) * 2;
+                for (int x = -2; x < count + 2; ++x) {
+                    CharCell& cell = body_[static_cast<size_t>(y) * width_ + left + x];
+                    cell.code_point = x >= 0 && x < count
+                        ? static_cast<unsigned char>(text[static_cast<size_t>(x)]) : U' ';
+                    cell.fg_r = row == 2 ? 209 : 232;
+                    cell.fg_g = row == 2 ? 167 : 228;
+                    cell.fg_b = row == 2 ? 100 : 209;
+                    cell.bg_r = 8; cell.bg_g = 13; cell.bg_b = 19;
+                    cell.flags = row == 0 ? 0x01 : 0;
+                }
+            }
+        }
         if (narrator_intrusion_remaining_ > 0) {
             const bool reduce_flicker = settings_ != nullptr && settings_->reduce_flicker;
             const bool reduce_shake = settings_ != nullptr && settings_->reduce_camera_shake;
@@ -1648,7 +1725,11 @@ private:
     const Settings* settings_ = nullptr;
     bool debug_overlay_ = false;
     std::string subtitle_override_;
-    uint64_t subtitle_override_remaining_ = 0;
+    std::function<std::string(const std::string&)> text_source_;
+    EventId last_discovery_speech_;
+    bool presentation_trace_ = false;
+    std::string last_traced_subtitle_;
+    uint64_t subtitle_override_until_ = 0;
     uint8_t subtitle_override_priority_ = 0;
     uint64_t narrator_intrusion_remaining_ = 0;
     uint64_t narrator_intrusion_total_ = 0;
@@ -1669,6 +1750,7 @@ private:
     std::function<bool()> pause_source_;
     std::function<uint64_t()> game_frame_source_;
     std::function<std::string()> objective_source_;
+    std::function<bool()> chapter_closure_source_;
     std::function<std::string()> interaction_prompt_source_;
     std::string objective_presentation_prefix_;
     uint64_t last_render_game_frame_ = 0;
@@ -2064,14 +2146,13 @@ int RunComposition(const GameConfig& config) {
     const EventBus::ConsumerId audio_consumer = events.Register(
         [&](const WorldEvent& event) {
             if (!audio) return;
-            if (std::holds_alternative<EventWeaponFire>(event.payload)) {
-                audio->PlaySfx(AudioId::New(1), 0.9f);
+            if (const auto* shot = std::get_if<EventWeaponFire>(&event.payload)) {
+                audio->PlaySfx(AudioId::New(shot->slot == WeaponSlot::Stunner ? 8 : 1),
+                               shot->slot == WeaponSlot::Stunner ? 0.62f : 0.85f);
             } else if (std::holds_alternative<EventDamage>(event.payload)) {
                 audio->PlaySfx(AudioId::New(2), 0.8f);
             } else if (std::holds_alternative<EventDoorChange>(event.payload)) {
                 audio->PlaySfx(AudioId::New(3), 0.7f);
-            } else if (std::holds_alternative<EventNpcSpeak>(event.payload)) {
-                audio->PlayVo(AudioId::New(4), 0.85f, 0xB10003u);
             }
         });
 
@@ -2163,9 +2244,12 @@ int RunComposition(const GameConfig& config) {
                                                   terminal_w,
                                                   terminal_h);
     render->SetSettingsSource(&settings);
+    render->SetPresentationTrace(config.smoke || !config.replay_path.empty());
     render->SetPauseSource([&time_gate] { return time_gate.Paused(); });
     render->SetGameFrameSource([&time_gate] { return time_gate.GameFrame(); });
     render->SetSceneId(config.room_id.empty() ? "room_b1_revival" : config.room_id);
+    services.narrative->SetActiveScene(
+        config.room_id.empty() ? "room_b1_revival" : config.room_id);
     const bool character_art_loaded = render->LoadCharacterArt(
         (data_root / "characters" / "b1_character_art.txt").string());
     if (!character_art_loaded) {
@@ -2184,6 +2268,25 @@ int RunComposition(const GameConfig& config) {
     render->SetHealthSource(&services.player->Health());
     render->SetSystemicSource(services.systemic.get());
     render->SetDialogueSource(&services.narrative->Subtitles());
+    render->SetTextSource([&services](const std::string& id) {
+        if (id == "text_intro_room_1f_security") {
+            const auto fact = [&](const char* name) {
+                WorldFact value;
+                return services.world->Facts().Get(RuntimeFactId(name), value) &&
+                    std::holds_alternative<bool>(value.value) && std::get<bool>(value.value);
+            };
+            if (fact("fact_b1_loud_action")) {
+                if (fact("fact_b1_camera_disabled"))
+                    return services.narrative->Text("text_security_camera_offline");
+                if (services.systemic->AlertLevel() >= FacilityAlertLevel::Suspicious)
+                    return services.narrative->Text("text_security_camera_online");
+            }
+        }
+        return services.narrative->Text(id);
+    });
+    services.narrative->SetPresentationBusySource([&render] {
+        return render->PresentationBusy();
+    });
 
     // Recovery-04 owns a deliberately small compiled placement set. These
     // records are consumed by rendering, interaction, and room switching;
@@ -2575,12 +2678,29 @@ int RunComposition(const GameConfig& config) {
         [&](const WorldEvent& event) {
             const auto* speech = std::get_if<EventNpcSpeak>(&event.payload);
             if (speech == nullptr) return;
-            const std::string text = speech->line == StringId::New(0xB1003)
-                ? "SECURITY: Stop. Identify yourself."
-                : "NPC: communication received.";
+            // Full cognition actors share this sight-entry event. It is not
+            // a Security line id: resolve the actual speaker's role.
+            if (speech->line != StringId::New(0xB1003)) return;
+            const auto speaker = std::find_if(services.ai->Npcs().begin(),
+                services.ai->Npcs().end(), [&](const RuntimeNpc& npc) {
+                    return npc.instance.id == speech->npc;
+                });
+            if (speaker == services.ai->Npcs().end() ||
+                speaker->room != services.world->LoadedRoom().id) return;
+            const char* text_id = speaker->instance.role == Role::Doctor
+                ? "text_doctor_greeting"
+                : speaker->instance.role == Role::Cleaner
+                    ? "text_cleaner_greeting"
+                    : speaker->instance.role == Role::Technician
+                        ? "text_technician_greeting"
+                        : speaker->instance.faction == Faction::Security
+                            ? "text_security_challenge" : nullptr;
+            const std::string text = text_id != nullptr
+                ? services.narrative->Text(text_id) : std::string{};
+            if (text.empty()) return;
             // Speech is useful context, but it must not erase damage, death,
             // access, or body-state feedback that arrived in the same window.
-            render->SetSubtitleOnce(text, 150, 20);
+            render->SetSubtitleOnce(text, 300, 20);
         });
     services.player->SetFireCallback([&](const FireRequest& request,
                                           const WeaponDef& weapon) {
@@ -2633,6 +2753,7 @@ int RunComposition(const GameConfig& config) {
             services.systemic->SetAlert(FacilityAlertLevel::Suspicious,
                                         {services.world->LoadedRoom().id},
                                         services.player->CurrentFrame());
+            if (audio) audio->PlaySfx(AudioId::New(6), 0.50f);
             render->SetSubtitleOnce(
                 "The active camera caught the disturbance.", 120, 45);
         }
@@ -2663,6 +2784,7 @@ int RunComposition(const GameConfig& config) {
         // room impossible to focus.
         services.player->Locomotion().pitch = 0.0f;
         services.player->SetCurrentRoom(id);
+        services.narrative->SetActiveScene(id);
         if (id == "room_01_calibration") {
             services.world->SetBooleanFact(
                 RuntimeFactId("fact_chapter_calibration_entered"),
@@ -3357,8 +3479,15 @@ int RunComposition(const GameConfig& config) {
     };
     const auto focused_scene_entity = [&](const char* entity_id) {
         const SceneEntity* entity = scene_runtime.FindEntity(entity_id);
-        return entity != nullptr && entity->room == services.player->CurrentRoom() &&
-               camera_looks_at(entity->position, entity->radius, entity->height);
+        if (entity == nullptr || entity->room != services.player->CurrentRoom()) return false;
+        // Preserve the authored approach interaction, while making the actual
+        // visible wall door usable when approached from a different angle.
+        if (camera_looks_at(entity->position, entity->radius, entity->height)) return true;
+        const Grid& grid = services.world->LoadedRoom().grid;
+        Vec3 mounted;
+        return entity->link_id == 0 && SceneDoorWallPosition(*entity,
+            grid.Data().data(), grid.Width(), grid.Height(), mounted) &&
+            camera_looks_at(mounted, entity->radius, entity->height);
     };
     const auto use_chapter_terminal = [&](TerminalId terminal_id,
                                            std::string_view action,
@@ -3453,6 +3582,10 @@ int RunComposition(const GameConfig& config) {
             return std::string("Staff route: use the elevator service door");
         }
         return std::string("Explore the marked service route");
+    });
+    render->SetChapterClosureSource([&] {
+        return services.player->CurrentRoom() == "room_elevator_lobby" &&
+            fact_is_true("fact_chapter_checkpoint_reached");
     });
     render->SetObjectivePresentationPrefix("B1:");
     bool interaction_demonstrated = false;
@@ -3658,12 +3791,12 @@ int RunComposition(const GameConfig& config) {
                     hit_distance >= focused_distance) {
                     return;
                 }
-                const Vec3 hit_point = eye + interaction_ray * hit_distance;
-                // Every B1 target, including the reader, is a real visible
-                // world target.  An opaque wall/door therefore blocks the
-                // interaction ray instead of a radius/cone selecting it.
-                if (!services.world->Query().LineOfSight(
-                    eye, hit_point, hit_point.z)) return;
+                // Keep nearest-target ordering above, but share visibility
+                // with the HUD/chapter interactions. When the eye overlaps
+                // a reader proxy, its forward exit can lie behind the closed
+                // door; that exit must not make the nearby reader invisible.
+                if (!camera_looks_at(candidate.position, candidate.radius,
+                                     candidate.height)) return;
                 focused = candidate;
                 focused_distance = hit_distance;
             };
@@ -3879,13 +4012,20 @@ int RunComposition(const GameConfig& config) {
                     relationship.debt = 0.60f;
                     if (services.systemic->SetRelationship(relationship)) {
                         render->SetSubtitleOnce(
-                            "The worker recognizes you. The cart route is clear.",
-                            150);
+                            services.narrative->Text("text_cleaner_agreement"),
+                            420);
                     }
                 } else {
-                    render->SetSubtitleOnce(
-                        "The worker watches the route. Your next action will matter.",
-                        120);
+                    for (const auto& npc : services.ai->Npcs()) {
+                        if (npc.instance.id != focused.npc) continue;
+                        const char* id = npc.instance.role == Role::Technician
+                            ? "text_technician_greeting"
+                            : npc.instance.role == Role::Doctor
+                                ? "text_doctor_greeting"
+                                : "text_security_greeting";
+                        render->SetSubtitleOnce(services.narrative->Text(id), 420);
+                        break;
+                    }
                 }
                 return;
             }
@@ -3919,7 +4059,7 @@ int RunComposition(const GameConfig& config) {
                 (void)enter_scene_transition("calibration_to_medical");
                 return;
             }
-            render->SetSubtitleOnce("CALIBRATION: diagnostics, logistics, then medical service.", 120);
+            render->SetSubtitleOnce(services.narrative->Text("text_calibration_note"), 360);
             return;
         }
 
@@ -3948,7 +4088,7 @@ int RunComposition(const GameConfig& config) {
                     services.world->SetBooleanFact(
                         RuntimeFactId("fact_chapter_security_checkpoint"),
                         player, true);
-                    render->SetSubtitleOnce("ACCESS GRANTED. Security checkpoint logged you.", 180);
+                    render->SetSubtitleOnce(services.narrative->Text("text_security_granted"), 360);
                 } else if (!bribe_done && slice.cash.IsValid() &&
                            services.systemic->TransferItem(slice.cash, guard)) {
                     SocialExchangeRecord exchange;
@@ -3968,10 +4108,10 @@ int RunComposition(const GameConfig& config) {
                         services.world->SetBooleanFact(
                             RuntimeFactId("fact_chapter_security_checkpoint"),
                             player, true);
-                        render->SetSubtitleOnce("He takes the money. That is not the same as trust.", 180);
+                        render->SetSubtitleOnce(services.narrative->Text("text_security_bribe"), 360);
                     }
                 } else if (bribe_done) {
-                    render->SetSubtitleOnce("Checkpoint: the guard remembers the exchange.", 150);
+                    render->SetSubtitleOnce(services.narrative->Text("text_security_bribe_repeat"), 300);
                 } else {
                     render->SetSubtitleOnce("ACCESS DENIED. No valid credential.", 180);
                 }
@@ -4055,7 +4195,7 @@ int RunComposition(const GameConfig& config) {
                 (void)enter_scene_transition("medical_to_elevator");
                 return;
             }
-            render->SetSubtitleOnce("MEDICAL: supplies are logged before they are used.", 160);
+            render->SetSubtitleOnce(services.narrative->Text("text_medical_note"), 360);
             return;
         }
 
@@ -4068,7 +4208,7 @@ int RunComposition(const GameConfig& config) {
                 (void)enter_scene_transition("staff_to_elevator");
                 return;
             }
-            render->SetSubtitleOnce("STAFF ROUTE: find the elevator service door.", 140);
+            render->SetSubtitleOnce(services.narrative->Text("text_staff_note"), 360);
             return;
         }
 
@@ -4090,8 +4230,8 @@ int RunComposition(const GameConfig& config) {
                         slice.chapter_quest, QuestStatus::Completed, frame,
                         "Chapter One elevator checkpoint reached");
                     render->SetSubtitleOnce(
-                        "ELEVATOR: checkpoint recorded. The building remains awake.",
-                        220);
+                        services.narrative->Text("text_elevator_complete"), 360);
+                    if (audio) audio->PlaySfx(AudioId::New(7), 0.55f);
                 } else {
                     render->SetSubtitleOnce(
                         "ELEVATOR: Chapter One checkpoint already recorded.", 140);

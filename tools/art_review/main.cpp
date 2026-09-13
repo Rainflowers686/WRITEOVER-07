@@ -27,7 +27,22 @@ struct Case {
     int body = 0;
 };
 
+const char* FacingName(CharacterFacing facing) {
+    switch (facing) {
+    case CharacterFacing::Front: return "Front";
+    case CharacterFacing::Back: return "Back";
+    case CharacterFacing::SideLeft: return "SideLeft";
+    case CharacterFacing::SideRight: return "SideRight";
+    }
+    return "Invalid";
+}
+
 void Label(std::vector<CharCell>& cells, const std::string& label) {
+    for (int x = 0; x < kWidth; ++x) {
+        CharCell& cell = cells[kWidth + x];
+        cell.code_point = U' ';
+        cell.bg_r = 5; cell.bg_g = 9; cell.bg_b = 14;
+    }
     for (size_t i = 0; i < label.size() && i + 1 < kWidth; ++i) {
         CharCell& cell = cells[kWidth + i + 1];
         cell.code_point = static_cast<unsigned char>(label[i]);
@@ -79,7 +94,10 @@ std::vector<CharCell> Frame(const CharacterArtBank& bank,
     }
     DrawCharacterSprites(view, actors, bank, grid.data(), kGridWidth, kGridHeight,
                           frame.data(), kWidth, kHeight, focal);
-    Label(frame, scenario.title);
+    const CharacterFacing facing = SelectCharacterFacing(actor.yaw, actor.position,
+                                                         view.origin);
+    Label(frame, std::string(scenario.title) + (scenario.body == 0
+        ? std::string(" | ") + FacingName(facing) : ""));
     return frame;
 }
 } // namespace
@@ -91,33 +109,53 @@ int main(int argc, char** argv) {
     }
     CharacterArtBank bank;
     if (!bank.Load(argv[1])) return 3;
-    const std::array<Case, 12> cases{{
+    const std::array<Case, 16> cases{{
         {"Near / front / 1.8m", 1.8f, kPi},
         {"Near / left / 1.8m", 1.8f, kPi * 0.5f},
         {"Near / right / 1.8m", 1.8f, -kPi * 0.5f},
         {"Near / back / 1.8m", 1.8f, 0.0f},
         {"Mid / front / 5m", 5.0f, kPi},
-        {"Mid / side / 5m", 5.0f, kPi * 0.5f},
-        {"Far / 13m", 13.0f, kPi},
+        {"Mid / left / 5m", 5.0f, kPi * 0.5f},
+        {"Mid / right / 5m", 5.0f, -kPi * 0.5f},
+        {"Mid / back / 5m", 5.0f, 0.0f},
+        {"Far / front / 13m", 13.0f, kPi},
+        {"Far / left / 13m", 13.0f, kPi * 0.5f},
+        {"Far / right / 13m", 13.0f, -kPi * 0.5f},
+        {"Far / back / 13m", 13.0f, 0.0f},
         {"Partial low wall / 3m", 3.0f, kPi, true},
         {"Two actors / 2.6m", 2.6f, kPi, false, true},
         {"Unconscious / 2m", 2.0f, kPi, false, false, 1},
         {"Dead / 2m", 2.0f, kPi, false, false, 2},
-        {"Back + wall / 3m", 3.0f, 0.0f, true},
     }};
     const std::array<CharacterSpriteKind, 3> kinds{{
         CharacterSpriteKind::SecurityGuard, CharacterSpriteKind::FullHuman,
         CharacterSpriteKind::MaintenanceWorker}};
     const std::array<const char*, 3> names{{"guard_sheet.svg", "human_sheet.svg",
                                          "maintenance_sheet.svg"}};
-    constexpr int sheet_width = kWidth * 3;
+    constexpr int sheet_width = kWidth * 4;
     constexpr int sheet_height = kHeight * 4;
     for (size_t kind = 0; kind < kinds.size(); ++kind) {
         std::vector<CharCell> sheet(sheet_width * sheet_height);
         for (size_t panel = 0; panel < cases.size(); ++panel) {
+            if (panel < 12) {
+                const std::array<CharacterFacing, 4> expected{{CharacterFacing::Front,
+                    CharacterFacing::SideLeft, CharacterFacing::SideRight,
+                    CharacterFacing::Back}};
+                const auto& c = cases[panel];
+                const Vec3 viewer{1.5f, 8.5f, kEyeStand};
+                const Vec3 actor{1.5f + c.distance, 8.5f, 0.0f};
+                const auto facing = SelectCharacterFacing(c.yaw, actor, viewer);
+                const auto lod = SelectCharacterLod(c.distance);
+                const auto* asset = bank.Find(kinds[kind], lod, facing);
+                if (facing != expected[panel % 4] || asset == nullptr ||
+                    asset->facing != facing || asset->lod != lod) return 5;
+                std::printf("FACING_MAP kind=%zu distance=%.1f yaw=%.4f viewer=(1.5,8.5) "
+                            "actor=(%.1f,8.5) selected=%s exact_asset=YES\n",
+                            kind, c.distance, c.yaw, actor.x, FacingName(facing));
+            }
             const std::vector<CharCell> frame = Frame(bank, kinds[kind], cases[panel]);
-            const int left = static_cast<int>(panel % 3) * kWidth;
-            const int top = static_cast<int>(panel / 3) * kHeight;
+            const int left = static_cast<int>(panel % 4) * kWidth;
+            const int top = static_cast<int>(panel / 4) * kHeight;
             for (int y = 0; y < kHeight; ++y)
                 std::copy_n(frame.begin() + y * kWidth, kWidth,
                             sheet.begin() + (top + y) * sheet_width + left);
@@ -126,6 +164,26 @@ int main(int argc, char** argv) {
         if (!WriteCharacterFrameSvg(sheet.data(), sheet_width, sheet_height,
                                     output.string())) return 4;
     }
+    // Eight held poses in real world cells, not a raster sprite preview.
+    std::vector<CharCell> weapons(sheet_width * kHeight * 2);
+    const std::array<const char*, 4> poses{{"IdleA", "IdleB", "Fire", "Reload"}};
+    for (size_t slot = 0; slot < 2; ++slot) {
+        for (size_t pose = 0; pose < poses.size(); ++pose) {
+            auto frame = Frame(bank, CharacterSpriteKind::SecurityGuard,
+                                {"Held pose", 8.0f, kPi});
+            const auto weapon = slot == 0 ? WeaponSlot::Pistol : WeaponSlot::Stunner;
+            DrawWeaponViewmodel(frame.data(), kWidth, kHeight, bank, weapon,
+                                 static_cast<PistolFrame>(pose), 0.0f);
+            Label(frame, std::string(slot == 0 ? "Pistol / " : "Stunner / ") + poses[pose]);
+            for (int y = 0; y < kHeight; ++y)
+                std::copy_n(frame.begin() + y * kWidth, kWidth,
+                    weapons.begin() + (static_cast<int>(slot) * kHeight + y) *
+                        sheet_width + static_cast<int>(pose) * kWidth);
+        }
+    }
+    if (!WriteCharacterFrameSvg(weapons.data(), sheet_width, kHeight * 2,
+            (std::filesystem::path(argv[2]) / "weapon_sheet.svg").string())) return 6;
+    std::printf("FACING_MAPPING_COUNT=36 EXACT_ASSET_COUNT=36\n");
     std::printf("ART_REVIEW_FIXTURES=RENDERED FOREGROUND_ACCEPTANCE=NOT_CLAIMED\n");
     return 0;
 }
