@@ -724,22 +724,37 @@ CharacterPlaneColumn BuildPlaneColumn(const RayResult& ray,
     return out;
 }
 
-float PlaneHitDistance(const CharacterPlaneColumn& column,
-                       const CameraProjection& camera, float column_cos,
-                       int screen_y, bool& ceiling) {
-    const float up = (camera.screen_height * 0.5f - (screen_y + 0.5f)) /
-                     camera.focal_y;
+struct CharacterPlaneRow {
+    float numerator;
+    float denominator;
+};
+
+std::vector<CharacterPlaneRow> BuildPlaneRows(const CameraProjection& camera) {
+    std::vector<CharacterPlaneRow> rows(static_cast<size_t>(camera.screen_height));
     const float sin_pitch = std::sin(camera.pitch);
     const float cos_pitch = std::cos(camera.pitch);
-    const float slope = (sin_pitch + up * cos_pitch) * column_cos /
-                        (cos_pitch - up * sin_pitch);
+    for (int y = 0; y < camera.screen_height; ++y) {
+        const float up = (camera.screen_height * 0.5f - (y + 0.5f)) /
+                         camera.focal_y;
+        rows[static_cast<size_t>(y)] = {
+            sin_pitch + up * cos_pitch, cos_pitch - up * sin_pitch};
+    }
+    return rows;
+}
+
+float PlaneHitDistance(const CharacterPlaneColumn& column,
+                       const CharacterPlaneRow& row, float eye_z,
+                       float column_cos, bool& ceiling) {
+    // Pitch and row position are constant across every column. Keep the
+    // original multiply/divide order while avoiding per-cell trigonometry.
+    const float slope = row.numerator * column_cos / row.denominator;
     ceiling = slope > 0.0f;
     if (!std::isfinite(slope) || std::fabs(slope) < 1e-6f)
         return std::numeric_limits<float>::infinity();
     for (size_t i = 0; i < column.count; ++i) {
         const auto& span = column.spans[i];
         const float plane_z = ceiling ? span.ceiling : span.floor;
-        const float distance = (plane_z - camera.origin.z) / slope;
+        const float distance = (plane_z - eye_z) / slope;
         if (distance > 0.0f && distance >= span.begin - 0.0001f &&
             distance < span.end + 0.0001f) return distance;
     }
@@ -766,6 +781,7 @@ void BuildWallDepthBuffer(const CameraProjection& projection,
     depths.assign(expected, std::numeric_limits<float>::infinity());
     if (cells == nullptr || grid_w <= 0 || grid_h <= 0 || expected == 0) return;
 
+    const auto plane_rows = BuildPlaneRows(projection);
     for (int x = 0; x < projection.screen_width; ++x) {
         RayConfig ray_config;
         ray_config.origin_xy = Vec2{projection.origin.x, projection.origin.y};
@@ -777,7 +793,8 @@ void BuildWallDepthBuffer(const CameraProjection& projection,
         for (int y = 0; y < projection.screen_height; ++y) {
             bool ceiling = false;
             depths[static_cast<size_t>(y) * projection.screen_width + x] =
-                PlaneHitDistance(planes, projection, column_cos, y, ceiling);
+                PlaneHitDistance(planes, plane_rows[static_cast<size_t>(y)],
+                                 projection.origin.z, column_cos, ceiling);
         }
         for (uint32_t i = 0; i < ray.segment_count; ++i) {
             const OccludingSegment& segment = ray.segments[i];
@@ -1189,7 +1206,13 @@ void RenderCharacterFrame(const GridCell* cells, int grid_w, int grid_h,
     const CameraProjection camera(view.origin, view.yaw, view.pitch,
                                   cell_w, cell_h, focal_cells_per_unit,
                                   kCharacterCellAspect);
-    std::vector<float> plane_depths(static_cast<size_t>(cell_h));
+    const auto plane_rows = BuildPlaneRows(camera);
+    struct PlaneSample {
+        float distance;
+        bool ceiling;
+        bool covered_by_wall;
+    };
+    std::vector<PlaneSample> plane_samples(static_cast<size_t>(cell_h));
     for (int x = 0; x < cell_w; ++x) {
         RayConfig ray_config;
         ray_config.origin_xy = Vec2{view.origin.x, view.origin.y};
@@ -1200,28 +1223,11 @@ void RenderCharacterFrame(const GridCell* cells, int grid_w, int grid_h,
         const float column_cos = std::cos(ray_config.yaw - view.yaw);
         const Vec3 horizontal = camera.HorizontalColumnDirection(x);
         for (int y = 0; y < cell_h; ++y) {
-            bool ceiling = false;
-            const float hit = PlaneHitDistance(planes, camera, column_cos, y, ceiling);
-            plane_depths[static_cast<size_t>(y)] = hit;
-            const float distance = std::clamp(hit, 0.25f, kMaxSpriteDistance);
-            const Vec3 world_point = view.origin + horizontal * distance;
-            const float world_x = world_point.x;
-            const float world_y = world_point.y;
-            const GridCell sample = SampleCell(cells, grid_w, grid_h,
-                                               world_x, world_y);
-            const char32_t glyph = PlaneGlyph(ceiling, world_x, world_y,
-                                              distance, x, y);
-            const Color fg = ceiling
-                ? ScaleColor({58, 69, 75}, 0.52f + 0.48f *
-                                  Saturate(1.0f - distance / 40.0f),
-                              options.high_contrast ? 115 : 90)
-                : ScaleColor({49, 59, 62}, 0.55f + 0.45f *
-                                  Saturate(1.0f - distance / 40.0f),
-                              options.high_contrast ? 135 : 120);
-            const Color bg = SurfaceColor(sample.material, sample.light, distance,
-                                          ceiling, options.high_contrast);
-            out_cells[static_cast<size_t>(y) * cell_w + x] =
-                MakeCell(glyph, fg, bg, 0);
+            auto& sample = plane_samples[static_cast<size_t>(y)];
+            sample.distance = PlaneHitDistance(
+                planes, plane_rows[static_cast<size_t>(y)], view.origin.z,
+                column_cos, sample.ceiling);
+            sample.covered_by_wall = false;
         }
         for (uint32_t i = ray.segment_count; i > 0; --i) {
             const OccludingSegment& segment = ray.segments[i - 1];
@@ -1238,7 +1244,8 @@ void RenderCharacterFrame(const GridCell* cells, int grid_w, int grid_h,
             const int bottom = std::min(cell_h - 1, static_cast<int>(std::floor(
                 wall_projection.screen_bottom_y - 0.5f)));
             for (int y = top; y <= bottom; ++y) {
-                if (plane_depths[static_cast<size_t>(y)] < segment.distance - 0.0001f)
+                auto& sample = plane_samples[static_cast<size_t>(y)];
+                if (sample.distance < segment.distance - 0.0001f)
                     continue;
                 const float vertical_t = std::clamp(
                     (static_cast<float>(y) + 0.5f - wall_projection.screen_top_y) /
@@ -1248,7 +1255,34 @@ void RenderCharacterFrame(const GridCell* cells, int grid_w, int grid_h,
                     (segment.bottom_z - segment.top_z) * vertical_t;
                 out_cells[static_cast<size_t>(y) * cell_w + x] =
                     WallCell(segment, surface_u, surface_z, options);
+                sample.covered_by_wall = true;
             }
+        }
+        // Wall glyphs are opaque character cells. Their depth decisions need
+        // plane hits, but not the material/glyph of a plane they fully cover.
+        // Preserve wall order and shade only the remaining visible planes.
+        for (int y = 0; y < cell_h; ++y) {
+            const auto& plane = plane_samples[static_cast<size_t>(y)];
+            if (plane.covered_by_wall) continue;
+            const float distance = std::clamp(plane.distance, 0.25f, kMaxSpriteDistance);
+            const Vec3 world_point = view.origin + horizontal * distance;
+            const float world_x = world_point.x;
+            const float world_y = world_point.y;
+            const GridCell sample = SampleCell(cells, grid_w, grid_h,
+                                               world_x, world_y);
+            const char32_t glyph = PlaneGlyph(plane.ceiling, world_x, world_y,
+                                              distance, x, y);
+            const Color fg = plane.ceiling
+                ? ScaleColor({58, 69, 75}, 0.52f + 0.48f *
+                                  Saturate(1.0f - distance / 40.0f),
+                              options.high_contrast ? 115 : 90)
+                : ScaleColor({49, 59, 62}, 0.55f + 0.45f *
+                                  Saturate(1.0f - distance / 40.0f),
+                              options.high_contrast ? 135 : 120);
+            const Color bg = SurfaceColor(sample.material, sample.light, distance,
+                                          plane.ceiling, options.high_contrast);
+            out_cells[static_cast<size_t>(y) * cell_w + x] =
+                MakeCell(glyph, fg, bg, 0);
         }
     }
 }

@@ -421,7 +421,7 @@ double SystemicUpdateBenchmark() {
 // effects and ANSI encode for one representative 240x67 frame. It is the
 // measured upper-level proxy for the <=6 ms total CPU budget; platform device
 // writes are excluded.
-double CharacterRuntimeFrameBenchmark() {
+double CharacterRuntimeFrameBenchmark(const CharacterArtBank& art) {
     using Clock = std::chrono::steady_clock;
 
     Grid grid(24, 18);
@@ -473,8 +473,6 @@ double CharacterRuntimeFrameBenchmark() {
     constexpr int cell_h = 67;
     constexpr int kFrames = 1200;
     std::vector<CharCell> cells(static_cast<size_t>(cell_w) * cell_h);
-    CharacterArtBank art;
-    (void)art.Load("data/characters/b1_character_art.txt");
     std::vector<CharacterSpriteInstance> sprites;
     sprites.reserve(25);
     std::string scratch;
@@ -526,7 +524,7 @@ double CharacterRuntimeFrameBenchmark() {
     return sampler.Compute().worst_1pct_avg_ms;
 }
 
-double CharacterRendererBenchmark() {
+double CharacterRendererBenchmark(const CharacterArtBank& art) {
     using Clock = std::chrono::steady_clock;
     Grid grid(24, 18);
     for (int r = 0; r < 18; ++r) {
@@ -541,8 +539,6 @@ double CharacterRendererBenchmark() {
     const int cell_w = 240;
     const int cell_h = 67;
     std::vector<CharCell> cells(static_cast<size_t>(cell_w) * cell_h);
-    CharacterArtBank art;
-    (void)art.Load("data/characters/b1_character_art.txt");
     std::vector<CharacterSpriteInstance> sprites;
     sprites.reserve(25);
     FrameTimeSampler sampler;
@@ -582,6 +578,15 @@ double CharacterRendererBenchmark() {
 
 int main() {
     using Clock = std::chrono::steady_clock;
+
+    // A fallback-bank timing is not a production-art budget measurement.
+    // Load outside the measured frames, and fail closed from an invalid cwd.
+    writeover::CharacterArtBank art;
+    if (!art.Load("data/characters/b1_character_art.txt")) {
+        std::fprintf(stderr, "PVS_CHARACTER_ART=FAIL (run from the repository root)\n");
+        return 1;
+    }
+    std::printf("PVS_CHARACTER_ART=AUTHORED\n");
 
     writeover::Grid grid = writeover::MakeStressGrid();
     const int grid_w = grid.Width();
@@ -852,12 +857,12 @@ int main() {
     std::printf("SYSTEMIC_UPDATE_BUDGET=%s\n", update_pass ? "PASS" : "FAIL");
     std::printf("SYSTEMIC_UPDATE_TIME_MS=%.3f (worst1_avg)\n", update_ms);
 
-    const double render_ms = writeover::CharacterRendererBenchmark();
+    const double render_ms = writeover::CharacterRendererBenchmark(art);
     const bool render_pass = render_ms <= 3.0;
     std::printf("PVS_RENDER_BUDGET=%s\n", render_pass ? "PASS" : "FAIL");
     std::printf("PVS_RENDER_TIME_MS=%.3f (worst1_avg)\n", render_ms);
 
-    const double total_frame_ms = writeover::CharacterRuntimeFrameBenchmark();
+    const double total_frame_ms = writeover::CharacterRuntimeFrameBenchmark(art);
     const bool total_frame_pass = total_frame_ms <= 6.0;
     std::printf("PVS_TOTAL_FRAME_BUDGET=%s\n",
                 total_frame_pass ? "PASS" : "FAIL");
