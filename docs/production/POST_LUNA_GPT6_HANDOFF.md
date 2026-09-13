@@ -110,8 +110,8 @@ subjective boundary. This is not a photorealism claim.
   (Dispatch -> terminal -> operator -> Concourse backtrack). A focused
   first-time human playthrough and focused Power/Observation/Transit fixtures
   remain.
-- Exact pushed-head CI, package smoke for the final documentation head and
-  final release benchmark remain to be refreshed.
+- Local package smoke and Release benchmark pass at the current documentation
+  baseline; exact pushed-head CI remains to be refreshed after the normal push.
 
 ## REMAINING_OBJECTIVE_WORK
 
@@ -141,15 +141,17 @@ new character class.
 
 Refresh Debug/Release builds and tests, content deterministic check, systemic
 schema/invalid-seed tests, mandatory replays, the Act II expansion gate,
-scenario matrix, save-fault regression, art review, relevant render assertions
-and release benchmark.
+scenario matrix, save-fault regression, art review and relevant render
+assertions. The current local Release benchmark and package smoke are already
+recorded as PASS; rerun them if source/content changes.
 Record the exact command and result in the audit manifest.
 
 ## REMAINING_PACKAGE_WORK
 
-Build the intended Release package from the final source SHA, run clean-package
-smoke from an unrelated working directory, verify executable-relative data,
-manifest hashes and user-data separation. No public release is implied.
+The current Release package was built from `cabe74303da5ab12e74607b135629646b5d7bc1e`
+and passed clean-package smoke, executable-relative data, manifest/hash,
+secret-scan and user-data-separation checks. Rebuild only if source/content
+changes; no public release is implied.
 
 ## REMAINING_COURSE_REPORT_WORK
 

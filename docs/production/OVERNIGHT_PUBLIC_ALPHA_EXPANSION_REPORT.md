@@ -86,8 +86,8 @@ Runtime/content evidence:
 - no foreground-terminal classmate playtest has been completed;
 - only the Records route is covered by a dedicated Act II gate; focused
   Power/Observation/Transit fixtures and a first-time human read remain;
-- package smoke and release benchmark must be refreshed after the final
-  documentation head;
+- package smoke and Release benchmark pass locally at the current documentation
+  baseline; exact pushed-head CI is still unverified;
 - no exact pushed-head CI result exists at the time of this report;
 - no public alpha announcement, release, Steam upload or course final is
   authorized;

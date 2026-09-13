@@ -125,5 +125,5 @@ visual acceptance.
   classmate playtest or proves the Power/Observation/Transit branches.
 - The first attempted full replay after the guard visibility experiment is
   retained as a failure diagnosis; the corrected full replay is the authority.
-- Package smoke, release benchmark and exact pushed-head CI must be refreshed
-  after the final documentation commit.
+- Package smoke and release benchmark pass at the current local documentation
+  baseline; exact pushed-head CI remains the final unverified gate.
