@@ -163,3 +163,9 @@ Security, then withdrawal at the elevator; composed music remains external.
 No new floor, character class, renderer architecture, content schema, save schema, cutscene
 system or public release. Representative rendered frames support art review;
 foreground Terminal play and Rain's subjective acceptance remain separate.
+
+Performance must not be bought by reducing the authored art or weakening the
+existing frame budget. Row-term reuse and skipping fully occluded plane shading
+are permitted internal optimizations; the closure version reproduces all 22
+reference production SVGs byte-for-byte. Benchmark the authored bank, never a
+silent diagnostic fallback.

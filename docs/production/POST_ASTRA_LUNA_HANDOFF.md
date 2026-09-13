@@ -4,7 +4,7 @@ Date: 2026-09-13. Work in the existing canonical repository, main only.
 
 ## Authority and identity
 
-BASELINE_HEAD = `5770e131934c6c8838850f826676526176d215b4`.
+BASELINE_HEAD = `7a714535db739e2fc58627215d42766cc241bcdb`.
 The final source commit is the reproducible code/content baseline. A later
 documentation/evidence-only commit may be the pushed delivery HEAD; its exact
 CI run, not an older green run, controls the handoff status.
@@ -140,8 +140,13 @@ invalid-seed boot rejection; 21/21 mandatory replays; 36-row scenario matrix
 (35/35 executed, one invalid by rules, zero valid-state coverage gaps); eight
 save-commit fault stages with byte-exact rollback; clean Windows package smoke
 and missing-resource exit 8; 36 exact facing/LOD selections plus projected
-heading checks; contract scans; static audit COUNT=0. The final two benchmarks
-are 1.063ms character render and 1.531ms representative total runtime, worst 1%.
+heading checks; contract scans; static audit COUNT=0. Three final benchmark runs
+from the repository root explicitly loaded authored art: character worst 1%
+0.712 / 0.659 / 0.652ms; total runtime worst 1% 1.155 / 1.342 / 1.340ms.
+Run `out/build/release/Release/writeover_bench.exe` from the repository root.
+A missing authored bank now fails instead of silently timing fallback art.
+The earlier 1.063 / 1.531ms local figures were taken from the build directory
+and are superseded, not production-art evidence.
 
 Provenance matters: full local routes ran after facing and geometry fixes;
 the final follow-up changed only service-housing visual contrast and its test.
@@ -151,9 +156,20 @@ The exact delivery-head CI reruns the mandatory suite on the pushed source.
 Save fault injection ran before the facing/clearance follow-up; no save or
 transaction logic changed afterward. Failed earlier route logs are preserved.
 
-Local Windows candidate: `dist/creative_baseline_5770e13/WRITEOVER-07-creative-baseline.zip`,
-492,729 bytes; SHA256 `4f50b312bceb10c01e0204bccc2de9f24a3cc8e4b65ea578ee69939bfbf61769`.
+Performance closure: delivery `fefc54f` failed Windows CI run `34765835593`
+only at the 3ms character-render budget (worst 1% 3.531ms; total runtime passed).
+The failure is retained, not dismissed as runner noise. `7a71453` precomputes
+pitch/row terms and avoids shading floor/ceiling cells fully covered by opaque
+walls. Art, resolution, thresholds, sample count and slow-sample handling are
+unchanged. All 22 production SVGs are byte-identical to the frozen reference;
+Debug/Release 215/215, contract/static checks, the 4,800-frame completed route,
+fresh package smoke and missing-resource rejection passed again. Full mandatory
+replays must also pass the new exact delivery-head CI before handoff.
+
+Local Windows candidate: `dist/creative_baseline_7a71453/WRITEOVER-07-creative-baseline.zip`,
+493,118 bytes; SHA256 `59cbdb1caef193793956cff58bdad70bf78931be43bcc5da6c7da89d64f50e9a`.
 It records the source baseline SHA, not a later documentation-only commit.
+The older candidates remain preserved locally.
 
 CI boundary: Windows runtime/build/replay/package; Linux GCC and Clang runtime;
 macOS arm64 runtime; Linux arm64 cross-link only. The latter is not an ARM64
@@ -186,6 +202,7 @@ WHY_THIS_DESIGN / HOW_TO_EXPLAIN_IT_IN_CLASS.
 | `data/characters/b1_character_art.txt`; `src/render/character_renderer.cpp` | `CharacterArtBank`, `DrawOneSprite`, `DrawWeaponViewmodel` | Author mass, silhouette, negative space and hand connections first; material glyphs/colour support them. LOD changes the drawing, not world authority. |
 | `src/render/character_renderer.cpp`; `tests/test_render.cpp`; `tools/art_review/main.cpp` | `SelectCharacterFacing`, `SpatialActorFacingOrbit` | An enum/file-name agreement can share a sign bug. Project the actual yaw vector to screen, then compare the authored face/boot direction. |
 | `src/render/character_renderer.cpp`; `tests/test_render.cpp` | `CharacterPlaneColumn`, `BuildPlaneColumn`, `PlaneHitDistance`, `ProjectCharacterWall`, `CharacterRaisedSurfaceHasFiniteExtent` | The final ray height cannot describe the entire column. Recover finite intervals from existing DDA transitions; cosine converts oblique ray distance to forward depth. This fixes desks and occlusion without changing the renderer paradigm. |
+| `src/render/character_renderer.cpp`; `tools/bench/main.cpp` | `BuildPlaneRows`, `RenderCharacterFrame`, `CharacterRendererBenchmark`, `CharacterRuntimeFrameBenchmark` | Calculate row/pitch terms once; find occlusion before shading invisible planes. Preserve operation order and prove equal production frames. Performance evidence must load the real authored bank; missing assets are an error, not a faster fallback. |
 | `data/rooms/room_*.json`; `data/scenes/recovery_scene.json`; compiled companions | `SceneRuntime`, `RenderModule` | Room purpose is expressed by grouped large equipment and walkable clearance. Decorative displays carry no false interaction capability. Do not change fixtures to hide layout regressions. |
 | `src/app/composition_root.cpp`; `src/render/character_renderer.cpp` | `SceneDoorWallPosition`, `DrawDoorPlane`, `CameraRayHitsTarget` | A door belongs to a wall, not a camera-facing billboard. HUD/action must share target visibility, including close overlap with the reader proxy. |
 | `src/app/composition_root.cpp`; `data/storylets`; `data/text/recovery_text.txt` | `NarrativeModule::SetActiveScene`, `SimTick`, `SetSubtitleOnce`, NPC speech consumer | Resolve the real speaker before choosing text. Scene flags suppress irrelevant backlog; room changes clear only short presentation, not fired/ledger state. Departure is followed by silence. |
@@ -193,6 +210,6 @@ WHY_THIS_DESIGN / HOW_TO_EXPLAIN_IT_IN_CLASS.
 | `src/platform/windows/win_audio.cpp` | `MakeClip`, `WinMmAudioBackend` | Duration multiplies sample rate; centred noise and envelopes produce bounded intentional cues. Procedural effects are not recorded voiceover. |
 | `tools/art_review/capture_chapter01.ps1`; replay gate scripts | production frame capture; mandatory/matrix gates | Inspect the production CharCell buffer, retain failed evidence in new directories, and keep visual judgment separate from scripted outcome assertions. |
 
-The C++ and systematic-debugging skills constrained fixes to internal,
-value-based changes and actual red/green evidence. No extra tutorial files,
+The C++, systematic-debugging and CI-failure skills constrained fixes to internal,
+value-based changes and actual red/green evidence without weakening budgets. No extra tutorial files,
 public API changes or dependency/ownership drift were introduced.

@@ -1,10 +1,10 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "date": "2026-09-13",
   "project": "WRITEOVER-07",
   "status": "LOCAL_CREATIVE_AND_ENGINEERING_BASELINE_VERIFIED",
   "maximum_status_after_exact_delivery_head_ci": "READY_FOR_LUNA_FINAL_COMPLETION",
-  "source_baseline_head": "5770e131934c6c8838850f826676526176d215b4",
+  "source_baseline_head": "7a714535db739e2fc58627215d42766cc241bcdb",
   "interrupted_creative_commit_preserved": "5434f8a069b6573c9300a7aa7d5d5d1b0e4b85f3",
   "remote_baseline_before_push": "1d32cfb03ac1e6207c1b12c630447119ae6f9dcc",
   "repository_visibility_live": "PUBLIC",
@@ -23,6 +23,12 @@
     "integrated_views": 17,
     "directional_and_weapon_sheets": 4,
     "completed_route_ending": 1,
+    "post_optimization_svg_equivalence": {
+      "matched": 22,
+      "total": 22,
+      "comparison": "byte-exact SHA256 against contract_final_material SVGs",
+      "local_reproduction_directory": "ci_perf_verified"
+    },
     "facing_exact_asset_checks": {
       "passed": 36,
       "total": 36,
@@ -87,10 +93,10 @@
     "final_4800_frame_quiet_route": "PASS; chapter checkpoint reached; final departure line followed by silence from frame 3931 to 4800",
     "package": {
       "platform": "windows-x64",
-      "source_commit": "5770e131934c6c8838850f826676526176d215b4",
-      "archive": "dist/creative_baseline_5770e13/WRITEOVER-07-creative-baseline.zip",
-      "bytes": 492729,
-      "sha256": "4f50b312bceb10c01e0204bccc2de9f24a3cc8e4b65ea578ee69939bfbf61769",
+      "source_commit": "7a714535db739e2fc58627215d42766cc241bcdb",
+      "archive": "dist/creative_baseline_7a71453/WRITEOVER-07-creative-baseline.zip",
+      "bytes": 493118,
+      "sha256": "59cbdb1caef193793956cff58bdad70bf78931be43bcc5da6c7da89d64f50e9a",
       "clean_extraction_smoke": "PASS",
       "resources": "PASS",
       "user_data_separation": "PASS",
@@ -103,15 +109,35 @@
     "static_audit_count": 0,
     "benchmark": {
       "overall": "PASS",
-      "character_render_worst_one_percent_ms": 1.063,
-      "representative_total_runtime_worst_one_percent_ms": 1.531,
+      "authored_art": "REQUIRED_AND_LOADED",
+      "working_directory": "repository root",
+      "character_render_worst_one_percent_ms_runs": [0.712, 0.659, 0.652],
+      "representative_total_runtime_worst_one_percent_ms_runs": [1.155, 1.342, 1.340],
+      "character_render_mean_ms_runs": [0.552, 0.580, 0.521],
+      "pre_optimization_authored_mean_ms_runs": [0.789, 0.787, 0.876],
+      "pre_optimization_authored_worst_one_percent_ms_runs": [0.868, 0.893, 0.975],
+      "missing_authored_art_negative_probe": "EXPECTED_EXIT_1_PASS",
+      "threshold_or_sampling_changed": false,
+      "superseded_build_directory_timings": "Earlier 1.063/1.531ms results loaded the diagnostic fallback and are not production-art proof.",
       "physical_terminal_writes_included": false
+    },
+    "previous_exact_head_ci_failure": {
+      "head": "fefc54f026550baa9041fce8744a5a92dcd371ea",
+      "run_id": 34765835593,
+      "url": "https://github.com/Rainflowers686/WRITEOVER-07/actions/runs/34765835593",
+      "failing_job": "Windows Release benchmark",
+      "character_render_worst_one_percent_ms": 3.531,
+      "unchanged_limit_ms": 3.0,
+      "all_other_jobs": "PASS",
+      "windows_prior_units_mandatory_replays_package": "PASS",
+      "resolution": "Reduce redundant row calculations and fully occluded plane shading; require authored benchmark assets; observe new exact-head CI."
     },
     "exact_delivery_head_ci": "MUST_BE_OBSERVED_AFTER_PUSH; this pre-push receipt does not claim green"
   },
   "provenance_notes": [
     "Full local mandatory/matrix suite ran after all gameplay/content and facing corrections, before the final service-housing visual-contrast-only correction.",
     "Final Debug/Release builds and 215 tests, 22 rendered images, a 4800-frame completed quiet route and package smoke include the visual-contrast correction.",
+    "After the internal performance-only correction, Debug/Release builds and 215 tests, 22 byte-identical production SVGs, 4800-frame ending, contract/static gates and fresh package/missing-resource smoke passed again.",
     "Exact delivery-head CI must rerun mandatory replay checks on the pushed source.",
     "Eight injected save-fault replays ran before the last facing/clearance changes; save/transaction logic was unchanged afterward.",
     "Old failed and interrupted gate directories remain local; no failing oracle or original replay fixture was weakened.",
@@ -146,7 +172,7 @@
   "source_and_binary_hashes": [
     {
       "path": "src/render/character_renderer.cpp",
-      "sha256": "05730aa309d4801f033468caf4dcbad6b76ee8031d27f85dd1041e3b1bce4aef"
+      "sha256": "e9b501a38679d8fc7102dae09dcc3e5cb1e34dd7f82ad6784ade0f1bc425c789"
     },
     {
       "path": "src/app/composition_root.cpp",
@@ -182,7 +208,11 @@
     },
     {
       "path": "out/build/release/Release/writeover_app.exe",
-      "sha256": "a525886bfd1fffaedd2aa58911f81b8912461ac7b36a9124d328c366e57c2067"
+      "sha256": "cf998274ea74e4cfa79f6568da9da3f1fe78d56618970f4ae5caad4d844837ae"
+    },
+    {
+      "path": "tools/bench/main.cpp",
+      "sha256": "2f170752a3e7f41dd9fe044f757d2021659ebd3b393ca027cc910d7919b0ab65"
     }
   ],
   "production_images": [
