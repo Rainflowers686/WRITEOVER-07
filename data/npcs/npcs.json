@@ -66,6 +66,50 @@
       "health": 100,
       "isCritical": true,
       "perception": {"sightRange": 15.0, "sightFovRad": 2.09, "hearingRange": 8.0}
+    },
+    {
+      "id": "records_operator",
+      "name": "Records Operator",
+      "cognition": "Full",
+      "faction": "GeneralStaff",
+      "role": "Administrator",
+      "spawn": {"room": "room_act2_records_archive", "x": 14.0, "y": 8.0, "yaw": 3.1415926536},
+      "health": 100,
+      "isCritical": false,
+      "perception": {"sightRange": 13.0, "sightFovRad": 2.09, "hearingRange": 7.0}
+    },
+    {
+      "id": "power_technician",
+      "name": "Power Technician",
+      "cognition": "SemiHuman",
+      "faction": "Maintenance",
+      "role": "Technician",
+      "spawn": {"room": "room_act2_power_utility", "x": 15.5, "y": 7.2, "yaw": 3.1415926536},
+      "health": 100,
+      "isCritical": false,
+      "perception": {"sightRange": 11.0, "sightFovRad": 2.09, "hearingRange": 8.0}
+    },
+    {
+      "id": "security_response",
+      "name": "Transit Security",
+      "cognition": "SemiHuman",
+      "faction": "Security",
+      "role": "Guard",
+      "spawn": {"room": "room_act2_transit_control", "x": 10.0, "y": 8.0, "yaw": 3.14},
+      "health": 100,
+      "isCritical": false,
+      "perception": {"sightRange": 14.0, "sightFovRad": 2.09, "hearingRange": 10.0}
+    },
+    {
+      "id": "observation_analyst",
+      "name": "Observation Analyst",
+      "cognition": "Full",
+      "faction": "Research",
+      "role": "Researcher",
+      "spawn": {"room": "room_act2_observation_gallery", "x": 5.0, "y": 6.0, "yaw": 3.14},
+      "health": 100,
+      "isCritical": false,
+      "perception": {"sightRange": 14.0, "sightFovRad": 2.09, "hearingRange": 8.0}
     }
   ]
 }

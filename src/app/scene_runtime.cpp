@@ -47,7 +47,7 @@ bool ValidEntityKind(uint8_t value) {
 }
 
 bool ValidVisual(uint8_t value) {
-    return value <= static_cast<uint8_t>(CharacterSpriteKind::BodyDead);
+    return value <= static_cast<uint8_t>(CharacterSpriteKind::DoorFrame);
 }
 
 } // namespace

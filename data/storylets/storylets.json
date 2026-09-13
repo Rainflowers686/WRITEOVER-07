@@ -188,6 +188,92 @@
       "actions": [
         {"type": "narrator", "textId": "text_chapter_complete", "persona": 1}
       ]
+    },
+    {
+      "id": "storylet_act2_concourse",
+      "textId": "text_act2_concourse",
+      "priority": 218,
+      "once": true,
+      "conditions": [
+        {"type": "flag", "flag": "scene:room_act2_service_concourse"},
+        {"type": "fact", "fact": "fact_chapter_checkpoint_reached", "equals": true},
+        {"type": "fact", "fact": "fact_act2_concourse_entered", "equals": true},
+        {"type": "fact", "fact": "fact_act2_checkpoint_reached", "equals": false}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_act2_concourse", "persona": 1}
+      ]
+    },
+    {
+      "id": "storylet_act2_records",
+      "textId": "text_act2_records_operator",
+      "priority": 176,
+      "once": true,
+      "conditions": [
+        {"type": "flag", "flag": "scene:room_act2_records_archive"},
+        {"type": "fact", "fact": "fact_chapter_checkpoint_reached", "equals": true},
+        {"type": "fact", "fact": "fact_act2_records_consulted", "equals": false}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_act2_records_operator", "persona": 1}
+      ]
+    },
+    {
+      "id": "storylet_act2_power",
+      "textId": "text_act2_power_tech",
+      "priority": 175,
+      "once": true,
+      "conditions": [
+        {"type": "flag", "flag": "scene:room_act2_power_utility"},
+        {"type": "fact", "fact": "fact_chapter_checkpoint_reached", "equals": true},
+        {"type": "fact", "fact": "fact_act2_power_rerouted", "equals": false}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_act2_power_tech", "persona": 1}
+      ]
+    },
+    {
+      "id": "storylet_act2_observation",
+      "textId": "text_act2_observation_analyst",
+      "priority": 174,
+      "once": true,
+      "conditions": [
+        {"type": "flag", "flag": "scene:room_act2_observation_gallery"},
+        {"type": "fact", "fact": "fact_chapter_checkpoint_reached", "equals": true},
+        {"type": "fact", "fact": "fact_act2_camera_looped", "equals": false}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_act2_observation_analyst", "persona": 1}
+      ]
+    },
+    {
+      "id": "storylet_act2_transit",
+      "textId": "text_act2_transit_guard",
+      "priority": 177,
+      "once": true,
+      "conditions": [
+        {"type": "flag", "flag": "scene:room_act2_transit_control"},
+        {"type": "fact", "fact": "fact_chapter_checkpoint_reached", "equals": true},
+        {"type": "fact", "fact": "fact_act2_checkpoint_reached", "equals": false},
+        {"type": "fact", "fact": "fact_act2_transit_guard_down", "equals": false}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_act2_transit_guard", "persona": 2}
+      ]
+    },
+    {
+      "id": "storylet_act2_checkpoint",
+      "textId": "text_act2_checkpoint",
+      "priority": 219,
+      "once": true,
+      "conditions": [
+        {"type": "flag", "flag": "scene:room_act2_transit_control"},
+        {"type": "fact", "fact": "fact_chapter_checkpoint_reached", "equals": true},
+        {"type": "fact", "fact": "fact_act2_checkpoint_reached", "equals": true}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_act2_checkpoint", "persona": 1}
+      ]
     }
   ]
 }

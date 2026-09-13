@@ -72,6 +72,58 @@
       "personalityTags": [
         "medical"
       ]
+    },
+    {
+      "id": "records_operator",
+      "faction": "GeneralStaff",
+      "cognition": "Full",
+      "role": "Administrator",
+      "occupation": "Records_Operator",
+      "fullHumanIllusion": true,
+      "knownIdentities": [],
+      "personalityTags": [
+        "precise",
+        "guarded"
+      ]
+    },
+    {
+      "id": "power_technician",
+      "faction": "Maintenance",
+      "cognition": "SemiHuman",
+      "role": "Technician",
+      "occupation": "Power_Technician",
+      "fullHumanIllusion": false,
+      "knownIdentities": [],
+      "personalityTags": [
+        "methodical",
+        "tired"
+      ]
+    },
+    {
+      "id": "security_response",
+      "faction": "Security",
+      "cognition": "SemiHuman",
+      "role": "Guard",
+      "occupation": "Transit_Security",
+      "fullHumanIllusion": false,
+      "knownIdentities": [],
+      "personalityTags": [
+        "disciplined",
+        "escalate"
+      ]
+    },
+    {
+      "id": "observation_analyst",
+      "faction": "Research",
+      "cognition": "Full",
+      "role": "Researcher",
+      "occupation": "Observation_Analyst",
+      "fullHumanIllusion": true,
+      "knownIdentities": [],
+      "personalityTags": [
+        "quiet",
+        "curious"
+      ]
     }
   ],
   "items": [

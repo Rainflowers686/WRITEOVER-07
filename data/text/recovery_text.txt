@@ -46,3 +46,29 @@ text_elevator_complete	Chapter One complete. Departure recorded.
 text_closure_title	C H A P T E R   O N E
 text_closure_departure	DEPARTURE RECORDED
 text_closure_status	SUBJECT 07 / UNRESOLVED
+text_intro_room_act2_service_concourse	ACT II-A / Transfer zone. The facility has more than one way to remember you.
+text_intro_room_act2_records_archive	RECORDS / A clean file is still a choice.
+text_intro_room_act2_power_utility	UTILITY / The building is running on borrowed current.
+text_intro_room_act2_transit_control	TRANSIT / Present a route, or make one.
+text_intro_room_act2_observation_gallery	OBSERVATION / The cameras are patient. People are not.
+text_act2_concourse	Two corridors leave the transfer zone. The facility calls that redundancy.
+text_act2_dispatch	Dispatch has three ways to describe your arrival. It has not chosen one.
+text_act2_records_operator	Operator: I can release the clean manifest. I cannot make it true.
+text_act2_records_operator_repeat	Operator: The clean passage is still available. Use it before someone edits it.
+text_act2_records_terminal	ARCHIVE: manifest indexed. The next checkpoint can query this record.
+text_act2_records_aggressive	Operator: Your file arrived before you did. I can still route the paperwork.
+text_act2_power_tech	Technician: You want the relay, not the alarm. Good. Keep your hand off the red bus.
+text_act2_power_helped	Technician: I marked the bypass. It will hold if nobody asks it a second question.
+text_act2_power_rerouted	UTILITY: reserve feed rerouted. The transit gate has a maintenance path.
+text_act2_power_repeat	Technician: The bypass is already carrying the load. Walk while it is quiet.
+text_act2_observation_analyst	Analyst: That camera is not blind. It is looking somewhere else.
+text_act2_observation_looped	OBSERVATION: transit camera looped. The facility will remember the gap.
+text_act2_transit_guard	Transit Security: Route, credential, or reason.
+text_act2_transit_guard_quiet	Transit Security: The manifest says you are expected. Keep it brief.
+text_act2_transit_guard_alert	Transit Security: Your route is loud. Stop at the line.
+text_act2_transit_guard_down	TRANSIT: checkpoint officer incapacitated. Control terminal remains live.
+text_act2_transit_terminal	TRANSIT: control handshake accepted. The next door is no longer theoretical.
+text_act2_transit_denied	TRANSIT: no route has been filed. The guard is not the only lock.
+text_act2_transit_alert	TRANSIT: the maintenance bypass worked. It also made a noise.
+text_act2_checkpoint	Act II-A checkpoint recorded. The facility has opened a deeper question.
+text_act2_checkpoint_repeat	Act II-A checkpoint already recorded. Continue only when you are ready.

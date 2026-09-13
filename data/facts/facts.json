@@ -25,6 +25,22 @@
     {"id": "fact_chapter_staff_route", "predicate": 0, "initial": false, "subject": 1},
     {"id": "fact_chapter_security_reached", "predicate": 0, "initial": false, "subject": 1},
     {"id": "fact_chapter_security_checkpoint", "predicate": 0, "initial": false, "subject": 1},
-    {"id": "fact_chapter_checkpoint_reached", "predicate": 0, "initial": false, "subject": 1}
+    {"id": "fact_chapter_checkpoint_reached", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_concourse_entered", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_dispatch_reviewed", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_records_consulted", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_archive_released", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_archive_terminal_accessed", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_observation_found", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_camera_looped", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_power_helped", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_power_rerouted", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_utility_noise", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_transit_guard_down", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_transit_guard_bypassed", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_transit_alerted", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_transit_controlled", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_checkpoint_reached", "predicate": 0, "initial": false, "subject": 1},
+    {"id": "fact_act2_access_denied", "predicate": 0, "initial": false, "subject": 1}
   ]
 }

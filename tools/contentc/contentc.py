@@ -58,7 +58,7 @@ SCENE_KINDS = {"cart": 0, "camera": 1, "terminal": 2,
 SCENE_VISUALS = {
     "security_guard": 0, "full_human": 1, "maintenance_worker": 2,
     "terminal": 3, "camera": 4, "crate": 5, "door": 6,
-    "body_unconscious": 7, "body_dead": 8,
+    "body_unconscious": 7, "body_dead": 8, "door_frame": 9,
 }
 
 

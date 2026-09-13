@@ -54,8 +54,15 @@ GameConfig ParseArgs(int argc, char** argv) {
             config.camera_position.x = std::strtof(argv[++i], nullptr);
             config.camera_position.y = std::strtof(argv[++i], nullptr);
             config.camera_yaw = std::strtof(argv[++i], nullptr);
-            if (i + 1 < argc && argv[i + 1][0] != '-') {
-                config.camera_pitch = std::strtof(argv[++i], nullptr);
+            if (i + 1 < argc) {
+                // A signed pitch is a valid camera value.  The old leading
+                // '-' guard rejected downward-looking production captures
+                // because it confused a negative float with another flag.
+                char* end = nullptr;
+                (void)std::strtof(argv[i + 1], &end);
+                if (end != argv[i + 1] && *end == '\0') {
+                    config.camera_pitch = std::strtof(argv[++i], nullptr);
+                }
             }
         }
     }

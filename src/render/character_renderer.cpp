@@ -38,7 +38,9 @@ constexpr size_t kMaxArtColumns = 64;
 constexpr float kPistolGripAnchorU = 0.86f;
 constexpr float kPistolGripAnchorV = 0.82f;
 constexpr float kPistolGripScreenU = 0.82f;
-constexpr float kPistolGripScreenV = 0.92f;
+// Keep the authored wrist/forearm inside the frame.  The old 0.92 anchor
+// clipped the lower hand and made the whole viewmodel read as a vertical prop.
+constexpr float kPistolGripScreenV = 0.90f;
 
 struct InkPalette {
     Color base;
@@ -193,6 +195,8 @@ bool ParseKind(const std::string& value, CharacterSpriteKind& out) {
         out = CharacterSpriteKind::BodyUnconscious;
     } else if (value == "body_dead") {
         out = CharacterSpriteKind::BodyDead;
+    } else if (value == "door_frame") {
+        out = CharacterSpriteKind::DoorFrame;
     } else {
         return false;
     }
@@ -310,6 +314,7 @@ void BuildFallbackBank(std::vector<CharacterArtAsset>& assets) {
         CharacterSpriteKind::Door,
         CharacterSpriteKind::BodyUnconscious,
         CharacterSpriteKind::BodyDead,
+        CharacterSpriteKind::DoorFrame,
     };
     for (const auto kind : kinds) {
         for (const auto lod : {CharacterLod::Far, CharacterLod::Mid,
@@ -355,17 +360,38 @@ Color SurfaceColor(uint8_t material, uint8_t light, float distance,
     const Color base = MaterialBase(material);
     const float light_level = 0.30f + 0.70f * (light / 255.0f);
     const float fog = 0.40f + 0.60f * Saturate(1.0f - distance / 40.0f);
-    // Planes stay near the facility dark base. Their seams and sparse glyphs
-    // carry the spatial information; a broad bright fill must not become a
-    // substitute for character art.
-    const float scale = (ceiling ? 0.25f : 0.36f) * light_level * fog;
-    const uint8_t cap = ceiling ? 34 : 52;
+    // Keep the facility moody, but lift the production floor enough that
+    // authored silhouettes and large room groupings survive a first glance.
+    // This is still a CharCell material underpaint: seams and glyphs carry
+    // construction, and colour never replaces the room's character geometry.
+    // Lift the authored environment one restrained step so the room's
+    // construction survives a real terminal capture.  Equipment remains the
+    // focal point; this only prevents the ceiling and floor from collapsing
+    // into the same near-black value at normal approach distances.
+    const float scale = (ceiling ? 0.52f : 0.54f) * light_level * fog;
+    const uint8_t cap = ceiling ? 82 : 90;
     Color out = ScaleColor(base, scale * (high_contrast ? 1.12f : 1.0f), cap);
     if (material == 7 && !ceiling) {
         out.r = Clamp8(std::min<float>(cap, out.r + 10.0f));
         out.g = Clamp8(std::min<float>(cap, out.g + 5.0f));
     }
     return out;
+}
+
+uint8_t CeilingMaterial(uint8_t sampled_floor_material) {
+    // A plane sample is taken at the same XY coordinate for both the floor
+    // and the ceiling, but those surfaces are not the same object.  In
+    // particular, a functional floor grate must not turn the overhead into
+    // a dark triangular "hole" when it is projected toward the horizon.
+    // Keep glass as a deliberate architectural ceiling treatment; all other
+    // floor finishes use the facility's continuous steel service ceiling.
+    return sampled_floor_material == 2 ? 2 : 1;
+}
+
+uint8_t CeilingLight(uint8_t sampled_floor_light) {
+    // Floor zoning may intentionally dim a grate, hazard strip, or work
+    // area.  Overhead service lighting remains readable across that zone.
+    return std::max<uint8_t>(sampled_floor_light, 112);
 }
 
 char32_t PlaneGlyph(bool ceiling, float world_x, float world_y,
@@ -377,16 +403,23 @@ char32_t PlaneGlyph(bool ceiling, float world_x, float world_y,
     const bool major_x = (grid_x % 4) == 0;
     const bool major_y = (grid_y % 4) == 0;
     if (ceiling) {
-        // Recessed light strips and acoustic infill are world-anchored.
-        // Whole glyphs describe fixtures; no half-cell colour packing.
-        const float tile_x = world_x - std::floor(world_x / 4.0f) * 4.0f;
-        const float tile_y = world_y - std::floor(world_y / 4.0f) * 4.0f;
-        if (tile_x > 1.0f && tile_x < 2.7f && tile_y < 0.22f) return U'=';
-        const bool beam_x = std::fabs(world_x - std::round(world_x)) < 0.055f;
-        const bool beam_y = std::fabs(world_y - std::round(world_y)) < 0.055f;
-        if (beam_x && beam_y && major_x && major_y) return U'┼';
-        if (beam_x && major_x) return U'│';
-        if (beam_y && major_y) return U'─';
+        // Recessed light strips, acoustic panels, and service beams are
+        // world-anchored. Whole glyphs describe the ceiling construction; no
+        // half-cell colour packing or screen-space texture is involved.
+        const float tile_x = world_x - std::floor(world_x / 2.0f) * 2.0f;
+        const float tile_y = world_y - std::floor(world_y / 2.0f) * 2.0f;
+        const bool beam_x = std::fabs(world_x - std::round(world_x / 2.0f) *
+                                      2.0f) < 0.055f;
+        const bool beam_y = std::fabs(world_y - std::round(world_y / 2.0f) *
+                                      2.0f) < 0.055f;
+        if (tile_x > 0.72f && tile_x < 1.28f && tile_y < 0.16f) return U'=';
+        if (beam_x && beam_y) return U'┼';
+        if (beam_x) return U'│';
+        if (beam_y) return U'─';
+        const int panel_x = static_cast<int>(std::floor(world_x / 2.0f));
+        const int panel_y = static_cast<int>(std::floor(world_y / 2.0f));
+        const int panel_index = ((panel_x * 3 + panel_y * 5) % 5 + 5) % 5;
+        if (tile_x > 0.32f && tile_y > 0.32f && panel_index == 0) return U'·';
         return U' ';
     }
     const bool seam_x = std::fabs(world_x - std::round(world_x)) < 0.065f;
@@ -484,7 +517,7 @@ CharCell WallCell(const OccludingSegment& segment, float surface_u,
     float scale = light_level * fog * (options.high_contrast ? 1.10f : 1.0f);
     if (segment.flag == SegFloorRise || segment.flag == SegFloorDrop) scale *= 0.86f;
     if (segment.flag == SegCeilingRise || segment.flag == SegCeilingDrop)
-        scale *= service_housing ? 0.95f : 0.70f;
+        scale *= service_housing ? 0.95f : 0.82f;
     // The upper light, inset edge and lower grime change glyph luminance,
     // not the background rectangle. Even monochrome keeps the construction.
     const float panel_u = surface_u - std::floor(surface_u / 2.0f) * 2.0f;
@@ -500,7 +533,7 @@ CharCell WallCell(const OccludingSegment& segment, float surface_u,
     const float detail = glyph == U'░' || glyph == U'·' || glyph == U':'
         ? 0.70f : 0.94f;
     const Color fg = ScaleColor(base, scale * bevel * height_light * detail, 196);
-    const Color bg = ScaleColor(base, scale * 0.28f, 42);
+    const Color bg = ScaleColor(base, scale * 0.40f, 64);
     return MakeCell(glyph, fg, bg, glyph == U'╬' || glyph == U'═' ? 0x01 : 0);
 }
 
@@ -557,11 +590,20 @@ Color SpriteForeground(const CharacterArtAsset& asset, char32_t glyph,
     // a semantic ink choice, not a sampled image or a screen-space face mask.
     const bool skin_ink = asset.ink == CharacterInk::FullHuman ||
                           asset.ink == CharacterInk::Maintenance;
-    if (skin_ink && (glyph == U'·' || glyph == U':' || glyph == U'╴' ||
-                     glyph == U'ˉ' || glyph == U'ˍ')) {
+    if (skin_ink && glyph == U'•') {
+        // A single restrained iris glyph keeps the face readable without the
+        // uncanny punctuation/emoji look of bright twin dots. It remains an
+        // authored facial mark, not a generated screen-space eye mask.
+        return ScaleColor({104, 78, 64}, depth * light_level, 220);
+    }
+    if (skin_ink && (glyph == U'·' || glyph == U':' || glyph == U'╵' ||
+                     glyph == U'╴' || glyph == U'ˉ' || glyph == U'ˍ')) {
+        if (glyph == U'╵') {
+            return ScaleColor({94, 75, 63}, depth * light_level, 220);
+        }
         const Color skin = glyph == U'╴' || glyph == U'ˉ' || glyph == U'ˍ'
-            ? Color{39, 38, 35} : glyph == U':' ? Color{133, 105, 84}
-                                             : Color{174, 143, 116};
+            ? Color{92, 68, 57} : glyph == U':' ? Color{118, 88, 70}
+                                             : Color{184, 148, 116};
         return ScaleColor(skin, depth * light_level, 235);
     }
     if (glyph == U'░') return ScaleColor(palette.highlight, depth * light_level, 240);
@@ -604,7 +646,8 @@ Color SpriteBackground(const CharacterArtAsset& asset, char32_t glyph,
         return ScaleColor({65, 57, 47}, depth, 70);
     const bool skin_ink = asset.ink == CharacterInk::FullHuman ||
                           asset.ink == CharacterInk::Maintenance;
-    if (skin_ink && (glyph == U'·' || glyph == U':' || glyph == U'╴' ||
+    if (skin_ink && (glyph == U'·' || glyph == U':' || glyph == U'•' ||
+                     glyph == U'╵' || glyph == U'╴' ||
                      glyph == U'ˉ' || glyph == U'ˍ'))
         return ScaleColor({145, 113, 88}, depth, 150);
     const InkPalette palette = Palette(asset.ink);
@@ -640,7 +683,7 @@ std::string XmlEscape(const std::string& text) {
 }
 
 bool IsEyeGlyph(char32_t glyph) {
-    return glyph == U'o' || glyph == U'O' || glyph == U'@';
+    return glyph == U'o' || glyph == U'O' || glyph == U'@' || glyph == U'•';
 }
 
 void ResolveFacingCell(const CharacterArtAsset& asset, int source_x,
@@ -865,11 +908,20 @@ void DrawDoorPlane(const CameraProjection& camera,
             ResolveFacingCell(asset, sx, sy, CharacterFacing::Front, glyph, opacity);
             if (opacity == CharacterCellOpacity::Transparent) continue;
             const size_t index = static_cast<size_t>(y) * camera.screen_width + x;
-            if (wall_depths[index] < distance - 0.05f ||
-                sprite_depths[index] <= distance + 0.05f) continue;
+            if (wall_depths[index] < distance - 0.05f) continue;
+            const bool frame_layer =
+                asset.sprite_kind == CharacterSpriteKind::DoorFrame;
+            // A frame is a decorative architectural layer over the fitted
+            // panel.  It may share the panel's exact plane and therefore must
+            // be allowed to draw at equal depth, while still remaining behind
+            // a genuinely nearer prop or actor.
+            if ((!frame_layer && sprite_depths[index] <= distance + 0.05f) ||
+                (frame_layer && sprite_depths[index] < distance - 0.05f)) {
+                continue;
+            }
             cells[index] = MakeCell(glyph,
                 SpriteForeground(asset, glyph, distance, 230, options), {5, 9, 14});
-            sprite_depths[index] = distance;
+            if (!frame_layer) sprite_depths[index] = distance;
         }
     }
 }
@@ -922,7 +974,8 @@ void DrawOneSprite(const CharacterView& view,
     }
     if (asset == nullptr || asset->Height() <= 0 || asset->Width() <= 0) return;
 
-    if (instance.kind == CharacterSpriteKind::Door) {
+    if (instance.kind == CharacterSpriteKind::Door ||
+        instance.kind == CharacterSpriteKind::DoorFrame) {
         DrawDoorPlane(projection, instance, *asset, out_cells, wall_depths,
                        sprite_depths, options);
         return;
@@ -1279,7 +1332,11 @@ void RenderCharacterFrame(const GridCell* cells, int grid_w, int grid_h,
                 : ScaleColor({49, 59, 62}, 0.55f + 0.45f *
                                   Saturate(1.0f - distance / 40.0f),
                               options.high_contrast ? 135 : 120);
-            const Color bg = SurfaceColor(sample.material, sample.light, distance,
+            const uint8_t plane_material = plane.ceiling
+                ? CeilingMaterial(sample.material) : sample.material;
+            const uint8_t plane_light = plane.ceiling
+                ? CeilingLight(sample.light) : sample.light;
+            const Color bg = SurfaceColor(plane_material, plane_light, distance,
                                           plane.ceiling, options.high_contrast);
             out_cells[static_cast<size_t>(y) * cell_w + x] =
                 MakeCell(glyph, fg, bg, 0);
@@ -1414,18 +1471,24 @@ void DrawWeaponViewmodel(CharCell* cells, int cell_w, int cell_h,
     if (asset == nullptr || asset->Width() <= 0 || asset->Height() <= 0) return;
     const int source_width = asset->Width();
     const int source_height = asset->Height();
-    const int max_width = std::max(8, static_cast<int>(cell_w * 0.32f));
-    const int max_height = std::max(5, static_cast<int>(cell_h * 0.43f));
+    const bool stunner = slot == WeaponSlot::Stunner;
+    const int max_width = std::max(8, static_cast<int>(
+        cell_w * (stunner ? 0.30f : 0.30f)));
+    const int max_height = std::max(5, static_cast<int>(
+        cell_h * (stunner ? 0.40f : 0.40f)));
     const float scale = std::min(static_cast<float>(max_width) / source_width,
                                  static_cast<float>(max_height) / source_height);
     const int dst_w = std::max(1, static_cast<int>(std::floor(source_width * scale)));
     const int dst_h = std::max(1, static_cast<int>(std::floor(source_height * scale)));
-    const float grip_screen_x = static_cast<float>(cell_w) * kPistolGripScreenU;
+    const float grip_anchor_u = stunner ? kPistolGripAnchorU : 0.80f;
+    const float grip_anchor_v = stunner ? kPistolGripAnchorV : 0.80f;
+    const float grip_screen_u = stunner ? kPistolGripScreenU : 0.80f;
+    const float grip_screen_x = static_cast<float>(cell_w) * grip_screen_u;
     const float grip_screen_y = static_cast<float>(cell_h) * kPistolGripScreenV;
     const int base_x = static_cast<int>(std::lround(
-        grip_screen_x - kPistolGripAnchorU * static_cast<float>(dst_w)));
+        grip_screen_x - grip_anchor_u * static_cast<float>(dst_w)));
     const int base_y = static_cast<int>(std::lround(
-        grip_screen_y - kPistolGripAnchorV * static_cast<float>(dst_h) -
+        grip_screen_y - grip_anchor_v * static_cast<float>(dst_h) -
         Saturate(recoil_amount) * 2.0f));
     const InkPalette palette = Palette(CharacterInk::Weapon);
     for (int dy = 0; dy < dst_h; ++dy) {

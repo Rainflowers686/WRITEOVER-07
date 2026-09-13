@@ -64,6 +64,12 @@ namespace writeover {
 
 namespace {
 
+// A small downward bias keeps the first-person weapon, route markings and
+// functional room groupings in the opening read.  The player can still look
+// freely; this only establishes a grounded production composition when a room
+// is entered or restarted.
+constexpr float kOpeningPitch = -0.08f;
+
 class PlayerActorWorldQuery final : public IWorldQuery {
 public:
     PlayerActorWorldQuery(const IWorldQuery* static_query,
@@ -1059,6 +1065,20 @@ bool SceneDoorWallPosition(const SceneEntity& entity, const GridCell* cells,
         position.x = static_cast<float>(col) - 0.035f;
         return true;
     }
+    // Act II doors are authored on the inner face of the perimeter wall
+    // (x/y == 1 or width/height - 1).  Do not ray-march from an anchor that
+    // is already on that face: starting inside a solid boundary cell sends
+    // east/south doors one cell outside the room, while the opposite sides
+    // end up almost a cell inside it.  Keeping the authored plane intact is
+    // what makes the frame/panel pair a real wall opening from both sides.
+    const float max_x = static_cast<float>(width - 1);
+    const float max_y = static_cast<float>(height - 1);
+    const bool on_perimeter_face =
+        std::fabs(position.x - 1.0f) <= 0.12f ||
+        std::fabs(position.x - max_x) <= 0.12f ||
+        std::fabs(position.y - 1.0f) <= 0.12f ||
+        std::fabs(position.y - max_y) <= 0.12f;
+    if (on_perimeter_face) return true;
     RayConfig mount;
     mount.origin_xy = {position.x, position.y};
     mount.yaw = entity.yaw;
@@ -2035,9 +2055,19 @@ Result<GameServices> BuildGame(const EngineContext& ctx, const GameConfig& confi
     g.player = std::make_unique<PlayerModule>();
     g.player->Init(ctx);
     g.player->SetWorldQuery(&g.world->Query());
-    g.player->Locomotion().position =
-        g.world->HasLoadedRoom() ? g.world->LoadedRoom().spawn_point
-                                 : Vec3{1.5f, 6.0f, 0.0f};
+    if (g.world->HasLoadedRoom()) {
+        // The authored room spawn is a complete first-impression transform,
+        // not only a position.  Leaving yaw at PlayerModule's default made
+        // room-specific opening compositions (especially Records and Power)
+        // start 90 degrees away from their focal work area.
+        g.player->Locomotion().position = g.world->LoadedRoom().spawn_point;
+        g.player->Locomotion().yaw = g.world->LoadedRoom().spawn_yaw;
+        g.player->Locomotion().pitch = kOpeningPitch;
+    } else {
+        g.player->Locomotion().position = Vec3{1.5f, 6.0f, 0.0f};
+        g.player->Locomotion().yaw = 0.0f;
+        g.player->Locomotion().pitch = kOpeningPitch;
+    }
     g.ai = std::make_unique<AiModule>();
     g.ai->Init(ctx);
     g.narrative = std::make_unique<NarrativeModule>();
@@ -2334,8 +2364,19 @@ int RunComposition(const GameConfig& config) {
         QuestId chapter_quest = QuestId::New(9006);
         RoomId b1_room;
         NpcId security_guard_npc;
+        NpcId records_operator_npc;
+        NpcId power_technician_npc;
+        NpcId transit_guard_npc;
+        NpcId observation_analyst_npc;
         ItemId badge;
         ItemId cash;
+        TerminalId dispatch_terminal;
+        TerminalId records_terminal;
+        TerminalId power_terminal;
+        TerminalId power_backup_terminal;
+        TerminalId observation_terminal;
+        TerminalId transit_terminal;
+        ObservationSourceId transit_camera;
         bool terminal_session = false;
         bool bribe_done = false;
         bool schedule_found = false;
@@ -2359,6 +2400,21 @@ int RunComposition(const GameConfig& config) {
         bool gate_crossed = false;
         bool elevator_entry_attempted = false;
         bool elevator_entry_denied = false;
+        bool act2_dispatch_reviewed = false;
+        bool act2_records_consulted = false;
+        bool act2_archive_released = false;
+        bool act2_archive_terminal_accessed = false;
+        bool act2_observation_found = false;
+        bool act2_camera_looped = false;
+        bool act2_power_helped = false;
+        bool act2_power_rerouted = false;
+        bool act2_utility_noise = false;
+        bool act2_transit_guard_down = false;
+        bool act2_transit_guard_bypassed = false;
+        bool act2_transit_alerted = false;
+        bool act2_transit_controlled = false;
+        bool act2_checkpoint_reached = false;
+        bool act2_access_denied = false;
         bool normal_quit_requested = false;
     } slice;
     slice.cart = ContainerId::New(cart_entity->systemic_id);
@@ -2366,6 +2422,13 @@ int RunComposition(const GameConfig& config) {
     slice.calibration_terminal = TerminalId::New(9006);
     slice.medical_terminal = TerminalId::New(9007);
     slice.camera = ObservationSourceId::New(camera_entity->systemic_id);
+    slice.dispatch_terminal = TerminalId::New(9201);
+    slice.records_terminal = TerminalId::New(9202);
+    slice.power_terminal = TerminalId::New(9203);
+    slice.power_backup_terminal = TerminalId::New(9204);
+    slice.observation_terminal = TerminalId::New(9205);
+    slice.transit_terminal = TerminalId::New(9206);
+    slice.transit_camera = ObservationSourceId::New(9207);
     render->SetSceneEntities(&scene_runtime.Entities());
     std::vector<std::string> replay_route;
     bool replay_save_attempted = false;
@@ -2448,6 +2511,46 @@ int RunComposition(const GameConfig& config) {
             RoomId::New(StableContentId("room_service_medical"));
         medical_terminal.credential_requirement = 2;
         medical_terminal.access_scope.push_back("MEDICAL_INTAKE");
+        const RoomId act2_concourse_room =
+            RoomId::New(StableContentId("room_act2_service_concourse"));
+        const RoomId act2_records_room =
+            RoomId::New(StableContentId("room_act2_records_archive"));
+        const RoomId act2_power_room =
+            RoomId::New(StableContentId("room_act2_power_utility"));
+        const RoomId act2_transit_room =
+            RoomId::New(StableContentId("room_act2_transit_control"));
+        const RoomId act2_observation_room =
+            RoomId::New(StableContentId("room_act2_observation_gallery"));
+        TerminalRecord dispatch_terminal;
+        dispatch_terminal.id = slice.dispatch_terminal;
+        dispatch_terminal.room = act2_concourse_room;
+        dispatch_terminal.credential_requirement = 0;
+        dispatch_terminal.access_scope.push_back("ACT2_DISPATCH");
+        TerminalRecord records_terminal;
+        records_terminal.id = slice.records_terminal;
+        records_terminal.room = act2_records_room;
+        records_terminal.credential_requirement = 2;
+        records_terminal.access_scope.push_back("ACT2_RECORDS");
+        TerminalRecord power_terminal;
+        power_terminal.id = slice.power_terminal;
+        power_terminal.room = act2_power_room;
+        power_terminal.credential_requirement = 0;
+        power_terminal.access_scope.push_back("ACT2_POWER");
+        TerminalRecord power_backup_terminal;
+        power_backup_terminal.id = slice.power_backup_terminal;
+        power_backup_terminal.room = act2_power_room;
+        power_backup_terminal.credential_requirement = 0;
+        power_backup_terminal.access_scope.push_back("ACT2_POWER_BACKUP");
+        TerminalRecord observation_terminal;
+        observation_terminal.id = slice.observation_terminal;
+        observation_terminal.room = act2_observation_room;
+        observation_terminal.credential_requirement = 0;
+        observation_terminal.access_scope.push_back("ACT2_OBSERVATION");
+        TerminalRecord transit_terminal;
+        transit_terminal.id = slice.transit_terminal;
+        transit_terminal.room = act2_transit_room;
+        transit_terminal.credential_requirement = 0;
+        transit_terminal.access_scope.push_back("ACT2_TRANSIT");
         ObservationSource camera;
         camera.id = slice.camera;
         camera.type = ObservationSourceType::Camera;
@@ -2455,6 +2558,13 @@ int RunComposition(const GameConfig& config) {
         camera.online = true;
         camera.network_segment = "B1_SECURITY_LOOP";
         camera.provenance = "B1 ceiling camera 04";
+        ObservationSource transit_camera;
+        transit_camera.id = slice.transit_camera;
+        transit_camera.type = ObservationSourceType::Camera;
+        transit_camera.room = act2_transit_room;
+        transit_camera.online = true;
+        transit_camera.network_segment = "ACT2_TRANSIT_LOOP";
+        transit_camera.provenance = "Transit camera 02";
         QuestRecord opening;
         opening.id = slice.opening_quest;
         opening.title = "Calibration route";
@@ -2469,7 +2579,14 @@ int RunComposition(const GameConfig& config) {
                               services.systemic->AddTerminal(terminal) &&
                               services.systemic->AddTerminal(calibration_terminal) &&
                               services.systemic->AddTerminal(medical_terminal) &&
+                              services.systemic->AddTerminal(dispatch_terminal) &&
+                              services.systemic->AddTerminal(records_terminal) &&
+                              services.systemic->AddTerminal(power_terminal) &&
+                              services.systemic->AddTerminal(power_backup_terminal) &&
+                              services.systemic->AddTerminal(observation_terminal) &&
+                              services.systemic->AddTerminal(transit_terminal) &&
                               services.systemic->AddObservationSource(camera) &&
+                              services.systemic->AddObservationSource(transit_camera) &&
                               services.systemic->AddQuest(opening) &&
                               services.systemic->AddQuest(chapter);
         if (!setup_ok) {
@@ -2505,7 +2622,15 @@ int RunComposition(const GameConfig& config) {
              "fact_chapter_medical_assessed", "fact_chapter_quiet_route",
              "fact_chapter_aggressive_route", "fact_chapter_staff_route",
              "fact_chapter_security_reached", "fact_chapter_security_checkpoint",
-             "fact_chapter_checkpoint_reached", "fact_r1_guard_dead"}) {
+             "fact_chapter_checkpoint_reached", "fact_r1_guard_dead",
+             "fact_act2_concourse_entered", "fact_act2_dispatch_reviewed",
+             "fact_act2_records_consulted", "fact_act2_archive_released",
+             "fact_act2_archive_terminal_accessed", "fact_act2_observation_found",
+             "fact_act2_camera_looped", "fact_act2_power_helped",
+             "fact_act2_power_rerouted", "fact_act2_utility_noise",
+             "fact_act2_transit_guard_down", "fact_act2_transit_guard_bypassed",
+             "fact_act2_transit_alerted", "fact_act2_transit_controlled",
+             "fact_act2_checkpoint_reached", "fact_act2_access_denied"}) {
         services.world->SetBooleanFact(RuntimeFactId(fact), slice.player, false);
     }
 
@@ -2554,6 +2679,15 @@ int RunComposition(const GameConfig& config) {
                 profile.spawn_room ==
                     RoomId::New(StableContentId("room_1f_security"))) {
                 slice.security_guard_npc = profile.id;
+            }
+            if (profile.id == NpcId::New(StableContentId("records_operator"))) {
+                slice.records_operator_npc = profile.id;
+            } else if (profile.id == NpcId::New(StableContentId("power_technician"))) {
+                slice.power_technician_npc = profile.id;
+            } else if (profile.id == NpcId::New(StableContentId("security_response"))) {
+                slice.transit_guard_npc = profile.id;
+            } else if (profile.id == NpcId::New(StableContentId("observation_analyst"))) {
+                slice.observation_analyst_npc = profile.id;
             }
             if (!services.ai->AddNpc(npc, profile.spawn_room)) {
                 std::fprintf(stderr, "pvs runtime npc setup rejected\n");
@@ -2633,6 +2767,11 @@ int RunComposition(const GameConfig& config) {
             return;
         }
         const bool is_primary_b1_body = feedback.npc == slice.guard_npc;
+        if (feedback.npc == slice.transit_guard_npc) {
+            slice.act2_transit_guard_down = true;
+            services.world->SetBooleanFact(
+                RuntimeFactId("fact_act2_transit_guard_down"), slice.player, true);
+        }
         const EntityId body_id = is_primary_b1_body
             ? slice.body
             : EntityId::New(0xC000000000000000ull |
@@ -2782,7 +2921,7 @@ int RunComposition(const GameConfig& config) {
         // vertical look so a prior B1 interaction (which may leave the player
         // looking at a body or floor) cannot make the first target in the new
         // room impossible to focus.
-        services.player->Locomotion().pitch = 0.0f;
+        services.player->Locomotion().pitch = kOpeningPitch;
         services.player->SetCurrentRoom(id);
         services.narrative->SetActiveScene(id);
         if (id == "room_01_calibration") {
@@ -2802,6 +2941,10 @@ int RunComposition(const GameConfig& config) {
                 slice.player, true);
             services.world->SetBooleanFact(
                 RuntimeFactId("fact_chapter_security_reached"),
+                slice.player, true);
+        } else if (id == "room_act2_service_concourse") {
+            services.world->SetBooleanFact(
+                RuntimeFactId("fact_act2_concourse_entered"),
                 slice.player, true);
         }
         services.ai->SetActiveRoom(services.world->LoadedRoom().id);
@@ -2898,7 +3041,7 @@ int RunComposition(const GameConfig& config) {
                 services.player->Locomotion().position = room.spawn_point;
                 services.player->Locomotion().velocity = Vec3{};
                 services.player->Locomotion().yaw = room.spawn_yaw;
-                services.player->Locomotion().pitch = 0.0f;
+                services.player->Locomotion().pitch = kOpeningPitch;
                 services.player->Locomotion().contact.grounded = true;
                 services.player->SetHealthState(100, false);
                 slice.player_restarted = true;
@@ -3411,6 +3554,36 @@ int RunComposition(const GameConfig& config) {
         if (link.id == "staff_to_elevator") {
             return fact_is_true("fact_chapter_staff_route");
         }
+        if (link.id == "elevator_to_act2_concourse") {
+            return fact_is_true("fact_chapter_checkpoint_reached");
+        }
+        if (link.id == "act2_concourse_to_records" ||
+            link.id == "act2_concourse_to_power") {
+            return fact_is_true("fact_act2_dispatch_reviewed");
+        }
+        if (link.id == "act2_concourse_to_transit") {
+            return fact_is_true("fact_act2_archive_released") ||
+                   fact_is_true("fact_act2_archive_terminal_accessed") ||
+                   fact_is_true("fact_act2_power_rerouted") ||
+                   fact_is_true("fact_act2_transit_guard_down") ||
+                   fact_is_true("fact_act2_checkpoint_reached");
+        }
+        if (link.id == "act2_power_to_transit") {
+            return fact_is_true("fact_act2_power_rerouted") ||
+                   fact_is_true("fact_act2_checkpoint_reached");
+        }
+        if (link.id == "act2_records_to_observation") {
+            return fact_is_true("fact_act2_records_consulted") ||
+                   fact_is_true("fact_act2_archive_terminal_accessed");
+        }
+        if (link.id == "act2_concourse_to_elevator" ||
+            link.id == "act2_records_to_concourse" ||
+            link.id == "act2_power_to_concourse" ||
+            link.id == "act2_transit_to_concourse" ||
+            link.id == "act2_transit_to_power" ||
+            link.id == "act2_observation_to_records") {
+            return true;
+        }
         // Backtracking links are intentionally safe once the destination
         // room exists. They do not create a second progression path.
         if (link.id == "security_to_medical_south" ||
@@ -3521,6 +3694,51 @@ int RunComposition(const GameConfig& config) {
         render->SetSubtitleOnce(std::string(success_text), 180);
         return true;
     };
+    const auto use_act2_terminal = [&](TerminalId terminal_id,
+                                       std::string_view action,
+                                       std::string_view success_text) {
+        const TerminalRecord* terminal = services.systemic->GetTerminal(terminal_id);
+        if (terminal == nullptr || terminal->room != services.world->LoadedRoom().id ||
+            !terminal->powered) {
+            return false;
+        }
+        if (terminal_session_active(terminal_id)) return true;
+        const uint64_t frame = services.player->CurrentFrame();
+        TerminalSession session;
+        session.terminal = terminal_id;
+        session.user = slice.player;
+        session.method = TerminalAccessMethod::PhysicalServicePort;
+        session.started_frame = frame;
+        session.active = true;
+        TerminalAuditLog audit;
+        audit.terminal = terminal_id;
+        audit.user = slice.player;
+        audit.method = TerminalAccessMethod::PhysicalServicePort;
+        audit.frame = frame;
+        audit.action = std::string(action);
+        audit.unauthorized = false;
+        if (!services.systemic->AddTerminalSession(session) ||
+            !services.systemic->AddTerminalAudit(audit)) {
+            return false;
+        }
+        render->SetSubtitleOnce(std::string(success_text), 180);
+        return true;
+    };
+    const auto focused_npc = [&](NpcId npc_id, float radius = 0.52f) {
+        if (!npc_id.IsValid()) return false;
+        for (const auto& runtime : services.ai->Npcs()) {
+            if (runtime.instance.id != npc_id ||
+                runtime.room != services.world->LoadedRoom().id ||
+                runtime.instance.state == NPCState::Dead ||
+                runtime.instance.state == NPCState::Stunned) {
+                continue;
+            }
+            if (camera_looks_at(runtime.instance.position, radius, 1.85f)) {
+                return true;
+            }
+        }
+        return false;
+    };
     // Alpha-01 presentation is intentionally a pair of small sources rather
     // than a new UI or quest framework. They read the same systemic facts and
     // authored scene records that the interaction callback below mutates.
@@ -3574,9 +3792,49 @@ int RunComposition(const GameConfig& config) {
                        : std::string("Security: pass the checkpoint");
         }
         if (room == "room_elevator_lobby") {
-            return fact_is_true("fact_chapter_checkpoint_reached")
-                       ? std::string("Chapter One complete")
-                       : std::string("Elevator: verify the chapter checkpoint");
+            if (!fact_is_true("fact_chapter_checkpoint_reached")) {
+                return std::string("Elevator: verify the chapter checkpoint");
+            }
+            return fact_is_true("fact_act2_concourse_entered")
+                       ? std::string("Act II-A: return to the transfer zone")
+                       : std::string("Act II-A: use the transfer control");
+        }
+        if (room == "room_act2_service_concourse") {
+            if (!fact_is_true("fact_act2_dispatch_reviewed")) {
+                return std::string("Act II-A: review the dispatch board");
+            }
+            if (!fact_is_true("fact_act2_archive_released") &&
+                !fact_is_true("fact_act2_archive_terminal_accessed") &&
+                !fact_is_true("fact_act2_power_rerouted")) {
+                return std::string("Act II-A: choose a Records or Power route");
+            }
+            if (!fact_is_true("fact_act2_transit_controlled")) {
+                return std::string("Act II-A: reach Transit Control");
+            }
+            return std::string("Act II-A: use the deep transfer door");
+        }
+        if (room == "room_act2_records_archive") {
+            if (!fact_is_true("fact_act2_records_consulted") &&
+                !fact_is_true("fact_act2_archive_terminal_accessed")) {
+                return std::string("Records: secure a route into Transit Control");
+            }
+            return std::string("Records: optional observation gallery or return");
+        }
+        if (room == "room_act2_power_utility") {
+            return fact_is_true("fact_act2_power_rerouted")
+                       ? std::string("Power: take the maintenance bypass to Transit Control")
+                       : std::string("Power: restore a maintenance bypass");
+        }
+        if (room == "room_act2_observation_gallery") {
+            return fact_is_true("fact_act2_camera_looped")
+                       ? std::string("Observation: return to Records")
+                       : std::string("Observation: loop the transit camera");
+        }
+        if (room == "room_act2_transit_control") {
+            if (!fact_is_true("fact_act2_transit_controlled")) {
+                return std::string("Transit: clear the checkpoint and use control");
+            }
+            return std::string("Transit: use the deep transfer door");
         }
         if (room == "room_restroom_staff") {
             return std::string("Staff route: use the elevator service door");
@@ -3585,7 +3843,8 @@ int RunComposition(const GameConfig& config) {
     });
     render->SetChapterClosureSource([&] {
         return services.player->CurrentRoom() == "room_elevator_lobby" &&
-            fact_is_true("fact_chapter_checkpoint_reached");
+            fact_is_true("fact_chapter_checkpoint_reached") &&
+            !fact_is_true("fact_act2_concourse_entered");
     });
     render->SetObjectivePresentationPrefix("B1:");
     bool interaction_demonstrated = false;
@@ -3716,9 +3975,102 @@ int RunComposition(const GameConfig& config) {
         }
         if (room == "room_elevator_lobby" &&
             focused_scene_entity("elevator_restricted_door")) {
-            return fact_is_true("fact_chapter_checkpoint_reached")
-                       ? std::string("[F] CHECKPOINT RECORDED")
-                       : std::string("[F] VERIFY ELEVATOR CHECKPOINT");
+            if (!fact_is_true("fact_chapter_checkpoint_reached")) {
+                return std::string("[F] VERIFY ELEVATOR CHECKPOINT");
+            }
+            return std::string("[F] ENTER ACT II-A TRANSFER");
+        }
+        if (room == "room_act2_service_concourse") {
+            if (focused_scene_entity("act2_dispatch_terminal")) {
+                return terminal_session_active(slice.dispatch_terminal)
+                           ? std::string("[F] REVIEW DISPATCH BOARD")
+                           : std::string("[F] REVIEW DISPATCH BOARD");
+            }
+            if (focused_scene_entity("act2_concourse_records_door")) {
+                return std::string("[F] ENTER RECORDS ARCHIVE");
+            }
+            if (focused_scene_entity("act2_concourse_power_door")) {
+                return std::string("[F] ENTER POWER UTILITY");
+            }
+            if (focused_scene_entity("act2_concourse_transit_door")) {
+                return std::string("[F] ENTER TRANSIT CONTROL");
+            }
+            if (focused_scene_entity("act2_concourse_elevator_door")) {
+                return std::string("[F] RETURN TO ELEVATOR");
+            }
+            return std::string{};
+        }
+        if (room == "room_act2_records_archive") {
+            if (focused_scene_entity("act2_records_terminal")) {
+                return terminal_session_active(slice.records_terminal)
+                           ? std::string("[F] REVIEW ARCHIVE MANIFEST")
+                           : std::string("[F] QUERY ARCHIVE MANIFEST");
+            }
+            if (focused_npc(slice.records_operator_npc)) {
+                return std::string("[F] SPEAK WITH RECORDS OPERATOR");
+            }
+            if (focused_scene_entity("act2_records_concourse_door")) {
+                return std::string("[F] RETURN TO TRANSFER ZONE");
+            }
+            if (focused_scene_entity("act2_records_observation_door")) {
+                return std::string("[F] ENTER OBSERVATION GALLERY");
+            }
+            return std::string{};
+        }
+        if (room == "room_act2_power_utility") {
+            if (focused_scene_entity("act2_power_relay_terminal")) {
+                return terminal_session_active(slice.power_terminal)
+                           ? std::string("[F] REVIEW RELAY BYPASS")
+                           : std::string("[F] REROUTE RESERVE FEED");
+            }
+            if (focused_scene_entity("act2_power_backup_terminal")) {
+                return terminal_session_active(slice.power_backup_terminal)
+                           ? std::string("[F] REVIEW BACKUP FEED")
+                           : std::string("[F] FORCE BACKUP FEED");
+            }
+            if (focused_npc(slice.power_technician_npc)) {
+                return std::string("[F] SPEAK WITH TECHNICIAN");
+            }
+            if (focused_scene_entity("act2_power_concourse_door")) {
+                return std::string("[F] RETURN TO TRANSFER ZONE");
+            }
+            if (focused_scene_entity("act2_power_transit_door")) {
+                return std::string("[F] TAKE MAINTENANCE BYPASS");
+            }
+            return std::string{};
+        }
+        if (room == "room_act2_observation_gallery") {
+            if (focused_scene_entity("act2_gallery_records_terminal")) {
+                return terminal_session_active(slice.observation_terminal)
+                           ? std::string("[F] REVIEW CAMERA LOOP")
+                           : std::string("[F] LOOP TRANSIT CAMERA");
+            }
+            if (focused_npc(slice.observation_analyst_npc)) {
+                return std::string("[F] SPEAK WITH ANALYST");
+            }
+            if (focused_scene_entity("act2_gallery_records_door")) {
+                return std::string("[F] RETURN TO RECORDS ARCHIVE");
+            }
+            return std::string{};
+        }
+        if (room == "room_act2_transit_control") {
+            if (focused_npc(slice.transit_guard_npc)) {
+                return std::string("[F] ADDRESS TRANSIT SECURITY");
+            }
+            if (focused_scene_entity("act2_transit_control_terminal")) {
+                return terminal_session_active(slice.transit_terminal)
+                           ? std::string("[F] REVIEW TRANSIT CONTROL")
+                           : std::string("[F] USE CONTROL TERMINAL");
+            }
+            if (focused_scene_entity("act2_transit_exit_door")) {
+                return std::string("[F] ENTER DEEP TRANSFER");
+            }
+            if (focused_scene_entity("act2_transit_concourse_door")) {
+                return std::string("[F] RETURN TO TRANSFER ZONE");
+            }
+            if (focused_scene_entity("act2_transit_power_door")) {
+                return std::string("[F] RETURN TO POWER UTILITY");
+            }
         }
         return std::string{};
     });
@@ -4212,6 +4564,390 @@ int RunComposition(const GameConfig& config) {
             return;
         }
 
+        if (services.player->CurrentRoom() == "room_act2_service_concourse") {
+            if (focused_scene_entity("act2_dispatch_terminal")) {
+                const bool already_reviewed =
+                    fact_is_true("fact_act2_dispatch_reviewed");
+                if (use_act2_terminal(slice.dispatch_terminal,
+                                       "review_dispatch_board",
+                                       services.narrative->Text("text_act2_dispatch"))) {
+                    slice.act2_dispatch_reviewed = true;
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_act2_dispatch_reviewed"), player, true);
+                    if (already_reviewed) {
+                        render->SetSubtitleOnce(
+                            "DISPATCH: route board already reviewed. Choose Records or Power.",
+                            150);
+                    }
+                } else {
+                    render->SetSubtitleOnce("DISPATCH: control board unavailable.", 140);
+                }
+                return;
+            }
+            if (focused_scene_entity("act2_concourse_records_door")) {
+                (void)enter_scene_transition("act2_concourse_to_records");
+                return;
+            }
+            if (focused_scene_entity("act2_concourse_power_door")) {
+                (void)enter_scene_transition("act2_concourse_to_power");
+                return;
+            }
+            if (focused_scene_entity("act2_concourse_transit_door")) {
+                (void)enter_scene_transition("act2_concourse_to_transit");
+                return;
+            }
+            if (focused_scene_entity("act2_concourse_elevator_door")) {
+                (void)enter_scene_transition("act2_concourse_to_elevator");
+                return;
+            }
+            render->SetSubtitleOnce(services.narrative->Text("text_act2_concourse"), 300);
+            return;
+        }
+
+        if (services.player->CurrentRoom() == "room_act2_records_archive") {
+            if (focused_npc(slice.records_operator_npc)) {
+                const bool already_consulted =
+                    fact_is_true("fact_act2_records_consulted");
+                RelationshipRecord relationship;
+                relationship.a = EntityId::New(slice.records_operator_npc.GetValue());
+                relationship.b = player;
+                relationship.trust = 0.72f;
+                relationship.respect = 0.58f;
+                relationship.suspicion =
+                    fact_is_true("fact_chapter_aggressive_route") ? 0.28f : 0.10f;
+                relationship.debt = 0.24f;
+                const bool relationship_saved =
+                    services.systemic->SetRelationship(relationship);
+                slice.act2_records_consulted = true;
+                slice.act2_archive_released = true;
+                services.world->SetBooleanFact(
+                    RuntimeFactId("fact_act2_records_consulted"), player, true);
+                services.world->SetBooleanFact(
+                    RuntimeFactId("fact_act2_archive_released"), player, true);
+                const KnowledgeAssetId route_asset = KnowledgeAssetId::New(9301);
+                if (services.systemic->GetKnowledgeAsset(route_asset) == nullptr) {
+                    KnowledgeAssetRecord asset;
+                    asset.id = route_asset;
+                    asset.type = KnowledgeAssetType::AccessProcedure;
+                    asset.source = ResourceId::New(2);
+                    asset.confidence = 0.82f;
+                    asset.known_by.push_back(player);
+                    (void)services.systemic->AddKnowledgeAsset(asset);
+                }
+                const bool aggressive = fact_is_true("fact_chapter_aggressive_route") ||
+                                        fact_is_true("fact_b1_loud_action");
+                render->SetSubtitleOnce(
+                    services.narrative->Text(already_consulted
+                        ? "text_act2_records_operator_repeat"
+                        : aggressive ? "text_act2_records_aggressive"
+                                     : "text_act2_records_operator"),
+                    relationship_saved ? 360 : 240);
+                return;
+            }
+            if (focused_scene_entity("act2_records_terminal")) {
+                if (!player_has_valid_badge()) {
+                    slice.act2_access_denied = true;
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_act2_access_denied"), player, true);
+                    render->SetSubtitleOnce(
+                        services.narrative->Text("text_act2_transit_denied"), 180);
+                } else if (use_act2_terminal(
+                               slice.records_terminal, "query_archive_manifest",
+                               services.narrative->Text("text_act2_records_terminal"))) {
+                    slice.act2_archive_terminal_accessed = true;
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_act2_archive_terminal_accessed"), player, true);
+                    if (terminal_session_active(slice.records_terminal)) {
+                        render->SetSubtitleOnce(
+                            services.narrative->Text("text_act2_records_terminal"), 180);
+                    }
+                } else {
+                    render->SetSubtitleOnce("ARCHIVE: credentialed query rejected.", 160);
+                }
+                return;
+            }
+            if (focused_scene_entity("act2_records_concourse_door")) {
+                (void)enter_scene_transition("act2_records_to_concourse");
+                return;
+            }
+            if (focused_scene_entity("act2_records_observation_door")) {
+                (void)enter_scene_transition("act2_records_to_observation");
+                return;
+            }
+            render->SetSubtitleOnce("RECORDS: ask the operator or query the manifest.", 160);
+            return;
+        }
+
+        if (services.player->CurrentRoom() == "room_act2_power_utility") {
+            if (focused_npc(slice.power_technician_npc)) {
+                const bool already_helped = fact_is_true("fact_act2_power_helped");
+                RelationshipRecord relationship;
+                relationship.a = EntityId::New(slice.power_technician_npc.GetValue());
+                relationship.b = player;
+                relationship.trust = 0.66f;
+                relationship.respect = 0.62f;
+                relationship.debt = 0.34f;
+                const bool relationship_saved =
+                    services.systemic->SetRelationship(relationship);
+                slice.act2_power_helped = true;
+                services.world->SetBooleanFact(
+                    RuntimeFactId("fact_act2_power_helped"), player, true);
+                render->SetSubtitleOnce(
+                    services.narrative->Text(already_helped
+                        ? "text_act2_power_helped"
+                        : "text_act2_power_tech"),
+                    relationship_saved ? 360 : 240);
+                return;
+            }
+            const auto reroute_power = [&](TerminalId terminal_id,
+                                           std::string_view action,
+                                           std::string_view success_text,
+                                           bool forced) {
+                const bool was_rerouted = fact_is_true("fact_act2_power_rerouted");
+                if (!use_act2_terminal(terminal_id, action, success_text)) {
+                    render->SetSubtitleOnce("UTILITY: relay handshake rejected.", 160);
+                    return;
+                }
+                slice.act2_power_rerouted = true;
+                services.world->SetBooleanFact(
+                    RuntimeFactId("fact_act2_power_rerouted"), player, true);
+                const bool helped = fact_is_true("fact_act2_power_helped");
+                if (forced || !helped) {
+                    slice.act2_utility_noise = true;
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_act2_utility_noise"), player, true);
+                }
+                if (!was_rerouted) {
+                    SystemicEvent reroute;
+                    reroute.id = EventId::New(10000 + services.systemic->EventCount());
+                    reroute.type = SystemicEventType::InfrastructureChange;
+                    reroute.actor = player;
+                    reroute.location = services.world->LoadedRoom().id;
+                    reroute.frame = frame;
+                    reroute.severity = forced || !helped ? 55 : 18;
+                    reroute.legality = forced || !helped
+                        ? LegalityClass::MinorOffense : LegalityClass::Legal;
+                    reroute.outcome = OutcomeType::Success;
+                    reroute.method = std::string(action);
+                    reroute.tags.push_back("maintenance_bypass");
+                    reroute.tags.push_back(forced ? "forced" : "operator_assisted");
+                    (void)services.systemic->AddSystemicEvent(reroute);
+                }
+                if (was_rerouted) {
+                    render->SetSubtitleOnce(
+                        services.narrative->Text("text_act2_power_repeat"), 180);
+                } else if (forced || !helped) {
+                    render->SetSubtitleOnce(
+                        services.narrative->Text("text_act2_transit_alert"), 220);
+                } else {
+                    render->SetSubtitleOnce(
+                        services.narrative->Text("text_act2_power_rerouted"), 180);
+                }
+            };
+            if (focused_scene_entity("act2_power_relay_terminal")) {
+                reroute_power(slice.power_terminal, "reroute_reserve_feed",
+                              services.narrative->Text("text_act2_power_rerouted"), false);
+                return;
+            }
+            if (focused_scene_entity("act2_power_backup_terminal")) {
+                reroute_power(slice.power_backup_terminal, "force_backup_feed",
+                              services.narrative->Text("text_act2_power_rerouted"), true);
+                return;
+            }
+            if (focused_scene_entity("act2_power_concourse_door")) {
+                (void)enter_scene_transition("act2_power_to_concourse");
+                return;
+            }
+            if (focused_scene_entity("act2_power_transit_door")) {
+                (void)enter_scene_transition("act2_power_to_transit");
+                return;
+            }
+            render->SetSubtitleOnce("UTILITY: the relay needs a human decision.", 160);
+            return;
+        }
+
+        if (services.player->CurrentRoom() == "room_act2_observation_gallery") {
+            if (focused_npc(slice.observation_analyst_npc)) {
+                const bool already_found = fact_is_true("fact_act2_observation_found");
+                RelationshipRecord relationship;
+                relationship.a = EntityId::New(slice.observation_analyst_npc.GetValue());
+                relationship.b = player;
+                relationship.trust = 0.63f;
+                relationship.respect = 0.55f;
+                relationship.suspicion = 0.08f;
+                const bool relationship_saved =
+                    services.systemic->SetRelationship(relationship);
+                slice.act2_observation_found = true;
+                services.world->SetBooleanFact(
+                    RuntimeFactId("fact_act2_observation_found"), player, true);
+                const KnowledgeAssetId camera_asset = KnowledgeAssetId::New(9302);
+                if (services.systemic->GetKnowledgeAsset(camera_asset) == nullptr) {
+                    KnowledgeAssetRecord asset;
+                    asset.id = camera_asset;
+                    asset.type = KnowledgeAssetType::CameraBlindSpot;
+                    asset.source = ResourceId::New(3);
+                    asset.confidence = 0.76f;
+                    asset.known_by.push_back(player);
+                    (void)services.systemic->AddKnowledgeAsset(asset);
+                }
+                render->SetSubtitleOnce(
+                    already_found
+                        ? "Analyst: the loop is still holding. That is the interesting part."
+                        : services.narrative->Text("text_act2_observation_analyst"),
+                    relationship_saved ? 360 : 240);
+                return;
+            }
+            if (focused_scene_entity("act2_gallery_records_terminal")) {
+                const bool was_looped = fact_is_true("fact_act2_camera_looped");
+                if (use_act2_terminal(
+                        slice.observation_terminal, "loop_transit_camera",
+                        services.narrative->Text("text_act2_observation_looped"))) {
+                    slice.act2_observation_found = true;
+                    slice.act2_camera_looped = true;
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_act2_observation_found"), player, true);
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_act2_camera_looped"), player, true);
+                    if (!was_looped) {
+                        services.systemic->SetObservationSourceOnline(
+                            slice.transit_camera, false);
+                        SystemicEvent loop;
+                        loop.id = EventId::New(10000 + services.systemic->EventCount());
+                        loop.type = SystemicEventType::Vandalism;
+                        loop.actor = player;
+                        loop.location = services.world->LoadedRoom().id;
+                        loop.frame = frame;
+                        loop.severity = 28;
+                        loop.legality = LegalityClass::Unauthorized;
+                        loop.outcome = OutcomeType::Success;
+                        loop.method = "camera_loop";
+                        loop.tags.push_back("temporary_blind_spot");
+                        (void)services.systemic->AddSystemicEvent(loop);
+                    } else {
+                        render->SetSubtitleOnce(
+                            services.narrative->Text("text_act2_observation_looped"), 180);
+                    }
+                } else {
+                    render->SetSubtitleOnce("OBSERVATION: control port unavailable.", 160);
+                }
+                return;
+            }
+            if (focused_scene_entity("act2_gallery_records_door")) {
+                (void)enter_scene_transition("act2_observation_to_records");
+                return;
+            }
+            render->SetSubtitleOnce("OBSERVATION: ask the analyst or use the control port.", 160);
+            return;
+        }
+
+        if (services.player->CurrentRoom() == "room_act2_transit_control") {
+            if (focused_npc(slice.transit_guard_npc)) {
+                const bool archive_route =
+                    fact_is_true("fact_act2_archive_released") ||
+                    fact_is_true("fact_act2_archive_terminal_accessed");
+                const bool power_route = fact_is_true("fact_act2_power_rerouted");
+                const bool quiet_camera = fact_is_true("fact_act2_camera_looped");
+                if (fact_is_true("fact_act2_transit_guard_down")) {
+                    slice.act2_transit_guard_bypassed = true;
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_act2_transit_guard_bypassed"), player, true);
+                    render->SetSubtitleOnce(
+                        services.narrative->Text("text_act2_transit_guard_down"), 220);
+                } else if (archive_route) {
+                    slice.act2_transit_guard_bypassed = true;
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_act2_transit_guard_bypassed"), player, true);
+                    render->SetSubtitleOnce(
+                        services.narrative->Text("text_act2_transit_guard_quiet"), 240);
+                } else if (power_route) {
+                    slice.act2_transit_guard_bypassed = true;
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_act2_transit_guard_bypassed"), player, true);
+                    const bool prior_alert = fact_is_true("fact_act2_transit_alerted");
+                    const bool carryover_loud =
+                        fact_is_true("fact_chapter_aggressive_route") ||
+                        fact_is_true("fact_b1_loud_action");
+                    if (!quiet_camera && (slice.act2_utility_noise || carryover_loud)) {
+                        slice.act2_transit_alerted = true;
+                        services.world->SetBooleanFact(
+                            RuntimeFactId("fact_act2_transit_alerted"), player, true);
+                        services.systemic->SetAlert(
+                            FacilityAlertLevel::Suspicious,
+                            {services.world->LoadedRoom().id}, frame);
+                        render->SetSubtitleOnce(
+                            services.narrative->Text("text_act2_transit_guard_alert"),
+                            prior_alert ? 160 : 260);
+                    } else {
+                        render->SetSubtitleOnce(
+                            services.narrative->Text("text_act2_transit_guard_quiet"), 240);
+                    }
+                } else {
+                    slice.act2_access_denied = true;
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_act2_access_denied"), player, true);
+                    render->SetSubtitleOnce(
+                        services.narrative->Text("text_act2_transit_denied"), 200);
+                }
+                return;
+            }
+            if (focused_scene_entity("act2_transit_control_terminal")) {
+                const bool authorized =
+                    fact_is_true("fact_act2_transit_guard_bypassed") ||
+                    fact_is_true("fact_act2_transit_guard_down");
+                if (!authorized) {
+                    slice.act2_access_denied = true;
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_act2_access_denied"), player, true);
+                    render->SetSubtitleOnce(
+                        services.narrative->Text("text_act2_transit_denied"), 200);
+                } else if (use_act2_terminal(
+                               slice.transit_terminal, "accept_transit_handshake",
+                               services.narrative->Text("text_act2_transit_terminal"))) {
+                    slice.act2_transit_controlled = true;
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_act2_transit_controlled"), player, true);
+                    if (slice.act2_transit_alerted ||
+                        fact_is_true("fact_act2_transit_alerted")) {
+                        render->SetSubtitleOnce(
+                            services.narrative->Text("text_act2_transit_alert"), 220);
+                    }
+                } else {
+                    render->SetSubtitleOnce("TRANSIT: control terminal unavailable.", 160);
+                }
+                return;
+            }
+            if (focused_scene_entity("act2_transit_exit_door")) {
+                if (!fact_is_true("fact_act2_transit_controlled")) {
+                    slice.act2_access_denied = true;
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_act2_access_denied"), player, true);
+                    render->SetSubtitleOnce(
+                        services.narrative->Text("text_act2_transit_denied"), 200);
+                } else if (!fact_is_true("fact_act2_checkpoint_reached")) {
+                    slice.act2_checkpoint_reached = true;
+                    services.world->SetBooleanFact(
+                        RuntimeFactId("fact_act2_checkpoint_reached"), player, true);
+                    render->SetSubtitleOnce(
+                        services.narrative->Text("text_act2_checkpoint"), 360);
+                    if (audio) audio->PlaySfx(AudioId::New(7), 0.55f);
+                } else {
+                    render->SetSubtitleOnce(
+                        services.narrative->Text("text_act2_checkpoint_repeat"), 180);
+                }
+                return;
+            }
+            if (focused_scene_entity("act2_transit_concourse_door")) {
+                (void)enter_scene_transition("act2_transit_to_concourse");
+                return;
+            }
+            if (focused_scene_entity("act2_transit_power_door")) {
+                (void)enter_scene_transition("act2_transit_to_power");
+                return;
+            }
+            render->SetSubtitleOnce(services.narrative->Text("text_act2_transit_guard"), 200);
+            return;
+        }
+
         if (services.player->CurrentRoom() == "room_elevator_lobby") {
             if (focused_scene_entity("elevator_restricted_door")) {
                 slice.elevator_entry_attempted = true;
@@ -4233,8 +4969,7 @@ int RunComposition(const GameConfig& config) {
                         services.narrative->Text("text_elevator_complete"), 360);
                     if (audio) audio->PlaySfx(AudioId::New(7), 0.55f);
                 } else {
-                    render->SetSubtitleOnce(
-                        "ELEVATOR: Chapter One checkpoint already recorded.", 140);
+                    (void)enter_scene_transition("elevator_to_act2_concourse");
                 }
                 return;
             }

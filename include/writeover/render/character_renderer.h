@@ -28,6 +28,7 @@ enum class CharacterSpriteKind : uint8_t {
     Door = 6,
     BodyUnconscious = 7,
     BodyDead = 8,
+    DoorFrame = 9,
 };
 
 enum class CharacterLod : uint8_t {
