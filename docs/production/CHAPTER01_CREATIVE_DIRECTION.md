@@ -1,16 +1,15 @@
-# Chapter One — creative direction
+# WRITEOVER-07 — creative direction and authored FPS contract
 
-## Current acceptance boundary — 2026-09-13
+## Current acceptance boundary — 2026-09-14
 
-POST_ASTRA_CREATIVE_BASELINE = CHAPTER01_AUTHORED_FPS_20260913.
-This is the protected creative baseline after the owner-approved contract and
-five art/geometry review batches and a final integrated capture after route
-corrections. It is a stylized character-built FPS,
-not photorealism, VISUAL_GOLD or a claim of Rain's subjective acceptance.
-The 17 integrated views, four directional/weapon sheets and completed-route
-ending establish the art direction. Final delivery still requires the regression,
-package and exact-head CI gates in POST_ASTRA_LUNA_HANDOFF.md. Test counts alone
-never establish visual quality.
+PROTECTED_CREATIVE_BASELINE = POST_ASTRA_CREATIVE_BASELINE /
+CHAPTER01_AUTHORED_FPS_20260913.
+CURRENT_PRODUCTION_LAYER = ACT2_AUTHORED_SPACES_C0A4442.
+The source/content baseline is commit `c0a4442`; the later documentation
+commit may become the delivery HEAD, but it must not change this contract.
+This is a stylized character-built FPS, not photorealism, VISUAL_GOLD or a
+claim of Rain's subjective foreground-terminal acceptance. Production frames,
+route gates and exact-head CI remain separate acceptance questions.
 
 ## Owner-approved visual contract — 2026-09-13
 
@@ -48,8 +47,32 @@ The near-reader action shares HUD visibility and keeps nearest-target ordering.
 Low service housings retain their physical clearance and simulation light.
 Their galvanized surface and edge lip have bounded presentation contrast so
 the overhead mass reads as architecture rather than a missing black patch.
-The final integrated reference directory is
-`evidence/chapter01_creative_polish/contract_final_material/`.
+The current production references are the new four-room contact sheet at
+`out/creative_review_final_visual01/contact.png`, the no-HUD authored face
+sheet at `out/creative_review_face12_art/human_sheet.png`, and the synchronized
+weapon sheet at `out/act2_art_review_weapon07/weapon_sheet.png`. Historical
+evidence under `docs/production/evidence/` remains useful for comparison but
+does not override these current renders.
+
+Act II-A now has five authored rooms after the elevator: Service Concourse,
+Records Archive, Power Utility, Transit Control, and Observation Gallery.
+They use grouped functional equipment, a focal route, authored NPC roles,
+storylets, durable facts, recoverable backtracking and checkpoint-compatible
+transitions. This is an expansion of content, not a new renderer or content
+schema.
+
+The current face pass is deliberately bounded. Full Human and Maintenance
+faces have hair boundary, tapered lower face, low-contrast eye marks, nasal
+plane and neutral mouth suggestion; the black eye-band failure is fixed. They
+remain authored low-resolution faces and must not be sold as photorealistic
+models. If foreground play still reads a face as uncanny, record that as a
+subjective visual P1 and revise the asset, not the renderer paradigm.
+
+The current production camera opens with a small downward pitch and a modest
+surface lift so floors, routes and equipment survive a real terminal capture.
+It does not lock the player's look or alter simulation geometry. The ceiling
+uses a separate continuous service material, so a floor grate cannot become a
+dark triangular overhead hole.
 
 ## The facility edits the record; people live with the event
 
@@ -86,6 +109,12 @@ a trigger-area suggestion, thumb/finger fold, wrist and forearm. Both enter from
 the lower right with a clear centre view; neither is a thin line or apron.
 Existing weapon mechanics,
 projection, depth, body position and LOD caps remain authoritative.
+
+The “pixel-FPS” reference is a density and composition target, not a rendering
+permission. Large masses, material bands, edge glyphs and restrained color may
+make a room feel like a low-resolution FPS, but the final world is still a
+CharCell/Unicode field. A monochrome check must retain the door, actor,
+weapon, equipment and route silhouettes.
 
 ## Palette and reading order
 
@@ -143,6 +172,26 @@ addresses the person rather than the badge. No shared generic comedian voice.
   bench off the walk. Completion displays DEPARTURE RECORDED / SUBJECT 07 —
   UNRESOLVED from the actual checkpoint fact, with no new cutscene/input lock.
 
+Act II-A room purposes are protected as follows:
+
+- Service Concourse: dispatch board and transfer spine; the central dark lane
+  is intentional navigation space, with control bank and rack as the focal
+  grouping.
+- Records Archive: archive terminal, rack aisles and a practical operator;
+  social cooperation and optional credentialed access both matter.
+- Power Utility: transformer/relay grouping and a distracted technician;
+  assistance is quiet, forcing a reroute creates utility noise and later risk.
+- Transit Control: checkpoint desk, monitor bank, camera system and response
+  guard; camera loop, bypass and alert routes carry different consequences.
+- Observation Gallery: monitor wall, analyst and a route to the records loop;
+  the player can learn the surveillance gap before using it.
+
+Every new room must answer: what work happens here, what is the first focal
+object, where is the walkable route, which interaction changes a fact, and
+what later room can prove that consequence. Do not fill an empty wall with
+random glyphs when a missing work surface, console, rack or door relationship
+is the real problem.
+
 Quiet play is authorship through observation, access and social discretion.
 Aggressive play is pressure and a less negotiable record, not a morality score.
 Three selected payoffs: Cleaner's later discretion, the camera's later Security
@@ -160,12 +209,24 @@ Leave space after consequential speech. No new audio engine. Music direction
 only: sparse ventilation-like sustained texture, a narrow rising interval in
 Security, then withdrawal at the elevator; composed music remains external.
 
-No new floor, character class, renderer architecture, content schema, save schema, cutscene
-system or public release. Representative rendered frames support art review;
-foreground Terminal play and Rain's subjective acceptance remain separate.
+No new floor, character class, renderer architecture, save schema, cutscene
+system or public release. The Act II room/fact/storylet additions use the
+existing content schema and compiled pipeline. Representative rendered frames
+support art review; foreground Terminal play and Rain's subjective acceptance
+remain separate.
 
 Performance must not be bought by reducing the authored art or weakening the
-existing frame budget. Row-term reuse and skipping fully occluded plane shading
-are permitted internal optimizations; the closure version reproduces all 22
-reference production SVGs byte-for-byte. Benchmark the authored bank, never a
-silent diagnostic fallback.
+existing frame budget. Row-term reuse, finite plane reconstruction and
+skipping fully occluded plane shading are bounded internal optimizations.
+Historical reference SVG hashes remain historical because this pass changed
+surface contrast, ceiling material, door layers, camera pitch and authored
+content. Benchmark the authored bank, never a silent diagnostic fallback.
+
+## Protected regression and handoff boundary
+
+`OPEN_FATAL = none known` and `OPEN_P0 = none known` after the current local
+regression. The face remains a subjective visual acceptance boundary rather
+than a hidden claim of photorealism. The first complete expansion handoff is
+not authorized until the final pushed head has a fresh exact-head CI result.
+Use [POST_LUNA_GPT6_HANDOFF.md](POST_LUNA_GPT6_HANDOFF.md) as a future
+execution map, not as permission to redesign this contract.
