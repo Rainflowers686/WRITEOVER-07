@@ -4,8 +4,8 @@
 
 PROTECTED_CREATIVE_BASELINE = POST_ASTRA_CREATIVE_BASELINE /
 CHAPTER01_AUTHORED_FPS_20260913.
-CURRENT_PRODUCTION_LAYER = ACT2_AUTHORED_SPACES_C0A4442.
-The source/content baseline is commit `c0a4442`; the later documentation
+CURRENT_PRODUCTION_LAYER = ACT2_AUTHORED_SPACES_23EADDB.
+The source/content baseline is commit `23eaddb`; the later documentation
 commit may become the delivery HEAD, but it must not change this contract.
 This is a stylized character-built FPS, not photorealism, VISUAL_GOLD or a
 claim of Rain's subjective foreground-terminal acceptance. Production frames,

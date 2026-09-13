@@ -11,11 +11,11 @@ PROJECT = WRITEOVER-07
 REPOSITORY = Rainflowers686/WRITEOVER-07
 BRANCH = main
 CANONICAL_ROOT = D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS
-BASELINE_HEAD = c0a4442c0e3f5fc467d0d684c5f668d35d1e4f4f
+BASELINE_HEAD = 23eaddbe1a2476519fc91dd66d5dfefef069e512
 REMOTE_BASELINE_BEFORE_PUSH = 187806b95506f9f7d17279eb1af5f338ee3cb9b2
 ANCESTOR_PRESERVED = 5434f8a
 PUSH_STATUS_AT_MANIFEST_CREATION = PENDING
-STATUS = CREATIVE_BASELINE_ESTABLISHED_NOT_READY_FOR_HANDOFF
+STATUS = CREATIVE_BASELINE_ESTABLISHED_ACT2_RECORDS_ROUTE_VERIFIED_NOT_READY_FOR_HANDOFF
 ```
 
 The old `tests/test_harness.cpp` newline-only worktree edit, historical
@@ -81,6 +81,7 @@ utility noise, Transit guard outcomes, checkpoint and access denial.
 | Content | `data/rooms/room_act2_*.json`; `data/scenes/recovery_scene.json`; `data/npcs/npcs.json`; facts/storylets/text/systemic | Five spaces with focal equipment, role NPCs, systemic branches and durable consequences. |
 | Contract | `docs/adr/ADR-0012-authored-door-frame-layer.md`; `tools/contract_check/.contract_baseline.json` | The one public enum addition is recorded and hash-pinned. |
 | Teaching/handoff | `docs/production/CHAPTER01_CREATIVE_DIRECTION.md`; `OVERNIGHT_EXPANSION_TEACHBACK.md`; `POST_LUNA_GPT6_HANDOFF.md` | Protected principles and future execution map. |
+| Act II route gate | `scripts/act2_expansion_gate.ps1`; `tools/replay/act2_records_route_probe.txt` | Dedicated Records route proves Dispatch, terminal, operator and Concourse backtrack without weakening the Chapter One gate. |
 
 ## Visual evidence
 
@@ -130,6 +131,7 @@ Visual observations from the current production render:
 | Mandatory replay | `docs/production/evidence/overnight_expansion_recovery02` | PASS, 21/21 |
 | Scenario matrix | `docs/production/evidence/overnight_expansion_scenario01` | PASS, 36 total / 35 executed / 1 rule-invalid / 0 coverage gaps |
 | Visual smoke | `out/creative_review_final_visual01` | PASS, four production frames, exit 0 |
+| Act II expansion route | `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/act2_expansion_gate.ps1 -EvidenceDirectory docs/production/evidence/act2_expansion_route01` | PASS, Concourse -> Records -> terminal + operator -> Concourse; save/load and no-death assertions passed |
 
 ## Preserved negative evidence
 
@@ -141,12 +143,18 @@ keeping the room equipment/door composition. The replacement run in
 `overnight_expansion_recovery02` passed all 21 cases. The negative directory is
 not a release receipt and must not be deleted.
 
+The dedicated Act II route has a separate receipt because it intentionally
+continues after Chapter One. Its generic application receipt does not claim
+`CHAPTER_CHECKPOINT_REACHED`; the dedicated gate instead checks the exact
+Act II route, interaction subtitles, save/load, no death and the final return
+to the Concourse.
+
 ## Pending gates
 
 ```text
-PACKAGE_SMOKE = NOT_YET_RUN_AFTER_FINAL_DOCUMENTATION_HEAD
-RELEASE_BENCHMARK = NOT_YET_RUN_AFTER_FINAL_DOCUMENTATION_HEAD
-ACT2_DEDICATED_REPLAY_FIXTURES = OPEN
+PACKAGE_SMOKE = REFRESH_REQUIRED_AFTER_FINAL_DOCUMENTATION_HEAD
+RELEASE_BENCHMARK = REFRESH_REQUIRED_AFTER_FINAL_DOCUMENTATION_HEAD
+ACT2_DEDICATED_REPLAY_FIXTURES = PASS_RECORDS_ROUTE; POWER_TRANSIT_OBSERVATION_FOCUSED_FIXTURES_OPEN
 FOREGROUND_TERMINAL_FACE_ACCEPTANCE = OPEN_SUBJECTIVE
 EXACT_PUSHED_HEAD_CI = NOT_YET_RUN
 PUBLIC_ALPHA_RELEASE = NOT_AUTHORIZED

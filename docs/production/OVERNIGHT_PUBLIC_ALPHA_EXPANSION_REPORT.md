@@ -2,8 +2,8 @@
 
 Date: 2026-09-14  
 Project: WRITEOVER-07  
-Source baseline: `c0a4442c0e3f5fc467d0d684c5f668d35d1e4f4f`  
-Status: `LOCAL_AUTHORED_EXPANSION_VERIFIED; HANDOFF_AND_PUBLIC_RELEASE_PENDING`
+Source baseline: `23eaddbe1a2476519fc91dd66d5dfefef069e512`
+Status: `LOCAL_AUTHORED_EXPANSION_VERIFIED; RECORDS_ROUTE_GATE_PASS; HANDOFF_AND_PUBLIC_RELEASE_PENDING`
 
 This report describes the overnight public-alpha-sized expansion after the
 Chapter One elevator. It is not a product release, a visual-gold claim, a
@@ -76,15 +76,18 @@ Runtime/content evidence:
 - scenario matrix passed 36 total, 35 executed, one rule-invalid and zero
   valid-state coverage gaps;
 - four final room smoke renders exited 0;
+- dedicated Act II Records route gate passed: Dispatch -> Records terminal ->
+  Records operator -> Concourse backtrack, with save/load and no-death checks;
 - the first failed replay attempt is preserved and explained in the audit
   manifest, not counted as a pass.
 
 ## What is deliberately not claimed
 
 - no foreground-terminal classmate playtest has been completed;
-- no dedicated Act II replay fixture suite has been added yet;
-- no package smoke or release benchmark has been refreshed after the final
-  documentation commit;
+- only the Records route is covered by a dedicated Act II gate; focused
+  Power/Observation/Transit fixtures and a first-time human read remain;
+- package smoke and release benchmark must be refreshed after the final
+  documentation head;
 - no exact pushed-head CI result exists at the time of this report;
 - no public alpha announcement, release, Steam upload or course final is
   authorized;
@@ -97,8 +100,8 @@ Runtime/content evidence:
 2. Capture close Security/Full Human/Maintenance faces in the real foreground
    terminal; if the face is still uncanny, revise the authored silhouette once,
    not the renderer.
-3. Add focused Act II route fixtures for the five rooms and replay them after
-   every systemic change.
+3. Add focused Power/Observation/Transit route fixtures; preserve the passing
+   Records route gate and replay the affected set after systemic changes.
 4. Run final package, benchmark and exact-head CI gates.
 
 The expansion is useful when a classmate can describe the facility's work and

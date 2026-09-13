@@ -51,6 +51,7 @@ out/build/debug/Debug/writeover_app.exe --smoke --frames 1 --width 240 --height 
 out/build/debug/Debug/writeover_app.exe --smoke --frames 1 --width 240 --height 67 --data-dir data --room room_1f_security --user-data-dir out/manual/security --dump-frame out/manual/security/frame.svg
 out/build/debug/Debug/writeover_app.exe --smoke --frames 1 --width 240 --height 67 --data-dir data --room room_elevator_lobby --user-data-dir out/manual/elevator --dump-frame out/manual/elevator/frame.svg
 out/build/debug/Debug/writeover_app.exe --smoke --frames 1 --width 240 --height 67 --data-dir data --room room_act2_service_concourse --user-data-dir out/manual/concourse --dump-frame out/manual/concourse/frame.svg
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/act2_expansion_gate.ps1 -EvidenceDirectory docs/production/evidence/act2_expansion_route01
 ```
 
 Act II-A room ids are `room_act2_service_concourse`,
@@ -74,3 +75,9 @@ an old screenshot do not replace a current production-frame check. The
 protected visual contract and future completion map are in
 `docs/production/CHAPTER01_CREATIVE_DIRECTION.md` and
 `docs/production/POST_LUNA_GPT6_HANDOFF.md`.
+
+The Act II gate is intentionally separate from the Chapter One replay gate:
+its Records fixture continues past the Chapter One checkpoint, proves the
+Dispatch -> Records terminal -> Records operator -> Concourse backtrack, and
+checks save/load plus a recoverable no-death route. The generic Chapter One
+closure receipt is therefore not used as the Act II success condition.

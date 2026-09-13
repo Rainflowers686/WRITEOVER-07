@@ -3,7 +3,7 @@
 Date: 2026-09-14  
 HANDOFF_STATUS = `NOT_YET_AUTHORIZED`  
 CREATIVE_PASS_STATUS = `GPT6_CRITICAL_PATH_CONTINUES`  
-BASELINE_HEAD = `c0a4442c0e3f5fc467d0d684c5f668d35d1e4f4f`
+BASELINE_HEAD = `23eaddbe1a2476519fc91dd66d5dfefef069e512`
 
 This document is intentionally actionable but is not a transfer signal yet.
 The owner explicitly asked the current creative pass to continue instead of
@@ -13,7 +13,8 @@ honestly closed.
 
 ## BASELINE_HEAD
 
-`c0a4442c0e3f5fc467d0d684c5f668d35d1e4f4f` is the source/content baseline.
+`23eaddbe1a2476519fc91dd66d5dfefef069e512` is the source/content and
+focused-route baseline.
 It preserves ancestor `5434f8a`, adds the five Act II-A rooms, synchronizes
 the authored weapon states, adds the bounded face/room presentation pass, and
 records the door-frame public enum in ADR-0012.
@@ -22,7 +23,7 @@ records the door-frame public enum in ADR-0012.
 
 `POST_ASTRA_CREATIVE_BASELINE / CHAPTER01_AUTHORED_FPS_20260913` remains the
 protected Chapter One contract. The current expansion layer is
-`ACT2_AUTHORED_SPACES_C0A4442`.
+`ACT2_AUTHORED_SPACES_23EADDB`.
 
 Protect these decisions:
 
@@ -105,9 +106,10 @@ subjective boundary. This is not a photorealism claim.
 - Foreground-terminal/human acceptance of the stylized Full Human face is not
   closed by an automated sheet. If Rain still reads it as uncanny at play
   distance, revise only the authored head silhouette/face plane first.
-- Act II has production smoke renders and authored interactions, but it still
-  needs a focused first-time human playthrough and dedicated Act II fixture
-  replays.
+- Act II has production smoke renders and one dedicated Records route gate
+  (Dispatch -> terminal -> operator -> Concourse backtrack). A focused
+  first-time human playthrough and focused Power/Observation/Transit fixtures
+  remain.
 - Exact pushed-head CI, package smoke for the final documentation head and
   final release benchmark remain to be refreshed.
 
@@ -120,9 +122,11 @@ blockers.
 
 ## REMAINING_GAMEPLAY_WORK
 
-Add or execute focused Act II replay fixtures for Records cooperation versus
-credentialed access, Power assistance versus forced reroute, Observation camera
-loop, Transit bypass/control/alert, backtracking and checkpoint recovery.
+Add or execute focused Act II replay fixtures for Power assistance versus
+forced reroute, Observation camera loop, Transit bypass/control/alert,
+backtracking and checkpoint recovery. The Records route is already covered by
+`scripts/act2_expansion_gate.ps1`; preserve it while adding the remaining
+fixtures.
 Preserve old Chapter One fixtures and rerun the entire affected suite after
 each state/interaction change.
 
@@ -136,8 +140,9 @@ new character class.
 ## REMAINING_TEST_WORK
 
 Refresh Debug/Release builds and tests, content deterministic check, systemic
-schema/invalid-seed tests, mandatory replays, scenario matrix, save-fault
-regression, art review, relevant render assertions and release benchmark.
+schema/invalid-seed tests, mandatory replays, the Act II expansion gate,
+scenario matrix, save-fault regression, art review, relevant render assertions
+and release benchmark.
 Record the exact command and result in the audit manifest.
 
 ## REMAINING_PACKAGE_WORK
@@ -177,7 +182,8 @@ public binary schemas, Character-Art renderer paradigm or module boundaries.
 ## LIKELY_COMPLETION_SEQUENCE
 
 1. Close or explicitly accept the foreground face and first-time Act II read.
-2. Add focused Act II route fixtures and rerun Chapter One regression.
+2. Add focused Power/Observation/Transit route fixtures and rerun Chapter One
+   regression plus the existing Records expansion gate.
 3. Refresh Debug/Release, package smoke and benchmark.
 4. Update this file's `BASELINE_HEAD` only if a deliberate source baseline
    changes; update status only after owner approval.

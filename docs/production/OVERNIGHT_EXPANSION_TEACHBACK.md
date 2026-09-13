@@ -1,7 +1,7 @@
 # Overnight expansion teach-back
 
 Date: 2026-09-14  
-Source/content baseline: `c0a4442c0e3f5fc467d0d684c5f668d35d1e4f4f`  
+Source/content baseline: `23eaddbe1a2476519fc91dd66d5dfefef069e512`
 Scope: Act II-A authored spaces, visual baseline recovery, and the knowledge
 needed to explain the work in class.
 
@@ -66,6 +66,7 @@ Every row supplies the required teach-back fields.
 | Pistol/Stunner viewmodels | `data/characters/b1_character_art.txt`; `src/render/character_renderer.cpp` | weapon renderer path and `CharacterArtBank` | `FindPistol`; `DrawWeaponViewmodel` | Big body mass, trigger area, grip, hand and forearm make the first-person object believable. | “Weapon identity is a silhouette and anchoring problem before it is a texture problem.” |
 | Opening composition | `src/app/composition_root.cpp`; `src/app/game_main.cpp`; `src/render/character_renderer.cpp` | `SliceRuntime`; `RenderModule` | room spawn/switch pitch setup; `SurfaceColor`; `CeilingMaterial`; `CeilingLight` | A small downward opening pitch and continuous ceiling material make functional space readable without changing the engine paradigm. | “Camera presentation changes what the player reads first; it does not grant gameplay authority.” |
 | Public interface record | `docs/adr/ADR-0012-authored-door-frame-layer.md`; `tools/contract_check/.contract_baseline.json` | public render enum | `CharacterSpriteKind::DoorFrame` | The one public enum addition is explicit, reviewable and bounded. | “A public header change requires an ADR and a refreshed hash; silent drift is a contract failure.” |
+| Act II route evidence | `scripts/act2_expansion_gate.ps1`; `tools/replay/act2_records_route_probe.txt` | replay gate | `act2_expansion_gate.ps1` | A dedicated gate proves one real social/technical route without weakening the Chapter One closure receipt. | “A route that intentionally continues past an earlier checkpoint needs its own success contract.” |
 | Regression evidence | `scripts/recovery_replay_gate.ps1`; `scripts/chapter01_scenario_matrix.ps1`; `docs/production/evidence/overnight_expansion_*` | replay/scenario harnesses | script entry points and production app CLI | Visual, route, save and package evidence answer different questions. | “215 unit assertions passing does not prove a classmate can read the room.” |
 
 ## Character-Art explanation
@@ -119,8 +120,9 @@ visual acceptance.
 
 - `READY_FOR_LUNA_FINAL_COMPLETION` is not currently asserted by this file;
   the future handoff is explicitly `NOT_YET_AUTHORIZED`.
-- The current Chapter One replay and scenario suites pass, but they do not
-  constitute a first-time Act II classmate playtest.
+- The current Chapter One replay and scenario suites pass, and the dedicated
+  Records Act II route gate passes; neither constitutes a first-time Act II
+  classmate playtest or proves the Power/Observation/Transit branches.
 - The first attempted full replay after the guard visibility experiment is
   retained as a failure diagnosis; the corrected full replay is the authority.
 - Package smoke, release benchmark and exact pushed-head CI must be refreshed
