@@ -1,0 +1,300 @@
+{
+  "schema_version": 2,
+  "date": "2026-09-13",
+  "project": "WRITEOVER-07",
+  "status": "LOCAL_CREATIVE_AND_ENGINEERING_BASELINE_VERIFIED",
+  "maximum_status_after_exact_delivery_head_ci": "READY_FOR_LUNA_FINAL_COMPLETION",
+  "source_baseline_head": "5770e131934c6c8838850f826676526176d215b4",
+  "interrupted_creative_commit_preserved": "5434f8a069b6573c9300a7aa7d5d5d1b0e4b85f3",
+  "remote_baseline_before_push": "1d32cfb03ac1e6207c1b12c630447119ae6f9dcc",
+  "repository_visibility_live": "PUBLIC",
+  "public_export_scope": "source, handoff documents, pure game production images, sanitized receipt only",
+  "canonical_root_write_probe": "PASS",
+  "preserved_original_files": {
+    "expected": 58,
+    "matched": 58,
+    "personal_settings_and_desktop_evidence_exported": false
+  },
+  "visual_contract": "CHAPTER01_AUTHORED_FPS_20260913: authored CharCell/Unicode; no RGB, half-block or Braille framebuffer; no image quantization",
+  "visual_review": {
+    "method": "AUTHOR -> REAL_PRODUCTION_RENDER -> CRITIQUE -> REVISE -> REAL_PRODUCTION_RENDER",
+    "authoritative_directory": "docs/production/evidence/chapter01_creative_polish/contract_final_material",
+    "frames": 22,
+    "integrated_views": 17,
+    "directional_and_weapon_sheets": 4,
+    "completed_route_ending": 1,
+    "facing_exact_asset_checks": {
+      "passed": 36,
+      "total": 36,
+      "independent_projected_heading_check": "PASS"
+    },
+    "review_judgment": "coherent authored character-FPS baseline fit for classmate playtest; not photorealism or visual gold",
+    "foreground_terminal_acceptance": "NOT_CLAIMED",
+    "inspection_camera_scope": "Named inspection cameras move the presentation view only; the simulation player remains at its normal spawn/route. Their subtitles are not evidence of proximity interaction at the inspection camera.",
+    "subjective_owner_acceptance": "NOT_CLAIMED",
+    "audio_listening_acceptance": "NOT_CLAIMED"
+  },
+  "checks": {
+    "debug_build": "PASS",
+    "debug_units": {
+      "passed": 215,
+      "total": 215
+    },
+    "release_build": "PASS",
+    "release_units": {
+      "passed": 215,
+      "total": 215
+    },
+    "content_deterministic_bytes": "PASS",
+    "content_compiler_tests": {
+      "passed": 13,
+      "total": 13
+    },
+    "systemic_schema": "PASS",
+    "systemic_negative_tests": {
+      "passed": 10,
+      "total": 10
+    },
+    "invalid_seed_startup": "EXPECTED_REJECTION_PASS",
+    "mandatory_replays": {
+      "passed": 21,
+      "total": 21,
+      "local_log": "contract_closure_mandatory.log"
+    },
+    "scenario_matrix": {
+      "total": 36,
+      "executed_pass": 35,
+      "invalid_by_rules": 1,
+      "valid_state_gaps": 0,
+      "local_log": "contract_closure_matrix.log"
+    },
+    "save_commit_failure_injection": {
+      "passed": 8,
+      "total": 8,
+      "stages": [
+        "after_room",
+        "after_world",
+        "after_systemic",
+        "after_events",
+        "after_rng",
+        "after_narrative",
+        "after_ai",
+        "after_player"
+      ],
+      "oracle": "expected load failure, byte-exact rollback, chapter still reached"
+    },
+    "opening_90_second_normal_quit": "PASS; no opening Security speech, zero guard attacks",
+    "final_4800_frame_quiet_route": "PASS; chapter checkpoint reached; final departure line followed by silence from frame 3931 to 4800",
+    "package": {
+      "platform": "windows-x64",
+      "source_commit": "5770e131934c6c8838850f826676526176d215b4",
+      "archive": "dist/creative_baseline_5770e13/WRITEOVER-07-creative-baseline.zip",
+      "bytes": 492729,
+      "sha256": "4f50b312bceb10c01e0204bccc2de9f24a3cc8e4b65ea578ee69939bfbf61769",
+      "clean_extraction_smoke": "PASS",
+      "resources": "PASS",
+      "user_data_separation": "PASS",
+      "manifest_and_hashes": "PASS",
+      "secret_scan": "PASS",
+      "developer_garbage_count": 0,
+      "missing_resource_probe": "EXPECTED_EXIT_8_PASS"
+    },
+    "contract_forbidden_dependencies_public_headers": "PASS",
+    "static_audit_count": 0,
+    "benchmark": {
+      "overall": "PASS",
+      "character_render_worst_one_percent_ms": 1.063,
+      "representative_total_runtime_worst_one_percent_ms": 1.531,
+      "physical_terminal_writes_included": false
+    },
+    "exact_delivery_head_ci": "MUST_BE_OBSERVED_AFTER_PUSH; this pre-push receipt does not claim green"
+  },
+  "provenance_notes": [
+    "Full local mandatory/matrix suite ran after all gameplay/content and facing corrections, before the final service-housing visual-contrast-only correction.",
+    "Final Debug/Release builds and 215 tests, 22 rendered images, a 4800-frame completed quiet route and package smoke include the visual-contrast correction.",
+    "Exact delivery-head CI must rerun mandatory replay checks on the pushed source.",
+    "Eight injected save-fault replays ran before the last facing/clearance changes; save/transaction logic was unchanged afterward.",
+    "Old failed and interrupted gate directories remain local; no failing oracle or original replay fixture was weakened.",
+    "Production SVG/PNG export is the final CharCell buffer, not a foreground native Terminal screenshot.",
+    "Linux arm64 CI is cross-link only, not runtime acceptance."
+  ],
+  "red_green": {
+    "finite_desk_top": {
+      "before": "U+00B7_FAIL",
+      "after": "U+0020_PASS"
+    },
+    "actor_screen_heading": {
+      "before": "one failing spatial.actor_facing_orbit test",
+      "after": "projected side heading and exact asset agree"
+    },
+    "service_duct": {
+      "before_glyph_ink_contrast": 8.57,
+      "after_glyph_ink_contrast": 32.29,
+      "scope": "presentation only; simulation light, collision and content unchanged"
+    }
+  },
+  "public_contract_changed": false,
+  "save_schema_changed": false,
+  "open_fatal": [],
+  "open_p0": [],
+  "known_player_critical_p1": [],
+  "remaining_manual_gates": [
+    "foreground terminal/font/resize/color modes",
+    "first-time-player pacing and door use",
+    "audio listening"
+  ],
+  "source_and_binary_hashes": [
+    {
+      "path": "src/render/character_renderer.cpp",
+      "sha256": "05730aa309d4801f033468caf4dcbad6b76ee8031d27f85dd1041e3b1bce4aef"
+    },
+    {
+      "path": "src/app/composition_root.cpp",
+      "sha256": "af9dab2dcbabae9fb93ba8980bfcae2243b7b798da9c2992a07f8d2690a742e3"
+    },
+    {
+      "path": "data/characters/b1_character_art.txt",
+      "sha256": "8f7ac8f0e046f1abb6773efdbed4ded32623670f4d7d20d254d943aabfb48bc4"
+    },
+    {
+      "path": "data/scenes/recovery_scene.json",
+      "sha256": "7ddba74aa1ad8bf38fbe33c89208d279e34fc7c9d712929a99d949dd151cb820"
+    },
+    {
+      "path": "data/scenes/recovery_scene.bin",
+      "sha256": "fbaad72a4118645425c3c516086312567ad235cec2be54d65a7790a784d26143"
+    },
+    {
+      "path": "data/rooms/room_b1_revival.json",
+      "sha256": "d51fb0f8cbc2665af77cdbd64deb98266686447a3198c7cdddc5dc6162349f3d"
+    },
+    {
+      "path": "data/rooms/room_b1_revival.woc",
+      "sha256": "fd6b486fb9ce77a7bf5349aefc1034b55ea4ebd1921857d82d94ecafae66f8c3"
+    },
+    {
+      "path": "tests/test_render.cpp",
+      "sha256": "4dfafc0420c47314f9e115881fe1f9f5d865dd325b96b3e8a5e17aa0160ba378"
+    },
+    {
+      "path": "tools/art_review/main.cpp",
+      "sha256": "303eda604176bdd0a28872784a11d3bf3840e15e382058a6834edc58ef64c206"
+    },
+    {
+      "path": "out/build/release/Release/writeover_app.exe",
+      "sha256": "a525886bfd1fffaedd2aa58911f81b8912461ac7b36a9124d328c366e57c2067"
+    }
+  ],
+  "production_images": [
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/b1.png",
+      "bytes": 340752,
+      "sha256": "1c624f7fe30d934dfa4156bd87a9cc1f9dfd08218d9e58bf68052982dda9a365"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/calibration.png",
+      "bytes": 398023,
+      "sha256": "41d29aadb96276f49fc39e682d1028b8a3845cfb138c857332648c45a2733c57"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/cleaner.png",
+      "bytes": 301262,
+      "sha256": "93fd30a0eb008fbd0d29b13ccfa7d367a6fe02186a53fe7a72796df26182e611"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/elevator.png",
+      "bytes": 348145,
+      "sha256": "f76b07d9ccd943be71ae82e090f9d6507e403117a9697b20a90f317b0316246d"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/ending.png",
+      "bytes": 380126,
+      "sha256": "6b06724b8c080522f499c13ac45e0df9a6148590b36235f1d45d54b7171fb83c"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/gate_front.png",
+      "bytes": 311763,
+      "sha256": "14d8173b88a95cc8088db7162bc7111850de2fc37fa54d42b143c70f76ee3522"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/gate_left.png",
+      "bytes": 310752,
+      "sha256": "4f9436137b45c0e0057d40a1e4a159e2ae7b00dfa08885c7e35fabe9f6d3c464"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/gate_right.png",
+      "bytes": 337909,
+      "sha256": "a28ee7a3433f314f9e6414a50a13c0c680c050ad916bd5434e574cf71d9f4cf7"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/guard_sheet.png",
+      "bytes": 651806,
+      "sha256": "bbf7d9b9903b4581a43da69b357163482f4c9616f3700909fae74b1e4f9398f2"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/guard.png",
+      "bytes": 338067,
+      "sha256": "8c7c4bc35bd13ea3e6d450360fb09b245d0f1a08af250ab5cc438a0f2c2ad9c3"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/human_sheet.png",
+      "bytes": 650129,
+      "sha256": "b90f17d9a979bbaf45e1742b8a538ace69f4f84ca150d12648d3d4a4da669281"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/human.png",
+      "bytes": 315637,
+      "sha256": "f03211d75f0612bb1448bd0b464d2c622b9a7d3698ba04976e109d19253b6e28"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/lift_front.png",
+      "bytes": 377501,
+      "sha256": "72f6a903e41469752cf7e7e04b6df9b56fc4d46fb3e5d4025dec48ee08613114"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/lift_left.png",
+      "bytes": 394801,
+      "sha256": "cdf2598c4a2fefa4b91ee3f4c67764dc5494ffda48b48703711f8d83c0c4c430"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/lift_right.png",
+      "bytes": 383952,
+      "sha256": "9b4ff68311ad1e784b3676bae01a5eca8a0b35b6f92cf2d4b3b0b3b9300e93dc"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/maintenance_sheet.png",
+      "bytes": 642785,
+      "sha256": "a4f4e83cc3fda89f1c6ee816bc2cfff8ec829d8b0b09e1b1f6f8798bda62443a"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/medical.png",
+      "bytes": 391624,
+      "sha256": "10492aeeab3ccacf6d294d0d6ed082f3dc4e3271e4d9b9f505384504f099fc5d"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/security_desk.png",
+      "bytes": 316705,
+      "sha256": "8db2543d000b28ad2ca6b5a333d7fc21ff99fff0979b64c3a740dd11f59631b6"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/security.png",
+      "bytes": 370388,
+      "sha256": "29aaea6b956338a2b3c6076c5d0cdfb49889e6df081dc53634765989a0553768"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/staff.png",
+      "bytes": 268061,
+      "sha256": "92ccdd4fca64480cd0680aa08eb3702c5897fd57acebc2170a29db50cbb9ec5d"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/technician.png",
+      "bytes": 338039,
+      "sha256": "cc7fcd7b7bc9d6dd7947c0df60607acd9fa85b08e99961cca0ea55c0a9222ecd"
+    },
+    {
+      "path": "docs/production/evidence/chapter01_creative_polish/contract_final_material/weapon_sheet.png",
+      "bytes": 307601,
+      "sha256": "23adbb0104717049f27d340a5bab000e3bdd1af5142d27b416614233bbb045eb"
+    }
+  ]
+}
