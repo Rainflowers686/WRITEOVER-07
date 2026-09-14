@@ -19,6 +19,24 @@
 
 namespace writeover {
 namespace {
+bool SensoryDirectionUsesCameraBasis() {
+    LocomotionState pose;
+    pose.position = {0, 0, 0}; pose.yaw = 0;
+    WO_CHECK(std::string(PerceivedDirection(pose, {2, 0, 0})) == "from ahead");
+    WO_CHECK(std::string(PerceivedDirection(pose, {-2, 0, 0})) == "from behind");
+    WO_CHECK(std::string(PerceivedDirection(pose, {0, 2, 0})) == "from the right");
+    WO_CHECK(std::string(PerceivedDirection(pose, {0, -2, 0})) == "from the left");
+    pose.yaw = 3.14159265f / 2;
+    WO_CHECK(std::string(PerceivedDirection(pose, {-2, 0, 0})) == "from the right");
+    WO_CHECK(std::string(PerceivedDirection(pose, {0, 2, 0})) == "from ahead");
+    WO_CHECK(std::string(PerceivedDirection(pose, {0, 0, 0})) == "near you");
+    WO_CHECK(std::string(PerceivedDirection(pose, {std::numeric_limits<float>::quiet_NaN(), 0, 0})).empty());
+    PresentationText translations;
+    WO_CHECK(translations.Load(std::filesystem::path(__FILE__).parent_path().parent_path() / "data/text"));
+    WO_CHECK(translations.Present("UNDER FIRE / from behind / Break sight. Find cover.", "zh-CN") ==
+        "遭到射击 / 来自后方 / 脱离视线，寻找掩体。");
+    return true;
+}
 bool ContextHintsAreBoundedAndStateAware() {
     Settings settings = Settings::Defaults();
     settings.key_bindings[0][static_cast<size_t>(GameAction::Interact)] = PhysicalKey::E;
@@ -646,6 +664,7 @@ bool KnownEvidenceAndNearestInspect() {
 }
 } // namespace
 void RegisterProductTests(TestHarness& harness) {
+    harness.Add("product.sensory direction camera basis", &SensoryDirectionUsesCameraBasis);
     harness.Add("product.context hints state and continuation", &ContextHintsAreBoundedAndStateAware);
     harness.Add("product.key records acquisition and persistence", &KeyRecordsRespectAcquisition);
     harness.Add("product.translation template validation", &TranslationTemplateValidation);

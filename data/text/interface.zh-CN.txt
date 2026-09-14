@@ -221,6 +221,13 @@ ui_history_empty	暂无近期记录。读取存档会清空这段历史。
 ui_heard	听到
 ui_nearby	附近
 ui_prompt	[{0}] {1}
+ui_direction_1	就在附近
+ui_direction_2	来自前方
+ui_direction_3	来自后方
+ui_direction_4	来自右侧
+ui_direction_5	来自左侧
+ui_direction_6	遭到射击 / {0} / 脱离视线，寻找掩体。
+ui_direction_7	确认命中。目标仍有行动能力。
 ui_hint_1	{0}：移动。鼠标：环视。
 ui_hint_2	对准目标，然后按 {0} 交互。
 ui_hint_3	{0}：查看目标和线索。

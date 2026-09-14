@@ -22,3 +22,12 @@ Product tests cover demonstrated actions, custom interaction bindings, Chinese
 projection, reload priority, no repeated reminders, Continue suppression and
 New Game reset. The production B1 movement capture shows the focus hint; it is
 layout evidence rather than a first-time human playtest.
+
+## Perceived combat direction
+
+PerceivedDirection uses locomotion's forward/right basis, returning only a coarse
+phrase. Visible NPC reactions keep their existing room/FOV/LOS gate. Damage uses
+the event's actual attacker ID only if that actor has a position in the loaded
+room; unknown sources retain generic feedback. It never invents coordinates,
+off-screen NPC knowledge or enemy HP. Existing hit flashes remain, with a bounded
+feed confirmation when an NPC was hit but not incapacitated.

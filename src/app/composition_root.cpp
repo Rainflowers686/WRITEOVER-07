@@ -2615,9 +2615,17 @@ int RunComposition(const GameConfig& config) {
             if (services.player->Dead()) {
                 slice.player_died = true;
             }
+            std::string incoming = "UNDER FIRE / Break sight. Find cover.";
+            if (!services.player->Dead()) for (const auto& attacker : services.ai->Npcs()) {
+                if (attacker.instance.id.GetValue() != damage->source.GetValue() ||
+                    attacker.room != services.world->LoadedRoom().id) continue;
+                const char* direction = PerceivedDirection(services.player->Locomotion(), attacker.instance.position);
+                if (*direction) incoming = std::string("UNDER FIRE / ") + direction + " / Break sight. Find cover.";
+                break;
+            }
             render->SetSubtitleOnce(services.player->Dead()
                                         ? "YOU ARE DOWN. Pause offers recovery points or a fresh game."
-                                        : "UNDER FIRE / Break sight. Find cover.",
+                                        : incoming,
                                     services.player->Dead() ? 240 : 90,
                                     services.player->Dead() ? 100 : 80);
         });
@@ -3110,6 +3118,11 @@ int RunComposition(const GameConfig& config) {
     };
     services.ai->SetShotFeedbackCallback([&](const ShotFeedback& feedback) {
         render->TriggerShotFeedback(feedback);
+        if (feedback.target_was_npc && !feedback.target_died && !feedback.target_stunned) {
+            product.feed.Publish(PerceptionCategory::Threat, "Hit confirmed. The target is still active.",
+                "hit-confirmed", services.player->CurrentRoom(), services.player->CurrentFrame(),
+                true, true, 120);
+        }
         sync_body_from_feedback(feedback);
     });
     const EventBus::ConsumerId speech_consumer = events.Register(

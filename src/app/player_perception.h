@@ -12,6 +12,17 @@
 
 namespace writeover {
 
+inline const char* PerceivedDirection(const LocomotionState& pose, const Vec3& source) {
+    const float dx = source.x - pose.position.x, dy = source.y - pose.position.y;
+    if (!std::isfinite(dx) || !std::isfinite(dy) || !std::isfinite(pose.yaw)) return "";
+    if (dx * dx + dy * dy < 0.0625f) return "near you";
+    // Same camera-relative basis as locomotion: right=(-sin(yaw),cos(yaw)).
+    const float forward = dx * std::cos(pose.yaw) + dy * std::sin(pose.yaw);
+    const float right = -dx * std::sin(pose.yaw) + dy * std::cos(pose.yaw);
+    if (std::fabs(forward) >= std::fabs(right)) return forward >= 0 ? "from ahead" : "from behind";
+    return right >= 0 ? "from the right" : "from the left";
+}
+
 inline const char* PerceivedRole(Role role) {
     switch (role) {
     case Role::Guard: return "Security guard";
@@ -79,7 +90,9 @@ public:
                 default: break;
                 }
                 if (action) publish(npc.instance.state == NPCState::Combat ? PerceptionCategory::Threat : PerceptionCategory::Environment,
-                    std::string(PerceivedRole(npc.instance.role)) + action, "npc:" + std::to_string(npc.instance.id.GetValue()));
+                    std::string(PerceivedRole(npc.instance.role)) + action + " / " +
+                        PerceivedDirection(pose, npc.instance.position),
+                    "npc:" + std::to_string(npc.instance.id.GetValue()));
             }
             if (states_.size() < 64 || previous != states_.end()) states_[npc.instance.id.GetValue()] = npc.instance.state;
         }

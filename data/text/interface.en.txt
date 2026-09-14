@@ -222,6 +222,13 @@ ui_history_empty	No recent entries. Loading a save clears this history.
 ui_heard	HEARD
 ui_nearby	NEARBY
 ui_prompt	[{0}] {1}
+ui_direction_1	near you
+ui_direction_2	from ahead
+ui_direction_3	from behind
+ui_direction_4	from the right
+ui_direction_5	from the left
+ui_direction_6	UNDER FIRE / {0} / Break sight. Find cover.
+ui_direction_7	Hit confirmed. The target is still active.
 ui_hint_1	{0}: move. Mouse: look.
 ui_hint_2	Look directly at an object, then press {0}.
 ui_hint_3	{0}: review your objective and leads.
