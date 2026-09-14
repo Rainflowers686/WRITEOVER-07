@@ -23,7 +23,7 @@ enum class QualityPreset : uint8_t {
 struct Settings {
     // --- Main page ---
     QualityPreset preset = QualityPreset::Compatibility;
-    uint8_t frame_rate_cap = 0;         // 0=uncapped
+    uint8_t frame_rate_cap = 0;         // 0=automatic (up to 120), or 30/60/120
     uint8_t fov = 90;                   // 60..120
     uint8_t mouse_sensitivity = 50;     // 0..100
     uint8_t gamepad_sensitivity = 50;   // 0..100
@@ -47,6 +47,7 @@ struct Settings {
     // Presentation preferences only (settings.cfg); not world-save wire data.
     uint8_t sensory_verbosity = 1;      // 0=off, 1=important, 2=detailed
     uint8_t text_duration = 1;          // 0=short, 1=normal, 2=long
+    std::string language;              // empty=first-run choice, en or zh-CN; settings.cfg only
 
     // Defaults for all fields (including the binding tables).
     static Settings Defaults();

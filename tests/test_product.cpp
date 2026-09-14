@@ -8,6 +8,7 @@
 #include "src/app/terminal_surface.h"
 #include "src/app/runtime_time_gate.h"
 #include "src/render/text_layout.h"
+#include "src/app/presentation_text.h"
 #include "writeover/render/frame_encoder.h"
 #include "writeover/render/hud.h"
 #include "writeover/render/character_renderer.h"
@@ -268,6 +269,18 @@ bool HeldInputReleaseBoundary() {
 }
 bool BoundControlsAndPreferences() {
     Settings settings = Settings::Defaults();
+    PresentationText translations;
+    const auto root = std::filesystem::path(__FILE__).parent_path().parent_path();
+    WO_CHECK(translations.Load(root / "data/text"));
+    WO_CHECK(translations.Count() > 100);
+    WO_CHECK(translations.Present("CONTINUE", "zh-CN") == "继续游戏");
+    WO_CHECK(translations.Present("CONTINUE", "en") == "CONTINUE");
+    WO_CHECK(translations.Present("A weapon was issued. The record is less certain about you.", "zh-CN") == "武器已经发放。至于你，记录还没核实。");
+    PlayerProductRuntime first_run;
+    first_run.Open(ProductPage::Language);
+    WO_CHECK(settings.language.empty());
+    WO_CHECK(first_run.Handle(Press(GameAction::Interact), settings) == ProductCommand::SettingsChanged);
+    WO_CHECK(settings.language == "zh-CN" && first_run.page == ProductPage::Boot);
     settings.key_bindings[0][static_cast<size_t>(GameAction::Interact)] = PhysicalKey::E;
     WO_CHECK(ProductControlText("[F] Use / F TRAVEL", settings) == "[E] Use / E TRAVEL");
     WO_CHECK(ProductControlText("WASD MOVE | F INTERACT | LMB FIRE", settings) ==
@@ -285,9 +298,17 @@ bool BoundControlsAndPreferences() {
     WO_CHECK(loaded.IsOk());
     WO_CHECK_EQ(loaded.Value().sensory_verbosity, settings.sensory_verbosity);
     WO_CHECK_EQ(loaded.Value().text_duration, 2);
+    WO_CHECK(loaded.Value().language == "zh-CN");
+    for (const int cap : {0, 30, 60, 120, 144, 240, 255}) {
+        settings.frame_rate_cap = static_cast<uint8_t>(cap);
+        WO_CHECK(registry.Save("product_preferences.cfg", settings).IsOk());
+        const auto parsed = registry.Load("product_preferences.cfg");
+        WO_CHECK(parsed.IsOk());
+        WO_CHECK_EQ(parsed.Value().frame_rate_cap, cap <= 120 ? cap : 0);
+    }
     std::vector<uint8_t> first, second;
     Serializer a(first); settings.Save(a);
-    settings.text_duration = 0; settings.sensory_verbosity = 0;
+    settings.text_duration = 0; settings.sensory_verbosity = 0; settings.language = "en";
     Serializer b(second); settings.Save(b);
     WO_CHECK(first == second); // cosmetic text preferences never alter world wire
     return true;

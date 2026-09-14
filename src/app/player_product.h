@@ -77,7 +77,7 @@ inline std::string ProductControlText(std::string text, const Settings& settings
     return text;
 }
 
-enum class ProductPage : uint8_t { None, Boot, Pause, Controls, Settings, History, Dialogue, Inspect, Ending, NewGame };
+enum class ProductPage : uint8_t { None, Boot, Pause, Controls, Settings, History, Dialogue, Inspect, Ending, NewGame, Language };
 enum class ProductCommand : uint8_t { None, Resume, Continue, NewGame, Save, Load, Checkpoint, PreFinal, CaseFile, Quit, SettingsChanged };
 
 // One bounded application menu, not a widget framework. The composition root
@@ -110,6 +110,7 @@ public:
     bool Visited(ProductPage item) const { return (visited_pages & (1u << static_cast<unsigned>(item))) != 0; }
     void Close() { page = ProductPage::None; selection = 0; scroll = 0; }
     std::vector<std::string> Options(const Settings& s) const {
+        if (page == ProductPage::Language) return {"简体中文", "English"};
         if (page == ProductPage::Boot) return {continue_available ? "CONTINUE" : "CONTINUE / unavailable",
             "NEW GAME", "CONTROLS / HELP", "ACCESSIBILITY / SETTINGS", "QUIT"};
         if (page == ProductPage::Pause) return {dead ? "RESUME / dead" : "RESUME", dead ? "SAVE / unavailable" : "MANUAL SAVE",
@@ -130,7 +131,8 @@ public:
                 "MOUSE SENSITIVITY / " + std::to_string(s.mouse_sensitivity),
                 "MASTER VOLUME / " + std::to_string(s.master_volume),
                 "FRAME LIMIT / " + (s.frame_rate_cap == 0 ? std::string("AUTO (UP TO 120)") :
-                    std::to_string(s.frame_rate_cap) + " FPS")};
+                    std::to_string(s.frame_rate_cap) + " FPS"),
+                s.language == "zh-CN" ? "LANGUAGE / 简体中文" : "LANGUAGE / English"};
         }
         return {};
     }
@@ -138,7 +140,7 @@ public:
         if (!Active() || !input.has_focus) return ProductCommand::None;
         const auto pressed = [&](GameAction a) { return input.action_pressed[static_cast<size_t>(a)]; };
         if (pressed(GameAction::Pause)) {
-            if (page == ProductPage::Boot) return ProductCommand::None;
+            if (page == ProductPage::Boot || page == ProductPage::Language) return ProductCommand::None;
             if (page == ProductPage::Pause) {
                 if (dead) return ProductCommand::None;
                 Close(); return ProductCommand::Resume;
@@ -158,7 +160,12 @@ public:
         if (pressed(GameAction::MoveForward)) selection = selection == 0 ? options.size() - 1 : selection - 1;
         if (pressed(GameAction::MoveBackward)) selection = (selection + 1) % options.size();
         if (!pressed(GameAction::Interact)) return ProductCommand::None;
-        if (page == ProductPage::Boot) {
+        if (page == ProductPage::Language) {
+            settings.language = selection == 0 ? "zh-CN" : "en";
+            Open(ProductPage::Boot);
+            ++preference_changes;
+            return ProductCommand::SettingsChanged;
+        } else if (page == ProductPage::Boot) {
             switch (selection) {
             case 0:
                 if (continue_available) return ProductCommand::Continue;
@@ -211,6 +218,7 @@ public:
                 settings.frame_rate_cap = settings.frame_rate_cap == 0 ? 30 :
                     settings.frame_rate_cap == 30 ? 60 : settings.frame_rate_cap == 60 ? 120 : 0;
                 break;
+            case 9: settings.language = settings.language == "zh-CN" ? "en" : "zh-CN"; break;
             default: break;
             }
             ++preference_changes;
@@ -218,12 +226,14 @@ public:
         }
         return ProductCommand::None;
     }
-    std::vector<std::string> Rows(const Settings& s) const {
+    std::vector<std::string> Rows(const Settings& s,
+        const std::function<std::string(const std::string&)>& translate = {}) const {
         if (!Active()) return {};
         std::vector<std::string> rows;
         const auto options = Options(s);
         if (!options.empty()) {
-            rows = {page == ProductPage::Boot ? "WRITEOVER-07 / THE RECORD IS NOT THE EVENT" :
+            rows = {page == ProductPage::Language ? "选择语言 / CHOOSE LANGUAGE" :
+                page == ProductPage::Boot ? "WRITEOVER-07 / THE RECORD IS NOT THE EVENT" :
                 page == ProductPage::Settings ? "ACCESSIBILITY / CHANGES SAVE AUTOMATICALLY" :
                 page == ProductPage::NewGame ? "NEW GAME / RESET ALL LIVE PROGRESSION?" :
                 dead ? "YOU DIED / CHOOSE A RECOVERY POINT" : "PAUSED / " + location};
@@ -258,10 +268,17 @@ public:
             rows.push_back("Bindings use the existing settings.cfg table; no hidden fixed gameplay keys.");
         }
         if (!notice.empty()) rows.insert(rows.begin() + 1, notice);
+        if (page == ProductPage::Language) {
+            rows.push_back(ProductBinding(s, GameAction::MoveForward) + "/" +
+                ProductBinding(s, GameAction::MoveBackward) + " 选择 / SELECT    " +
+                ProductBinding(s, GameAction::Interact) + " 确认 / CONFIRM");
+            return rows;
+        }
+        const auto label = [&](const std::string& value) { return translate ? translate(value) : value; };
         rows.push_back(ProductBinding(s, GameAction::MoveForward) + "/" + ProductBinding(s, GameAction::MoveBackward) +
-            (options.empty() ? " SCROLL  " : " SELECT  " + ProductBinding(s, GameAction::Interact) + " CONFIRM  ") +
+            (options.empty() ? " " + label("SCROLL") + "  " : " " + label("SELECT") + "  " + ProductBinding(s, GameAction::Interact) + " " + label("CONFIRM") + "  ") +
             ProductBinding(s, GameAction::MoveLeft) + "/" + ProductBinding(s, GameAction::MoveRight) +
-            " SCROLL  " + ProductBinding(s, GameAction::Pause) + " BACK");
+            " " + label("SCROLL") + "  " + ProductBinding(s, GameAction::Pause) + " " + label("BACK"));
         return rows;
     }
 };

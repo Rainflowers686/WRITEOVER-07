@@ -208,7 +208,8 @@ void ApplyKeyValue(Settings& s, const KeyValue& kv) {
     // Never trust unknown/duplicate keys: safe defaults stay for malformed.
     if (kv.key == "preset" && ParseU8(kv.value, tmp8) && tmp8 <= 3) {
         s.preset = static_cast<QualityPreset>(tmp8);
-    } else if (kv.key == "frameratecap" && ParseU8(kv.value, tmp8)) {
+    } else if (kv.key == "frameratecap" && ParseU8(kv.value, tmp8) &&
+               (tmp8 == 0 || tmp8 == 30 || tmp8 == 60 || tmp8 == 120)) {
         s.frame_rate_cap = tmp8;
     } else if (kv.key == "fov" && ParseU8(kv.value, tmp8)) {
         if (tmp8 >= 60 && tmp8 <= 120) {
@@ -244,6 +245,8 @@ void ApplyKeyValue(Settings& s, const KeyValue& kv) {
         s.sensory_verbosity = tmp8;
     } else if (kv.key == "textduration" && ParseU8(kv.value, tmp8) && tmp8 <= 2) {
         s.text_duration = tmp8;
+    } else if (kv.key == "language" && (kv.value == "en" || kv.value == "zh-CN")) {
+        s.language = kv.value;
     } else if (kv.key.rfind("bind.", 0) == 0) {
         // New format: bind.<contextIndex>.<actionIndex>=<PhysicalKeyValue>
         const std::string spec = kv.key.substr(5);
@@ -292,6 +295,7 @@ std::string ComposeKeyValues(const Settings& s) {
     out << "highcontrast=" << (s.high_contrast ? "true" : "false") << "\n";
     out << "sensoryverbosity=" << static_cast<unsigned>(s.sensory_verbosity) << "\n";
     out << "textduration=" << static_cast<unsigned>(s.text_duration) << "\n";
+    if (!s.language.empty()) out << "language=" << s.language << "\n";
     for (size_t c = 0; c < kInputContextCount; ++c) {
         for (size_t i = 0; i < kGameActionCount; ++i) {
             out << "bind." << c << "." << i << "="

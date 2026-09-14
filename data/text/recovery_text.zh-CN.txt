@@ -1,0 +1,82 @@
+# Stable content id<TAB>Simplified Chinese. Gameplay IDs are unchanged.
+text_r1_01	武器已经发放。至于你，记录还没核实。
+text_r1_02	你已获准离开病床。离开房间，需要另行批准。
+text_r1_narr_01	武器已经发放。至于你，记录还没核实。
+text_r1_narr_02	你已获准离开病床。离开房间，需要另行批准。
+text_alpha_camera	摄像头不再提供画面。这件事本身也会记上一笔。
+text_alpha_body	你改变了走廊里能看见的东西。发生过什么，没有变。
+text_alpha_loud	这需要一个解释。你倒不必留在这里解释。
+text_alpha_checkpoint	B1 已经放行。校准区还要听你自己的回答。
+text_alpha_denied	读卡器没有弄错。它只是认定你是另一个人。
+text_chapter_calibration	路线核验通过。系统的意思是，你可以继续走了。
+text_chapter_medical_quiet	接诊已登记。你可以走员工通道。
+text_chapter_medical_alert	接诊已登记。安保那边，你还得另作解释。
+text_chapter_staff	你正在使用员工通道。请不要把它叫作出口。
+text_chapter_security	检查站不需要听你的故事。给它一个能归档的回答就够了。
+text_chapter_complete	离开已登记。我还没有把你的档案结案。
+text_intro_room_b1_revival	SYS/07：复苏完成，等待放行。寻找后勤通道。
+text_intro_room_01_calibration	校准区 / 路线核验。每次限一人操作。
+text_intro_room_service_medical	医疗区 / 先登记接诊。解释可以稍后再说。
+text_intro_room_restroom_staff	员工区 / 离开时，请保持通道原样。
+text_intro_room_1f_security	安保区 / 双手放在看得见的地方。准备回答问询。
+text_intro_room_elevator_lobby	电梯 / 所有离开记录均予保留。
+text_cleaner_greeting	清洁工：当心那条湿地。这儿的人走路都不看脚下。
+text_cleaner_agreement	清洁工：你没挡我的活，我也不拿推车挡你的路。
+text_technician_greeting	技术员：读卡器查的是工牌，又不查脸。
+text_doctor_greeting	维尔医生：看着我，别盯着数字。站得稳吗？去找后勤读卡器。
+text_security_greeting	安保：先出示工牌。再刷卡。按这个顺序。
+text_security_challenge	安保：站住。报上身份。
+text_security_granted	安保：凭证有效。继续走。
+text_security_bribe	安保：过去。其他事，我们没谈过。
+text_security_bribe_repeat	安保：我说了，过去。别在这儿聊天。
+text_cleaner_coverup	清洁工：你那位乘客，我找到了。走那边的空通道，这里我来收尾。
+text_cleaner_medical	清洁工：还有呼吸。叫医疗的人推床过来，别叫安保。
+text_cleaner_report	清洁工：安保，B1。这事不归保洁管了。
+text_medical_after_care	医疗区 / B1 报告一名警卫仍有呼吸。接诊处正在准备推床。
+text_medical_after_report	医疗区 / B1 事件已转交安保。医护人员正在等待指示。
+text_security_camera_online	安保：B1 摄像头有报告。我们接到过骚动预警。
+text_security_camera_offline	B1 摄像头没传回画面。安保自己还有眼睛。
+text_staff_note	员工通知：请不要再把空杯子送回医疗区。
+text_medical_note	接诊备注：先问姓名，再查工牌。
+text_calibration_note	维修备注：读卡器亮绿灯，不代表通过了体检。
+text_elevator_complete	第一章完成。离开已登记。
+text_closure_title	第 一 章
+text_closure_departure	离开已登记
+text_closure_status	07 号对象 / 尚未结案
+text_intro_room_act2_service_concourse	第二幕·前段 / 转运区。这里记住你的办法，不止一种。
+text_intro_room_act2_records_archive	档案区 / 留下一份干净记录，也是一种选择。
+text_intro_room_act2_power_utility	动力区 / 大楼正在靠备用电流运转。
+text_intro_room_act2_transit_control	转运检查站 / 出示通行路线，或者自己开一条。
+text_intro_room_act2_observation_gallery	监控区 / 摄像头很有耐心。人没有。
+text_act2_concourse	调度负责登记路线。怎么弄到一条，档案区和动力区各有说法。
+text_act2_dispatch	调度有三种方式记录你的到来。暂时还没选定。
+text_act2_records_operator	档案员：我可以放行这份干净的清单。可我不能让它变成事实。
+text_act2_records_operator_repeat	档案员：那条干净路线还在。趁没被人改掉，赶紧走。
+text_act2_records_terminal	档案终端：清单已编入索引。下一处检查站可以查询。
+text_act2_records_aggressive	档案员：你的档案比你先到。我还是能替你把手续转过去。
+text_act2_power_tech	技术员：你要找的是继电器，不是警报器。对，别碰那条红色母线。
+text_act2_power_helped	技术员：旁路我标好了。只要没人再折腾一遍，应该撑得住。
+text_act2_power_rerouted	动力系统：备用电源已改道。转运闸门现可通过维护通道。
+text_act2_power_repeat	技术员：旁路已经在带负载了。趁它还安静，走吧。
+text_act2_observation_analyst	分析员：摄像头没瞎。它只是正在看别处。
+text_act2_observation_looped	监控系统：转运摄像头已循环播放旧画面。系统会记下这段缺口。
+text_act2_transit_guard	转运安保：路线、凭证，或者理由。
+text_act2_transit_guard_quiet	转运安保：清单上有你。长话短说。
+text_act2_transit_guard_alert	转运安保：你的路线动静不小。在线外停下。
+text_act2_transit_guard_down	转运系统：检查站警卫已失去行动能力。控制终端仍在运行。
+text_act2_transit_terminal	转运系统：控制握手通过。下一扇门现在确实能开了。
+text_act2_transit_denied	转运系统：尚未登记通行路线。警卫并不是这里唯一的锁。
+text_act2_transit_alert	转运系统：维护旁路已生效。也触发了一次声响。
+text_act2_checkpoint	第二幕前段检查点已记录。接下来，系统要问得更仔细了。
+text_act2_checkpoint_repeat	第二幕前段检查点已记录。准备好再继续。
+text_arrival_arrive	接待大厅 / 大厅干净得让人忘了，这里也是检查站。
+text_records_first_look	旁白 / 档案区不问你是谁。它问的是，哪个版本会留下来。
+text_operations_first_look	运营区 / 系统会对人作出反应，也会对凭证或摄像头的缺口作出反应。
+text_network_discovery	旁白 / 没有列入目录的信号源，也算一个证人。有人特意把它从目录里拿掉了。
+text_transfer_warning	安保 / 上层转运站不只是一段走廊。你得作个决定，而它周围站满了警卫。
+text_archive_reveal	把你留在这里的命令，也写着审核人的名字。那一栏，你该读一读。
+text_authority_arrival	管理层 / 你的档案到了这一层，更正和逃离就不再是一回事了。
+text_roof_epilogue	屋顶 / 天空不会替档案作证。它只给了你另一个落脚的地方。
+text_roof_amend	你的陈述正式生效了。原件仍由他们保管。
+text_roof_disclose	两个版本都传出去了。这回，谁能看到，不再由系统决定。
+text_roof_breach	没有签名。档案仍未结案。你不必陪它留在这里。

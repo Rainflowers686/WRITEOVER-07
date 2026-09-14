@@ -45,7 +45,7 @@ void HudRenderer::Draw(CharCell* buffer, int width, int height,
     std::string weapon = frame.weapon_name != nullptr ? frame.weapon_name : "Pistol";
     for (size_t i = 1; i < weapon.size(); ++i)
         weapon[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(weapon[i])));
-    const std::string top = "Health " + std::to_string(frame.health) + "    " + weapon +
+    const std::string top = std::string(frame.health_label ? frame.health_label : "Health") + " " + std::to_string(frame.health) + "    " + weapon +
                             "  " + std::to_string(frame.ammo_mag) + " / " +
                             std::to_string(frame.ammo_reserve);
     DrawText(buffer, width, std::min(1, height - 1), top,

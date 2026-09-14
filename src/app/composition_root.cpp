@@ -43,6 +43,7 @@
 #include "src/app/player_save.h"
 #include "src/app/terminal_surface.h"
 #include "src/app/runtime_time_gate.h"
+#include "src/app/presentation_text.h"
 #include "src/app/player_perception.h"
 #include "src/player/dynamic_collision.h"
 #include "src/app/runtime_paths.h"
@@ -1146,6 +1147,12 @@ public:
         scene_entities_ = entities;
     }
     void SetSettingsSource(const Settings* settings) { settings_ = settings; }
+    void SetPresentationSource(std::function<std::string(const std::string&)> source) {
+        presentation_source_ = std::move(source);
+    }
+    std::string Present(const std::string& value) const {
+        return presentation_source_ ? presentation_source_(value) : value;
+    }
     void SetProductSource(PlayerProductRuntime* product) { product_ = product; }
     void SetPanelScrollSource(std::function<size_t()> source) { panel_scroll_source_ = std::move(source); }
     void SetPauseSource(std::function<bool()> source) {
@@ -1283,7 +1290,8 @@ public:
     void RenderFrame(uint64_t frame_index, float alpha) override {
         (void)alpha;
         if (width_ < 48 || height_ < 18) {
-            DrawCampaignPanel(body_.data(), width_, height_, {"RESIZE"});
+            DrawCampaignPanel(body_.data(), width_, height_, {"RESIZE"}, 0,
+                              Present("RESIZE TERMINAL: minimum 48 x 18"));
             backend_->Submit(body_.data(), width_, height_);
             return;
         }
@@ -1621,10 +1629,21 @@ public:
         hud.developer_overlay = debug_overlay_;
         auto campaign_panel = campaign_panel_source_
             ? campaign_panel_source_() : std::vector<std::string>{};
-        if (product_ != nullptr && product_->Active() && settings_) campaign_panel = product_->Rows(*settings_);
+        if (product_ != nullptr && product_->Active() && settings_) campaign_panel = product_->Rows(*settings_,
+            [this](const std::string& value) { return Present(value); });
         if (settings_) for (auto& line : campaign_panel) line = ProductControlText(line, *settings_);
+        for (auto& line : campaign_panel) line = Present(line);
+        const std::string visible_objective = Present(objective_);
+        const std::string visible_prompt = Present(interaction_prompt_);
+        const std::string visible_subtitle = Present(subtitle_);
+        const std::string visible_weapon = Present(hud.weapon_name);
+        const std::string visible_health = Present("Health");
+        hud.objective = visible_objective.c_str();
+        hud.interaction_prompt = visible_prompt.c_str();
+        hud.weapon_name = visible_weapon.c_str();
+        hud.health_label = visible_health.c_str();
         hud.subtitle = campaign_panel.empty() && (settings_ == nullptr || settings_->subtitles)
-                           ? subtitle_.c_str() : nullptr;
+                           ? visible_subtitle.c_str() : nullptr;
         if (campaign_panel.empty()) hud_.Draw(body_.data(), width_, height_, hud);
         if (chapter_closure_source_ && chapter_closure_source_() && text_source_ &&
             width_ >= 48 && height_ >= 24) {
@@ -1636,7 +1655,7 @@ public:
                 const std::string text = closure_text_source_
                     ? closure_text_source_(row) : text_source_(lines[row]);
                 if (text.empty()) continue;
-                const std::string clipped = text::Clip(text, width_ - 8);
+                const std::string clipped = text::Clip(Present(text), width_ - 8);
                 const int count = text::Columns(clipped);
                 const int left = (width_ - count) / 2;
                 const int y = height_ / 5 + static_cast<int>(row) * 2;
@@ -1670,8 +1689,9 @@ public:
             const auto feed_rows = product_->feed.Visible(game_frame, settings_->sensory_verbosity, subtitle_, objective_);
             for (size_t row = 0; row < feed_rows.size() && height_ >= 18; ++row) {
                 const size_t available = width_ > 4 ? static_cast<size_t>(width_ - 4) : 0;
-                const std::string line = available >= 3 && text::Columns(feed_rows[row]) > static_cast<int>(available)
-                    ? text::Clip(feed_rows[row], static_cast<int>(available) - 3) + "..." : feed_rows[row];
+                const std::string translated = Present(feed_rows[row]);
+                const std::string line = available >= 3 && text::Columns(translated) > static_cast<int>(available)
+                    ? text::Clip(translated, static_cast<int>(available) - 3) + "..." : translated;
                 CharCell style;
                 style.fg_r = 218; style.fg_g = 210; style.fg_b = 178;
                 style.bg_r = 8; style.bg_g = 13; style.bg_b = 19;
@@ -1680,7 +1700,8 @@ public:
             }
         }
         DrawCampaignPanel(body_.data(), width_, height_, campaign_panel,
-            product_ && product_->Active() ? product_->scroll : panel_scroll_source_ ? panel_scroll_source_() : 0);
+            product_ && product_->Active() ? product_->scroll : panel_scroll_source_ ? panel_scroll_source_() : 0,
+            Present("RESIZE TERMINAL: minimum 48 x 18"), Present("SCROLL TO READ MORE"));
         backend_->Submit(body_.data(), width_, height_);
     }
 
@@ -1832,6 +1853,7 @@ private:
     bool debug_overlay_ = false;
     std::string subtitle_override_;
     std::function<std::string(const std::string&)> text_source_;
+    std::function<std::string(const std::string&)> presentation_source_;
     EventId last_discovery_speech_;
     bool presentation_trace_ = false;
     std::string last_traced_subtitle_;
@@ -2193,6 +2215,11 @@ int RunComposition(const GameConfig& config) {
     EventBus events;
     DeterministicRNG sim_rng(config.seed);
     Settings settings = Settings::Defaults();
+    PresentationText presentation;
+    if (!presentation.Load(data_root / "text")) {
+        std::fprintf(stderr, "Missing or inconsistent bilingual presentation resources.\n");
+        return 8;
+    }
     PlayerProductRuntime product;
     PlayerPerceptionObserver perception_observer;
     std::string last_product_objective;
@@ -2368,6 +2395,9 @@ int RunComposition(const GameConfig& config) {
                                                   terminal_h, config.terminal_w, config.terminal_h);
     services.player->SetSurfaceReadySource([&render] { return render->RefreshSurface(); });
     render->SetSettingsSource(&settings);
+    render->SetPresentationSource([&presentation, &settings](const std::string& value) {
+        return presentation.Present(value, settings.language);
+    });
     render->SetProductSource(&product);
     render->SetPresentationTrace(config.smoke || !config.replay_path.empty());
     render->SetPauseSource([&time_gate] { return time_gate.Paused(); });
@@ -6077,7 +6107,7 @@ int RunComposition(const GameConfig& config) {
             fresh ? "PASS" : "FAIL", services.player->CurrentRoom().c_str(), services.player->Health(), PlayerKnownEvidence(*services.systemic, slice.player));
     }
     if (!config.skip_boot && !config.smoke && config.replay_path.empty() && config.room_id.empty() && !config.camera_override) {
-        product.Open(ProductPage::Boot);
+        product.Open(settings.language.empty() ? ProductPage::Language : ProductPage::Boot);
         time_gate.SetPaused(true);
     } else product.boot_context = false;
     engine.SetRenderModule(render.get());

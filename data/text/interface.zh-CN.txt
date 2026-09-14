@@ -1,0 +1,65 @@
+ui_continue	继续游戏
+ui_continue_none	继续游戏 / 暂无存档
+ui_new_game	新游戏
+ui_controls	操作与帮助
+ui_settings	设置与辅助功能
+ui_quit	退出游戏
+ui_resume	返回游戏
+ui_resume_dead	返回游戏 / 已死亡
+ui_save	手动保存
+ui_save_dead	保存 / 当前不可用
+ui_load	读取最近存档
+ui_checkpoint	重试检查点
+ui_checkpoint_none	检查点 / 暂不可用
+ui_final_choice	重选最终决定
+ui_final_none	最终决定前存档 / 暂不可用
+ui_case	案件档案
+ui_history	最近事件
+ui_dialogue	对话记录
+ui_ending	结局回顾
+ui_ending_none	结局 / 尚未到达
+ui_cancel	取消
+ui_fresh	重新开始 / 保留已有存档文件
+ui_boot_title	WRITEOVER-07 / 记录不等于事实
+ui_settings_title	设置 / 修改后自动保存
+ui_new_title	新游戏 / 重置本次游戏进度？
+ui_dead_title	你已死亡 / 请选择恢复点
+ui_first_visit	第一次来？操作页面会列出你当前的按键。
+ui_explore	先看看周围，找人交谈，再决定是否动武。
+ui_saved	偏好已保存。
+ui_save_failed	修改已生效，但未能保存到磁盘。
+ui_nosave	没有可用的最近存档。请选择新游戏。
+ui_nocheckpoint	尚无检查点。可以读取最近存档，或开始新游戏。
+ui_nofinal	接近结局时，游戏会保留最终决定前的存档。
+ui_noending	本次游戏尚未到达结局。
+ui_health	生命
+ui_pistol	手枪
+ui_stunner	电击器
+ui_smg	冲锋枪
+ui_resize	请放大终端窗口：至少 48 列 × 18 行
+ui_language_en	语言 / English
+ui_language_zh	语言 / 简体中文
+ui_focus	游戏已失去焦点。准备好后再继续。
+ui_scroll	翻阅
+ui_select	选择
+ui_confirm	确认
+ui_back	返回
+ui_more	翻阅查看更多
+ui_paused	已暂停
+ui_sensory	环境提示
+ui_duration	文字停留时间
+ui_subtitles	字幕
+ui_contrast	高对比度
+ui_shake	减少镜头晃动
+ui_flicker	减少闪烁
+ui_mouse	鼠标灵敏度
+ui_volume	总音量
+ui_cap	帧率上限
+ui_auto	自动（最高 120）
+ui_off	关闭
+ui_on	开启
+ui_important	只显示重要提示
+ui_detailed	详细
+ui_short	短
+ui_normal	标准
+ui_long	长

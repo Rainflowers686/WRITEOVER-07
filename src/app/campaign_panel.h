@@ -13,14 +13,16 @@ namespace writeover {
 // Private application presentation for paused campaign and product surfaces.
 // These authored UTF-8 lines are controls, not optional dialogue subtitles.
 inline void DrawCampaignPanel(CharCell* cells, int width, int height,
-                              const std::vector<std::string>& lines, size_t scroll = 0) {
+                              const std::vector<std::string>& lines, size_t scroll = 0,
+                              const std::string& resize_notice = "RESIZE TERMINAL: minimum 48 x 18",
+                              const std::string& more_notice = "SCROLL TO READ MORE") {
     if (cells == nullptr || width <= 0 || height <= 0 || lines.empty()) return;
     if (width < 48 || height < 18) {
-        const std::string message = "RESIZE TERMINAL: minimum 48 x 18";
         for (int i = 0; i < width * height; ++i) cells[i] = CharCell{};
-        for (size_t i = 0; i < message.size() && i < static_cast<size_t>(width * height); ++i) {
-            cells[i].code_point = static_cast<unsigned char>(message[i]);
-            cells[i].fg_r = 240; cells[i].fg_g = 220; cells[i].fg_b = 180;
+        const auto wrapped = text::Wrap(resize_notice, width);
+        CharCell style; style.fg_r = 240; style.fg_g = 220; style.fg_b = 180;
+        for (size_t i = 0; i < wrapped.size() && i < static_cast<size_t>(height); ++i) {
+            text::DrawRow(cells + i * static_cast<size_t>(width), width, 0, width, wrapped[i], style);
         }
         return;
     }
@@ -93,8 +95,8 @@ inline void DrawCampaignPanel(CharCell* cells, int width, int height,
         draw(top + 1 + static_cast<int>(i - start), body[i].first, body[i].second);
     }
     if (body.size() > capacity) draw(footer_top - 1,
-        "ROWS " + std::to_string(start + 1) + "-" + std::to_string(std::min(start + capacity, body.size())) +
-        "/" + std::to_string(body.size()) + " / SCROLL TO READ MORE", false);
+        std::to_string(start + 1) + "-" + std::to_string(std::min(start + capacity, body.size())) +
+        "/" + std::to_string(body.size()) + " / " + more_notice, false);
     for (size_t i = 0; i < footer.size(); ++i) draw(footer_top + static_cast<int>(i), footer[i], true);
     // Text rows fill the panel interior; restore the two side rails last.
     for (int y = top; y <= bottom; ++y) {

@@ -16,6 +16,7 @@ struct HudFrame {
     uint16_t score = 0;
     const char* preset_name = "COMPATIBILITY";
     const char* weapon_name = "PISTOL";
+    const char* health_label = "Health"; // presentation-only localized label
     const char* objective = nullptr;   // compact player-facing quest objective
     const char* interaction_prompt = nullptr; // focused action, or bounded onboarding hint
     const char* subtitle = nullptr;  // UTF-8, or nullptr
