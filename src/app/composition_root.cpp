@@ -4112,13 +4112,24 @@ int RunComposition(const GameConfig& config) {
     render->SetClosureTextSource([&](size_t row) {
         if (services.player->CurrentRoom() == "room_roof_exit" &&
             fact_is_true("fact_campaign_completed")) {
-            if (row == 0) return std::string("C A M P A I G N   C O M P L E T E");
-            if (row == 1) {
-                if (fact_is_true("fact_ending_disclose")) return std::string("ENDING / DISCLOSE");
-                if (fact_is_true("fact_ending_breach")) return std::string("ENDING / BREACH");
-                return std::string("ENDING / AMEND");
+            if (row == 0) {
+                return std::string("WRITEOVER-07 / COURSE PROJECT / CAMPAIGN COMPLETE");
             }
-            return std::string("F9 RELOAD CHECKPOINT   Q QUIT");
+            if (row == 1) {
+                const std::string ending = fact_is_true("fact_ending_disclose")
+                    ? "ENDING / DISCLOSE - THE RECORD LEFT THE FACILITY"
+                    : fact_is_true("fact_ending_breach")
+                        ? "ENDING / BREACH - THE EXIT WAS FORCED"
+                        : "ENDING / AMEND - THE RECORD WAS RECONCILED";
+                const std::string trace = fact_is_true("fact_act4_security_alerted")
+                    ? " / SECURITY TRACE ELEVATED"
+                    : fact_is_true("fact_act3_operations_cooperated")
+                        ? " / OPERATIONS TRACE COOPERATIVE"
+                        : " / SECURITY TRACE LOW EXPOSURE";
+                return ending + trace;
+            }
+            return services.narrative->Text("text_roof_epilogue") +
+                   "  F9 REPLAY CHECKPOINT  WALK TO DOOR: RETURN  ESC PAUSE / Q QUIT";
         }
         if (row == 0) return services.narrative->Text("text_closure_title");
         if (row == 1) return services.narrative->Text("text_closure_departure");
@@ -5578,6 +5589,10 @@ int RunComposition(const GameConfig& config) {
                     if (forced) {
                         set_campaign_fact("fact_act3_force_route");
                         set_campaign_fact("fact_act4_security_alerted");
+                        // Force is a valid discovery-poor fallback: an
+                        // alerted operator can expose the transfer stop even
+                        // when the optional Network observation was skipped.
+                        set_campaign_fact("fact_elevator_transfer_unlocked");
                         render->SetSubtitleOnce(
                             "OPERATIONS: route reconciled under alert. The next guard will know.",
                             220, 90);
@@ -5597,6 +5612,9 @@ int RunComposition(const GameConfig& config) {
                 if (fact_is_true("fact_chapter_aggressive_route") ||
                     services.systemic->AlertLevel() >= FacilityAlertLevel::Suspicious) {
                     set_campaign_fact("fact_act3_force_route");
+                    // Preserve a complete force route without making the
+                    // optional Network discovery a hard prerequisite.
+                    set_campaign_fact("fact_elevator_transfer_unlocked");
                     render->SetSubtitleOnce(
                         "Operator: I can route you upward. I cannot make the cameras forget.",
                         220, 85);
@@ -5780,8 +5798,12 @@ int RunComposition(const GameConfig& config) {
         if (services.player->CurrentRoom() == "room_roof_exit") {
             if (focused_scene_entity("roof_epilogue_marker")) {
                 set_campaign_fact("fact_roof_reached");
-                render->SetSubtitleOnce(
-                    "ROOF: the facility has a final status. The sky has none.", 240, 100);
+                const char* epilogue = fact_is_true("fact_ending_disclose")
+                    ? "ROOF: The record left the facility before the facility could edit it."
+                    : fact_is_true("fact_ending_breach")
+                        ? "ROOF: The exit was forced. The record remains contested."
+                        : "ROOF: The record was reconciled. The response still leaves a trace.";
+                render->SetSubtitleOnce(epilogue, 240, 100);
                 return;
             }
             render->SetSubtitleOnce("ROOF: the campaign is complete.", 180, 90);
@@ -5983,7 +6005,9 @@ int RunComposition(const GameConfig& config) {
         const bool campaign_disclose_replay =
             config.replay_path.find("campaign_probe_disclose") != std::string::npos;
         const bool campaign_breach_replay =
-            config.replay_path.find("campaign_probe_breach") != std::string::npos;
+            config.replay_path.find("campaign_probe_breach") != std::string::npos ||
+            config.replay_path.find("campaign_probe_discovery_poor") !=
+                std::string::npos;
         const bool badge_held_by_player =
             slice.badge.IsValid() &&
             services.systemic->ItemHeldBy(slice.badge, slice.player);
@@ -6077,7 +6101,8 @@ int RunComposition(const GameConfig& config) {
             visited_room("room_1f_arrival_lobby") &&
             visited_room("room_8f_records_core") &&
             visited_room("room_12f_operations_control") &&
-            visited_room("room_18f_network_node") &&
+            (visited_room("room_18f_network_node") ||
+             fact_is_true("fact_act3_force_route")) &&
             visited_room("room_24f_security_transfer") &&
             visited_room("room_30f_executive_archive") &&
             visited_room("room_36f_authority_core") &&
@@ -6094,10 +6119,17 @@ int RunComposition(const GameConfig& config) {
                     : campaign_breach_replay
                         ? fact_is_true("fact_ending_breach")
                         : true;
+        const bool campaign_end_screen_ready =
+            services.player->CurrentRoom() == "room_roof_exit" &&
+            fact_is_true("fact_campaign_completed") &&
+            (fact_is_true("fact_ending_amend") ||
+             fact_is_true("fact_ending_disclose") ||
+             fact_is_true("fact_ending_breach"));
         const bool expected_state_reached = normal_quit_replay
             ? slice.normal_quit_requested
             : campaign_replay
-                ? (campaign_route_complete && campaign_ending_reached)
+                ? (campaign_route_complete && campaign_ending_reached &&
+                   campaign_end_screen_ready)
             : scenario_guard_other_room_replay
                 ? (services.player->CurrentRoom() == "room_service_medical" &&
                    services.player->Health() == 100 &&
@@ -6217,6 +6249,8 @@ int RunComposition(const GameConfig& config) {
                      chapter_checkpoint_reached ? "YES" : "NO");
         std::fprintf(stderr, "CAMPAIGN_COMPLETION_REACHED=%s\n",
                      campaign_route_complete ? "YES" : "NO");
+        std::fprintf(stderr, "CAMPAIGN_END_SCREEN_READY=%s\n",
+                     campaign_end_screen_ready ? "YES" : "NO");
         std::fprintf(stderr, "REPLAY_RESULT=%s\n",
                      replay_process_ok && replay_input_consumed && expected_state_reached
                          ? "PASS" : "FAIL");

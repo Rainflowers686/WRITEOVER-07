@@ -65,9 +65,14 @@ std::string TowerCampaignRuntime::DirectoryLine(std::string_view current_room,
     const size_t bounded = std::min(selected_index, selectable.size() - 1);
     const Destination& destination = destinations_[selectable[bounded]];
     std::ostringstream out;
-    out << "LIFT DIRECTORY  " << destination.display_name
-        << "  [" << DestinationStatus(destination, current_room)
-        << "]  W/S SELECT  F CONFIRM  ESC CLOSE";
+    // The playable destinations are intentionally sparse, but the diegetic
+    // directory must still communicate the scale of the facility.  Keep this
+    // as presentation text rather than inventing a simulated floor graph.
+    out << "TOWER DIRECTORY / 41 LEVELS | B4:SEALED B3:NO-STOP B2:RESTRICTED"
+        << " B1:CLINICAL | 01:ARRIVAL 04:NO-STOP 08:RECORDS 12:OPS 18:NET"
+        << " 24:SEC 30:EXEC 36:AUTH RF:EXIT | SELECTED: "
+        << destination.display_name << " [" << DestinationStatus(destination, current_room)
+        << "] | W/S SELECT F CONFIRM ESC CLOSE";
     return out.str();
 }
 

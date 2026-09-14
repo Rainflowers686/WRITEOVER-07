@@ -14,7 +14,8 @@ $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) (
 $cases = @(
     @{ Name = "campaign_probe_amend"; File = "campaign_probe_amend.txt"; Frames = 6800; Ending = "amend" },
     @{ Name = "campaign_probe_disclose"; File = "campaign_probe_disclose.txt"; Frames = 7000; Ending = "disclose" },
-    @{ Name = "campaign_probe_breach"; File = "campaign_probe_breach.txt"; Frames = 6800; Ending = "breach" }
+    @{ Name = "campaign_probe_breach"; File = "campaign_probe_breach.txt"; Frames = 6800; Ending = "breach" },
+    @{ Name = "campaign_probe_discovery_poor"; File = "campaign_probe_discovery_poor.txt"; Frames = 6800; Ending = "breach" }
 )
 
 if ($EvidenceDirectory) {
@@ -51,6 +52,7 @@ try {
             "REPLAY_EXPECTED_STATE_REACHED=YES",
             "REPLAY_RESULT=PASS",
             "CAMPAIGN_COMPLETION_REACHED=YES",
+            "CAMPAIGN_END_SCREEN_READY=YES",
             "SAVE_OK=YES",
             "LOAD_OK=YES",
             ("CAMPAIGN_FACTS .* {0}=YES" -f $case.Ending)

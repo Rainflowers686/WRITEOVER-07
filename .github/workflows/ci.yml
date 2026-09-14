@@ -83,6 +83,7 @@ jobs:
           $archive = Join-Path $packageRoot "WRITEOVER-07-player.zip"
           python tools/release/package_release.py --platform windows-x64 --binary out/build/release/Release/writeover_app.exe --source-root . --dist-root $packageRoot --archive $archive
           python tools/release/package_smoke.py --platform windows-x64 --archive $archive
+          python tools/release/package_negative_probe.py --platform windows-x64 --archive $archive
         shell: pwsh
 
       - name: Release benchmark gate

@@ -27,8 +27,11 @@ bool TestTowerDestinationPolicy() {
     WO_CHECK_EQ(campaign.Destinations().size(), 8);
     WO_CHECK_EQ(campaign.SelectableDestinations(
                     "room_1f_arrival_lobby").size(), 1);
-    WO_CHECK(campaign.DirectoryLine("room_1f_arrival_lobby", 0).find(
-                 "Arrival / Public Lobby") != std::string::npos);
+    const std::string initial_directory =
+        campaign.DirectoryLine("room_1f_arrival_lobby", 0);
+    WO_CHECK(initial_directory.find("41 LEVELS") != std::string::npos);
+    WO_CHECK(initial_directory.find("Arrival / Public Lobby") !=
+             std::string::npos);
 
     facts.insert("fact_elevator_records_unlocked");
     facts.insert("fact_elevator_operations_unlocked");
