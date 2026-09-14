@@ -1,35 +1,177 @@
 # WRITEOVER-07 · 重写协议：执行官07
 
-**[简体中文](README.zh-CN.md) · [English](README.en.md)**
+[English](README.en.md) · [中文页面](README.zh-CN.md) · [下载试玩](https://github.com/Rainflowers686/WRITEOVER-07/releases/tag/v0.2.0-candidate.1)
 
-你在 B1 醒来。设施知道你的编号，却不急着解释你为什么在这里。
-调查记录、与工作人员交谈，或用武力通过门禁——你留下的现场会跟着你向上走。
+一款把 MUD 式文字探索放进第一人称空间的单人游戏。你在设施 B1 醒来，
+带着编号、武器，以及一份说不清你是谁的记录。调查、交谈、绕过门禁，
+或者开枪。你的做法会影响工作人员的反应，也会改变后面的通行条件。
 
-You wake in B1. The facility knows your number, but offers no reason for your
-presence. Read its records, talk to its staff, or force your way through.
-What you leave behind can change what waits upstairs.
+*English readers: WRITEOVER-07 combines MUD-style exploration with real-time
+first-person combat in a world built from characters.
+[Read the full English introduction and play guide →](README.en.md)*
 
-![Character-built elevator entrance and held weapon](docs/production/evidence/chapter01_creative_polish/optimization_v2_20260915/lift_front.png)
+![字符构成的电梯入口与第一人称武器](docs/production/evidence/chapter01_creative_polish/optimization_v2_20260915/lift_front.png)
 
-*实际游戏字符单元导出的预览，不是原生终端截图。字体和窗口会影响观感。
-Preview exported from production character cells, not a native terminal screenshot.*
+*实际游戏字符画面的导出预览。真实终端中的字体、字号和窗口会影响观感。*
 
-[试玩下载 / Downloads](https://github.com/Rainflowers686/WRITEOVER-07/releases) ·
-[中文指南](docs/release/PLAYER_GUIDE.zh-CN.md) ·
-[English guide](docs/release/PLAYER_GUIDE.en.md) ·
-[本版说明 / What's changed](docs/release/RELEASE_NOTES_v0.2.0-candidate.1.md) ·
-[问题反馈 / Issues](https://github.com/Rainflowers686/WRITEOVER-07/issues)
+## 你醒了，但还没有获准离开
 
-当前源码候选版 / Current source candidate: `0.2.0-candidate.1`.
-下载状态以发布页的实际附件为准。候选版不代表真人验收完成。
-Check the release assets for download availability. Candidate status does not
-mean human acceptance is complete.
+医务人员先确认你是否清醒。读卡器关心你的凭证，守卫等着一个符合流程的回答。
+至于你为什么在这里，设施里的记录并不急着说明。
 
-19 个可玩房间，B1 至屋顶，三种结局。世界、人物和武器由手工设计的字符构成。
-19 playable rooms, B1 to the roof, three endings. The world, people and weapons
-are built from authored character art.
+从 B1 的复苏区开始，你要穿过校准、医疗和安检区域，找到向上的通路。
+到了档案与调度部门，问题逐渐变了：一份文件能让下一道门打开，
+却未必能解释发生过什么。有些工作人员愿意帮你，有些只想把这班工作做完。
+旁白则在一边，把你的行动整理成它认为合适的说法。
 
-想看实现？/ Looking for the implementation?
-[Development](docs/DEVELOPMENT.md) ·
-[Validation strategy](docs/engineering/TEST_STRATEGY.md) ·
-[Version and provenance](docs/release/VERSIONING.md)
+你要查清自己的处境，也要决定如何离开。阅读找到的记录，比较不同人的说辞，
+留意一条路线为什么忽然变得可用。战役一直通向屋顶；能够做出的最终选择，
+取决于你沿途取得的证据和留下的后果。
+
+## MUD 的探索方式，FPS 的现场感
+
+在这里，文字和画面各有用处。你用第一人称视角看门的位置、判断守卫的朝向，
+在交火时寻找掩护；检视、对话与记录则告诉你，这个地方如何运转，
+以及眼前的人为什么不肯让路。
+
+走进一个房间，可以先看设备、读提示、找人交谈，再决定要不要拔枪。
+案件档案会整理当前目标、已知线索、已取得的记录与通行情况。
+错过一句话，也能打开最近事件或对话历史回看。
+
+这里借用的是 MUD 和文字冒险中“观察环境、与人物交互、从反馈里找办法”的乐趣。
+操作仍是键鼠控制的实时 FPS，不需要背一套文字指令。
+游戏为单人离线游玩，不是多人联机 MUD。
+
+## 守卫在巡逻，其他人也有自己的工作
+
+安保人员会巡视、检查异常、调查声响，并在威胁升级时进入交战。
+摄像头提供的消息、被发现的身体，都可能让一次普通的经过变成盘查。
+躲开视线有用，但处理掉眼前的守卫，也不等于所有读卡器都会放行。
+
+清洁工的反应尤其值得留意。你之前怎样与他相处、走廊留下了什么，
+会影响他是替你处理现场、联系医疗，还是叫来安保。电击放倒一个人，
+和把人打死，交给其他人处理时并不是同一件事。
+
+技术人员说话绕着读卡器、线路与旁路转；医务人员会先看人，
+再处理编号。你会遇到短促的命令、随口的提醒，也会听到不愿多作解释的回答。
+这些人通过各自的岗位、记忆与有限的信息回应你，不会全都扮演热心向导。
+
+NPC 使用预先编写的对白和游戏内行为规则，不是接入大模型的自由聊天角色。
+它们的“像人”，体现在你做了事之后，对方会怎样继续自己的工作。
+
+## 旁白有它自己的记录方式
+
+> 你已获准离开病床。离开房间，需要另行批准。
+
+它熟悉这套设施的措辞。你得到的是“许可”，走过的是“流程”，
+离开也不过是一次需要登记的事件。它说得很平静，有时甚至像在替你省事。
+
+但它会留意你的偏离。关掉摄像头之后，它的反应是：
+
+> 摄像头不再提供画面。这件事本身也会记上一笔。
+
+它不会把每个动作都重复一遍。安静通行、制造噪声、改变现场，
+会在相应的情境下得到不同回应。你可以把这些话当作提醒，也可以拿它们
+和刚刚看到的事情对照。听起来很正式的一句话，并不总是完整的解释。
+
+旁白与对话以文字呈现；当前版本不提供完整角色配音。
+
+## 开门不只有一种办法，后果也不止一种
+
+凭证、工作人员的协助、终端操作和维护旁路，都可能帮你通过特定关卡。
+观察路线和现场再行动，往往比立即开火更有余地。游戏也允许你选择武力，
+然后继续面对它造成的局面。
+
+手枪、SMG 与电击器提供不同的交战选择。电击器可以留下活着的人，
+但仍消耗弹药，也会留下可能被发现的现场。清除一个威胁之后，
+你还需要考虑身体、摄像头，以及下一处检查点会收到什么消息。
+
+有些后果会跟着你离开当前房间。B1 的摄像头记录、清洁工对现场的处理、
+已经登记的路线，都可能在后面的部门得到回应。回访与重读记录，
+能帮助你理解这些联系。三个结局不是一开始就全部摆在菜单里的按钮，
+途中取得的证据与行动会影响可用选择。
+
+## 走近一点，才发现整座设施都是字符
+
+门框、控制台、护甲、人的侧脸和手中的枪，都由字符组成。
+人物和武器使用手工设计的字符素材，颜色区分材质与明暗；
+朝向变化时，角色也有对应的正面、背面和侧面轮廓。
+
+画面追求的是能读懂的第一人称空间：看得出门嵌在哪里、设备占多大地方、
+谁挡住了你的去路。与此同时，字符本身仍然可见。
+它不会把普通图片转成一整屏彩色小方块。
+
+当前战役包含从 B1 到屋顶的 **19 个可玩房间、支路与回访，以及三种结局**。
+设施目录里的 41 层属于世界设定，不是 41 张可进入的地图。
+
+---
+
+## 下载与开始
+
+当前试玩版为 **0.2.0-candidate.1（Pre-release）**。已发布 Windows x64 包；
+它还不是正式 1.0。
+
+1. 打开[本版发布页](https://github.com/Rainflowers686/WRITEOVER-07/releases/tag/v0.2.0-candidate.1)，
+   在 Assets 下载 `WRITEOVER-07-v0.2.0-candidate.1-win-x64.zip`，不要选 Source code。
+2. 完整解压，保留 `data` 文件夹与程序的相对位置，运行 `WRITEOVER-07.exe`。
+3. 首次选择简体中文或英文，再选“新游戏”。已有恢复存档时可以选择“继续”。
+
+使用支持 Unicode／中文的等宽字体。窗口最低需要 48×18 个字符单元，
+80×30 或更大更容易阅读。窗口过小时游戏会暂停，放大后再继续。
+
+程序包未签名。请核对发布来源与附带的 `SHA256SUMS.txt`，不要关闭系统防护。
+[完整中文指南](docs/release/PLAYER_GUIDE.zh-CN.md) 包含保存位置与故障处理说明。
+
+## 常用操作
+
+| 操作 | Windows 默认键 |
+|---|---|
+| 移动／观察 | WASD／鼠标 |
+| 交互／检视 | F／鼠标右键 |
+| 开火／装填 | 鼠标左键／R |
+| 武器选择 | 1 手枪、2 SMG、3 电击器 |
+| 案件档案 | F1 |
+| 保存／读取最近恢复存档 | F5／F9 |
+| 暂停／返回 | Esc |
+
+右键用于检视，不是瞄准镜模式。其余操作见游戏内“操作说明”。
+设置支持改键，冲突会提示，保存前需要确认；方向键、F 和 Esc 保留安全菜单操作。
+
+第一次玩，先按开场提示检查附近的读卡器和工作人员。遇到门禁拒绝，
+看看它给出的理由，再打开案件档案确认目标。没有必要把每次拒绝都处理成战斗。
+
+## 语言、存档与舒适度
+
+中英文可在设置中切换。视野、鼠标、字幕时长、感知信息详略、对比度、
+减弱晃动／闪烁、音量和帧率上限也可调整。难度影响玩家承受的伤害，
+不改变证据与通行路线。Auto 帧率上限最高跟随 120 Hz 模拟节拍，
+不是实测显示帧率的承诺。
+
+手动存档、检查点和最终选择前存档分开。暂停菜单可以回到检查点或最终决策前。
+新游戏需要确认，不会立刻删除所有旧槽位；更换版本前仍请备份重要存档。
+
+## 试玩前需要知道
+
+游戏包含枪械、致命与非致命战斗、昏迷者／死者、藏匿身体和封闭机构中的悬疑情节。
+
+当前下载面向 Windows。Windows 支持原生鼠标及设备可用时的程序化音效；
+Linux/macOS 的编译与检查结果不代表相同的输入、音频体验，也不代表本版提供了
+对应平台下载。没有完整人物语音，也没有在线聊天 AI。
+
+真实终端的字体与窗口操作、音频听感、首次试玩和通关时长仍需要人工验收。
+页面中的预览与自动测试不能代替这些结果。请把这版当作可反馈问题的试玩候选版。
+
+## 反馈与项目资料
+
+欢迎在 [Issues](https://github.com/Rainflowers686/WRITEOVER-07/issues) 描述你遇到的问题。
+附上版本、系统、终端、所在房间和复现步骤；如果是“我不知道该往哪里走”，
+也请说说当时看到的目标和提示。截图与日志先去掉私人信息，不要上传整个用户数据目录。
+
+[更新说明](docs/release/RELEASE_NOTES_v0.2.0-candidate.1.md) ·
+[开发与构建](docs/DEVELOPMENT.md) ·
+[课程材料](docs/course/README.md) ·
+[版本来源](docs/release/VERSIONING.md)
+
+项目使用 C++17。想了解字符渲染、NPC 行为和存档实现，可以从开发入口继续阅读；
+下载游玩不需要先编译源码。仓库目前没有开源许可证，公开源码不等于任意再分发
+或商用授权。
