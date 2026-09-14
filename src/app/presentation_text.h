@@ -84,16 +84,11 @@ public:
         // Existing menus compose independently meaningful labels with this
         // separator. Translate the labels without interpreting numbers/keys.
         if (source.find(" / ") != std::string::npos) {
-            std::string output;
-            size_t begin = 0;
-            while (begin < source.size()) {
-                const size_t end = source.find(" / ", begin);
-                if (!output.empty()) output += " / ";
-                output += Present(source.substr(begin, end == std::string::npos ? end : end - begin), language);
-                if (end == std::string::npos) break;
-                begin = end + 3;
-            }
-            return output;
+            const size_t split = source.find(" / ");
+            // Preserve an authored compound label in the remainder, e.g.
+            // LOCATION / Roof / Exit must still find the "Roof / Exit" entry.
+            return Present(source.substr(0, split), language) + " / " +
+                Present(source.substr(split + 3), language);
         }
         return source; // Coverage is audited separately; never invent text.
     }

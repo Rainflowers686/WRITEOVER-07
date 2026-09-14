@@ -222,6 +222,32 @@ ui_history_empty	No recent entries. Loading a save clears this history.
 ui_heard	HEARD
 ui_nearby	NEARBY
 ui_prompt	[{0}] {1}
+ui_record_trace	TRACE: forced access remains on the facility record.
+ui_record_001	KEY RECORDS
+ui_record_002	TRANSFER MANIFEST
+ui_record_003	The records operator described Transit Control access.
+ui_record_004	OBSERVATION LOOP
+ui_record_005	The analyst identified a blind spot in the transit camera feed.
+ui_record_006	SUBJECT 07
+ui_record_007	Release was denied before revival. The review order came from Authority on 36F.
+ui_record_008	OPERATIONS ROUTE
+ui_record_009	Operations recorded a route upward. Existing camera evidence was not erased.
+ui_record_010	UNLISTED FEED
+ui_record_011	An omitted observation feed survives outside the official account.
+ui_record_012	TRANSFER CLEARANCE
+ui_record_013	The upper security transfer was recorded.
+ui_record_014	EXECUTIVE ORDER 07
+ui_record_015	Your signature is required to close the file. The order transfers review authority to you.
+ui_record_016	STAFF SHIFT NOTE
+ui_record_017	Maintenance changes shift at 02:10.
+ui_record_018	AUTHORITY REVIEW
+ui_record_019	The decision terminal is ready. Review the available choices before confirming; confirmation changes the record.
+ui_record_020	No key records acquired yet.
+ui_record_021	Forced access remains on the route record.
+ui_record_022	No forced upper route is recorded.
+ui_record_023	Upper Security recorded an alert.
+ui_record_024	No upper Security alert is recorded.
+ui_record_025	CONTENT NOTE: firearms, lethal and non-lethal combat, unconscious and dead bodies, body hiding, and institutional suspense.
 ui_audit_001	ORDER 07: hold subject unresolved until they certify their own account. Review authority transfers to Subject 07.
 ui_audit_002	RECORDS / SUBJECT 07: release denied before revival. Review owner: Authority, 36F.
 ui_audit_003	UNBOUND

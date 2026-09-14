@@ -10,6 +10,7 @@
 #include "src/render/text_layout.h"
 #include "src/app/presentation_text.h"
 #include "src/app/product_preferences.h"
+#include "src/app/product_records.h"
 #include "writeover/render/frame_encoder.h"
 #include "writeover/render/hud.h"
 #include "writeover/render/character_renderer.h"
@@ -17,6 +18,33 @@
 
 namespace writeover {
 namespace {
+bool KeyRecordsRespectAcquisition() {
+    SystemicWorld world;
+    const auto player = EntityId::New(1);
+    WO_CHECK(PlayerKeyRecords(world, player, false).back() == "No key records acquired yet.");
+    KnowledgeAssetRecord record;
+    record.id = KnowledgeAssetId::New(9405);
+    record.source = ResourceId::New(4);
+    record.type = KnowledgeAssetType::Secret;
+    record.known_by.push_back(EntityId::New(2));
+    WO_CHECK(world.AddKnowledgeAsset(record));
+    WO_CHECK(PlayerKeyRecords(world, player, false).back() == "No key records acquired yet.");
+    record.id = KnowledgeAssetId::New(9401);
+    record.known_by = {player};
+    WO_CHECK(world.AddKnowledgeAsset(record));
+    const auto rows = PlayerKeyRecords(world, player, false);
+    WO_CHECK_EQ(rows.size(), 3);
+    WO_CHECK(rows[1] == "SUBJECT 07");
+    WO_CHECK(std::find(rows.begin(), rows.end(), "EXECUTIVE ORDER 07") == rows.end());
+    const auto bytes = world.Serialize();
+    auto restored = SystemicWorld::Deserialize(bytes.data(), bytes.size());
+    WO_CHECK(restored.IsOk());
+    WO_CHECK(PlayerKeyRecords(restored.Value(), player, false) == rows);
+    const auto reviewed = PlayerKeyRecords(restored.Value(), player, true);
+    WO_CHECK_EQ(reviewed.size(), 5);
+    WO_CHECK(reviewed[3] == "AUTHORITY REVIEW");
+    return true;
+}
 bool TranslationTemplateValidation() {
     const auto root = std::filesystem::path(__FILE__).parent_path().parent_path();
     PresentationText translations;
@@ -321,6 +349,7 @@ bool BoundControlsAndPreferences() {
     WO_CHECK(translations.Count() > 100);
     WO_CHECK(translations.Present("CONTINUE", "zh-CN") == "继续游戏");
     WO_CHECK(translations.Present("CONTINUE", "en") == "CONTINUE");
+    WO_CHECK(translations.Present("LOCATION / Roof / Exit", "zh-CN") == "位置 / 屋顶 / 出口");
     WO_CHECK(translations.Present("[MOUSE4] USE TERMINAL", "zh-CN") == "[MOUSE4] 使用终端");
     WO_CHECK(translations.Present("FILED EVIDENCE: 17", "zh-CN") == "已归档证据：17");
     WO_CHECK(translations.Present("> 08  Records Core  [AVAILABLE]", "zh-CN") == "> 08  档案中心  [可前往]");
@@ -582,6 +611,7 @@ bool KnownEvidenceAndNearestInspect() {
 }
 } // namespace
 void RegisterProductTests(TestHarness& harness) {
+    harness.Add("product.key records acquisition and persistence", &KeyRecordsRespectAcquisition);
     harness.Add("product.translation template validation", &TranslationTemplateValidation);
     harness.Add("product.functional preference consumers", &FunctionalPreferenceConsumers);
     harness.Add("product.rebinding confirmation and conflict", &RebindingConfirmationAndConflict);

@@ -45,6 +45,7 @@
 #include "src/app/runtime_time_gate.h"
 #include "src/app/presentation_text.h"
 #include "src/app/product_preferences.h"
+#include "src/app/product_records.h"
 #include "src/app/player_perception.h"
 #include "src/player/dynamic_collision.h"
 #include "src/app/runtime_paths.h"
@@ -3810,6 +3811,10 @@ int RunComposition(const GameConfig& config) {
                     rows.push_back(item.revoked ? "CREDENTIAL / held badge REVOKED" : "CREDENTIAL / held badge VALID; readers still check access");
                 }
             }
+            rows.push_back("");
+            const auto records = PlayerKeyRecords(*services.systemic, slice.player,
+                fact_is_true("fact_pre_final_checkpoint"));
+            rows.insert(rows.end(), records.begin(), records.end());
             rows.push_back(ProductBinding(settings, GameAction::MoveLeft) + "/" + ProductBinding(settings, GameAction::MoveRight) +
                 " SCROLL  " + ProductBinding(settings, GameAction::Pause) + " CLOSE");
             return rows;
@@ -4639,6 +4644,8 @@ int RunComposition(const GameConfig& config) {
                 "EVIDENCE KNOWN / " + std::to_string(PlayerKnownEvidence(*services.systemic, slice.player)),
                 fact_is_true("fact_act3_network_discovered") ? "You recovered the unlisted network feed." : "No unlisted network feed was recovered.",
                 fact_is_true("fact_act3_operations_cooperated") ? "Operations supplied a cooperative route." : "Operations did not supply a cooperative route.",
+                fact_is_true("fact_act3_force_route") ? "Forced access remains on the route record." : "No forced upper route is recorded.",
+                fact_is_true("fact_act4_security_alerted") ? "Upper Security recorded an alert." : "No upper Security alert is recorded.",
                 "You may explore the roof or return to the Case File.",
                 "Pause > Replay Final Choice loads the separate pre-final save; it does not rewrite this completion.",
                 "New Game rebuilds all live state. Existing recovery files remain until their next save."};

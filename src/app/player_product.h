@@ -318,6 +318,7 @@ public:
                 rows.push_back("");
                 rows.push_back("FIRST VISIT? Controls shows your current bindings.");
                 rows.push_back("Explore, talk, and examine before committing to force.");
+                rows.push_back("CONTENT NOTE: firearms, lethal and non-lethal combat, unconscious and dead bodies, body hiding, and institutional suspense.");
             }
         } else if (page == ProductPage::History || page == ProductPage::Dialogue) {
             rows = feed.History(page == ProductPage::Dialogue);
@@ -339,6 +340,7 @@ public:
                 {GameAction::Help,"Case File"},{GameAction::Pause,"Pause / history / settings"}};
             for (const auto& item : labels) rows.push_back(ProductBinding(s, item.first) + " / " + item.second);
             rows.push_back("Bindings use the existing settings.cfg table; no hidden fixed gameplay keys.");
+            rows.push_back("CONTENT NOTE: firearms, lethal and non-lethal combat, unconscious and dead bodies, body hiding, and institutional suspense.");
         }
         if (!notice.empty()) rows.insert(rows.begin() + 1, notice);
         if (page == ProductPage::Rebind) {

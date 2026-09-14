@@ -96,7 +96,7 @@ def inspect():
             if matched and all(part != value and covered(part) for part in matched.groups()):
                 return True
         if " / " in value:
-            return all(covered(part) for part in value.split(" / "))
+            return all(covered(part) for part in value.split(" / ", 1))
         if "/" in value and all(stable.fullmatch(part) for part in value.split("/")):
             return True
         return False
@@ -136,7 +136,7 @@ def inspect():
     # All prompt literals, including ternary branches.
     for match in re.finditer(r'"\[F\] (?:\\.|[^"\\])*"', app):
         collect(match.group(), "composition_root.cpp:interaction prompt")
-    for filename in ("player_product.h", "player_perception.h", "perception_feed.h"):
+    for filename in ("player_product.h", "player_perception.h", "perception_feed.h", "product_records.h"):
         collect((ROOT / "src/app" / filename).read_text(encoding="utf-8"), filename)
     tower = (ROOT / "src/app/tower_campaign_runtime.cpp").read_text(encoding="utf-8")
     collect(tower[tower.index("std::string TowerCampaignRuntime::Objective"):],

@@ -176,7 +176,7 @@ std::string TowerCampaignRuntime::CaseFile(std::string_view current_room,
         out << "ROUTE: Operations filed your transfer; Security can accept it.\n";
     }
     if (Fact("fact_act3_force_route") || Fact("fact_act4_security_alerted")) {
-        out << "TRACE: forced access remains on record; Breach is a possible resolution.\n";
+        out << "TRACE: forced access remains on the facility record.\n";
     }
     out << "FILED EVIDENCE: " << knowledge_count << "\nESC / F CLOSE";
     return out.str();
