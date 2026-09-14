@@ -5978,6 +5978,12 @@ int RunComposition(const GameConfig& config) {
         const bool scenario_elevator_without_route_replay =
             config.replay_path.find("scenario_elevator_without_route") !=
             std::string::npos;
+        const bool campaign_amend_replay =
+            config.replay_path.find("campaign_probe_amend") != std::string::npos;
+        const bool campaign_disclose_replay =
+            config.replay_path.find("campaign_probe_disclose") != std::string::npos;
+        const bool campaign_breach_replay =
+            config.replay_path.find("campaign_probe_breach") != std::string::npos;
         const bool badge_held_by_player =
             slice.badge.IsValid() &&
             services.systemic->ItemHeldBy(slice.badge, slice.player);
@@ -6080,10 +6086,18 @@ int RunComposition(const GameConfig& config) {
         const bool campaign_replay =
             config.replay_path.find("campaign_") != std::string::npos ||
             visited_room("room_roof_exit");
+        const bool campaign_ending_reached =
+            campaign_amend_replay
+                ? fact_is_true("fact_ending_amend")
+                : campaign_disclose_replay
+                    ? fact_is_true("fact_ending_disclose")
+                    : campaign_breach_replay
+                        ? fact_is_true("fact_ending_breach")
+                        : true;
         const bool expected_state_reached = normal_quit_replay
             ? slice.normal_quit_requested
             : campaign_replay
-                ? campaign_route_complete
+                ? (campaign_route_complete && campaign_ending_reached)
             : scenario_guard_other_room_replay
                 ? (services.player->CurrentRoom() == "room_service_medical" &&
                    services.player->Health() == 100 &&
