@@ -5,9 +5,11 @@
 PROTECTED_CREATIVE_BASELINE = POST_ASTRA_CREATIVE_BASELINE /
 CHAPTER01_AUTHORED_FPS_20260913.
 CURRENT_PRODUCTION_LAYER = ACT2_AUTHORED_SPACES_23EADDB +
-AUTHORED_FACE_PLANES_B221E37.
-The source/content baseline is commit `b221e37`; the later documentation
-commit may become the delivery HEAD, but it must not change this contract.
+AUTHORED_FACE_PLANES_B221E37 + CHAPTER01_VISUAL_RETOUCH_FACE32.
+The source/content baseline is the creative freeze commit recorded below;
+the later documentation commit may become the delivery HEAD, but it must
+not change this contract.
+CREATIVE_FREEZE_HEAD = `0123a4c` (`feat: finalize chapter one visual baseline`).
 This is a stylized character-built FPS, not photorealism, VISUAL_GOLD or a
 claim of Rain's subjective foreground-terminal acceptance. Production frames,
 route gates and exact-head CI remain separate acceptance questions.
@@ -48,14 +50,12 @@ The near-reader action shares HUD visibility and keeps nearest-target ordering.
 Low service housings retain their physical clearance and simulation light.
 Their galvanized surface and edge lip have bounded presentation contrast so
 the overhead mass reads as architecture rather than a missing black patch.
-The current production references are the new four-room contact sheet at
-`out/creative_review_final_visual01/contact.png`, the no-HUD authored face
-sheet at `out/creative_review_face18_art/human_sheet.png` plus the real release
-capture at `docs/production/evidence/chapter01_creative_polish/face_retouch18/human.png`,
-and the synchronized
-weapon sheet at `out/act2_art_review_weapon07/weapon_sheet.png`. Historical
-evidence under `docs/production/evidence/` remains useful for comparison but
-does not override these current renders.
+The current production references are the release captures at
+`docs/production/evidence/chapter01_creative_polish/face_retouch32/` and
+`room_structure_retouch04/`, the no-HUD directional art review at
+`out/creative_review_face32_art/`, and the synchronized weapon sheet emitted
+by the same review. Historical evidence under `docs/production/evidence/`
+remains useful for comparison but does not override these current renders.
 
 Act II-A now has five authored rooms after the elevator: Service Concourse,
 Records Archive, Power Utility, Transit Control, and Observation Gallery.
@@ -64,15 +64,21 @@ storylets, durable facts, recoverable backtracking and checkpoint-compatible
 transitions. This is an expansion of content, not a new renderer or content
 schema.
 
-The current face pass is deliberately bounded. Full Human and Maintenance
-faces have hair boundary, a continuous authored skin plane, low-contrast eye
-marks, nasal plane and neutral mouth suggestion; the black eye-band and
-punctuation-texture failures are fixed. The `^` marker is an occupied blank
-skin plane routed through the existing `OpaqueEmpty` CharCell path, so it does
-not add a public renderer type or a raster layer. These remain authored
-low-resolution faces and must not be sold as photorealistic models. If
-foreground play still reads a face as uncanny, record that as a subjective
-visual P1 and revise the asset, not the renderer paradigm.
+The current face pass is deliberately bounded and production-checked. Full
+Human and Maintenance faces have a shaped hair boundary, continuous authored
+skin plane, cheek/temple shadow, low-contrast horizontal eye marks, nasal plane,
+neutral mouth suggestion and a tapered lower contour; the black eye-band,
+isolated-dot and hard side-frame failures are fixed. The `^` and `&` markers
+are occupied blank skin planes routed through the existing `OpaqueEmpty`
+CharCell path, so they do not add a public renderer type or a raster layer.
+These remain authored low-resolution faces, not photorealistic models. The
+accepted target is a credible stylized pixel-FPS read at play distance while
+remaining visibly character-built up close.
+
+The opening interaction contract is also explicit: Technician, Doctor and
+Cleaner resolve their own authored lines; a missing line is silence; Security
+speech requires the Security faction. This prevents an untyped B1 actor from
+borrowing the Security voice during the opening.
 
 The current production camera opens with a small downward pitch and a modest
 surface lift so floors, routes and equipment survive a real terminal capture.

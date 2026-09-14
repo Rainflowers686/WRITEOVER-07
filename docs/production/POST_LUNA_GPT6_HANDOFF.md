@@ -3,7 +3,7 @@
 Date: 2026-09-14  
 HANDOFF_STATUS = `NOT_YET_AUTHORIZED`  
 CREATIVE_PASS_STATUS = `GPT6_CRITICAL_PATH_CONTINUES`  
-BASELINE_HEAD = `b221e37` (`feat: refine authored human face planes`)
+BASELINE_HEAD = `0123a4c` (`feat: finalize chapter one visual baseline`)
 
 This document is intentionally actionable but is not a transfer signal yet.
 The owner explicitly asked the current creative pass to continue instead of
@@ -13,13 +13,13 @@ honestly closed.
 
 ## BASELINE_HEAD
 
-`b221e37` is the source/content and
-focused-route baseline.
-It preserves ancestor `5434f8a`, adds the five Act II-A rooms, synchronizes
-the authored weapon states, adds the bounded face/room presentation pass, and
-records the door-frame public enum in ADR-0012. It also replaces the Full
-Human/Maintenance punctuation-texture face with an authored continuous skin
-plane routed through the existing `OpaqueEmpty` CharCell path.
+Commit `0123a4c` preserves ancestor `5434f8a`, adds the five Act II-A
+rooms, synchronizes the authored weapon states, adds the bounded face/room
+presentation pass, and records the door-frame public enum in ADR-0012. The
+current source state also contains the face32 production retouch: cheek/temple
+planes, sparse horizontal eye marks, tapered lower contour and no hard side
+frame. It keeps the Full Human/Maintenance face on the authored continuous
+skin plane routed through the existing `OpaqueEmpty` CharCell path.
 
 ## PROTECTED_CREATIVE_BASELINE
 
@@ -40,6 +40,9 @@ Protect these decisions:
   viewer relation, selected enum, asset and inspection label must agree.
 - Pistol and Stunner are different authored masses with body/slide or emitter,
   grip, trigger suggestion, hand, wrist and forearm.
+- The active pistol/stunner viewmodel hand is a cool tactical glove with a
+  continuous palm-to-grip silhouette; all idle/fire/reload states use the same
+  authored attachment relationship.
 - Doors are wall-supported frame + panel + inset/signage layers with shared
   depth, not floating camera sprites.
 - B1, Security and Elevator keep their functional focal groups and clear route.
@@ -48,6 +51,8 @@ Protect these decisions:
   uses silence; Security, Cleaner, Technician and Medical have distinct voices.
 - Quiet play is observation/discretion; aggressive play changes the record and
   creates pressure. Consequences are facts/events/knowledge, not a morality UI.
+- Opening NPC interaction is role/faction-resolved. Missing authored text is
+  silence; it must never fall through to Security's voice.
 
 ## DO_NOT_REGRESS
 
@@ -76,10 +81,12 @@ resolve Transit Control. Each route can be quieter or more confrontational;
 backtracking and existing recoverable failure remain available.
 
 Visual status: authored low-resolution FPS density is materially improved in
-the current production frames. The new real release capture uses a continuous
-skin plane with sparse facial glyphs, removing the old colon/punctuation
-texture that made the face read like a mask. Close foreground acceptance is
-still a subjective boundary. This is not a photorealism claim.
+the current production frames. The latest real release capture is
+`docs/production/evidence/chapter01_creative_polish/face_retouch32/`; it uses
+a continuous skin plane with cheek shadow and sparse facial glyphs, removing
+the old punctuation texture and hard frame that made the face read like a
+mask. `room_structure_retouch04/` is the current B1/Security/Elevator room
+baseline. This is a bounded stylized acceptance, not a photorealism claim.
 
 ## CURRENT_MAJOR_SYSTEMS
 
@@ -108,11 +115,12 @@ still a subjective boundary. This is not a photorealism claim.
 
 ## OPEN_P1
 
-- Foreground-terminal/human acceptance of the stylized Full Human face is not
-  closed by an automated sheet. The latest real capture is recorded at
-  `docs/production/evidence/chapter01_creative_polish/face_retouch18/human.png`;
-  if Rain still reads it as uncanny at play distance, revise only the
-  authored head silhouette/face plane first.
+- No known player-critical P1 remains in the Chapter One art pass after the
+  face32 production render, the synchronized weapon render, and the room04
+  structure render. The face remains intentionally stylized and must not be
+  described as photorealistic; any future subjective objection should first
+  be tested against the protected CharCell contract and revised as an asset,
+  not by changing renderer paradigm.
 - Act II has production smoke renders and one dedicated Records route gate
   (Dispatch -> terminal -> operator -> Concourse backtrack). A focused
   first-time human playthrough and focused Power/Observation/Transit fixtures
@@ -195,7 +203,8 @@ public binary schemas, Character-Art renderer paradigm or module boundaries.
 
 ## LIKELY_COMPLETION_SEQUENCE
 
-1. Close or explicitly accept the foreground face and first-time Act II read.
+1. Treat the face32/weapon06/room04 visuals as the protected Chapter One
+   baseline and close only an observed first-time Act II read blocker.
 2. Add focused Power/Observation/Transit route fixtures and rerun Chapter One
    regression plus the existing Records expansion gate.
 3. Refresh Debug/Release, package smoke and benchmark.
@@ -231,3 +240,33 @@ IMPORTANT_FUNCTIONS = ...
 WHY_THIS_DESIGN = ...
 HOW_TO_EXPLAIN_IT_IN_CLASS = ...
 ```
+
+## CURRENT_CHANGE_TEACHBACK
+
+IMPORTANT_FILES =
+`data/characters/b1_character_art.txt`,
+`src/render/character_renderer.cpp`,
+`src/app/composition_root.cpp`,
+`data/scenes/recovery_scene.json`,
+`data/scenes/recovery_scene.bin`,
+`docs/production/CHAPTER01_CREATIVE_DIRECTION.md`.
+
+IMPORTANT_CLASSES = `CharacterArtAsset`, `CharacterArtBank`,
+`CharacterCellOpacity`, the B1 interaction path owned by `RunComposition`,
+and the existing scene prop/door projection types.
+
+IMPORTANT_FUNCTIONS = `DecodeArtRow`, `SpriteBackground`, `SpriteForeground`,
+`DrawOneSprite`, the B1 role-resolved subtitle branch in
+`src/app/composition_root.cpp`, and the existing scene content compiler.
+
+WHY_THIS_DESIGN = keep the world Character-Art/CharCell based while giving
+faces a continuous authored material plane, weapons a readable body-to-hand
+mass, and rooms a functional equipment grouping. Silence on an absent line is
+safer than borrowing Security's voice.
+
+HOW_TO_EXPLAIN_IT_IN_CLASS = explain that the renderer still projects authored
+Unicode cells and opacity; `^`/`&` only label occupied skin material inside
+that same cell path. The face, weapon, door and room changes are content and
+bounded presentation corrections, not a framebuffer rewrite. The replay proof
+then shows that the narrative speaker is selected from role/faction rather
+than a generic fallback.
