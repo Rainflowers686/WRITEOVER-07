@@ -4,11 +4,14 @@ START_HEAD = 43083373a03b5583ae207001067cd866bdb9a2cc
 
 FINAL_IMPLEMENTATION_HEAD = d2654f8974922a1e8db9d23e1ef99819cb5f5524
 
-FINAL_HEAD = the delivery documentation commit containing this file. Resolve
-`git rev-parse HEAD`; the exact pushed SHA and matching CI run are in the delivery
-receipt. A commit cannot contain its own eventual object hash.
+FINAL_HEAD = d5ef249adf54431e605603c3436000cc39421c36 (validated implementation
+delivery; subsequent player-documentation commits do not redefine this baseline).
 
-STATUS = SOURCE_CONTENT_FROZEN_FOR_AUDIT_PENDING_PUSH_AND_EXACT_HEAD_CI_RECEIPT
+STATUS = READY_FOR_DSV4_1F_FINAL_AUDIT
+
+DOCUMENTATION_FOLLOWUP = 2026-09-15 player documentation and publication of the
+unchanged Windows candidate authorized by Rain. No new tests/builds. Current
+release provenance is recorded in ../release/VERSIONING.md; human gates stay open.
 
 AUTHORITY = this report supersedes the previous director report's Roof gap and
 its requirement to complete human acceptance before mechanical audit. Historical
@@ -162,15 +165,20 @@ FPS claim. Full workload, 1200 samples and 6ms gate are unchanged.
 
 PACKAGE = out/optimized-package-20260915/WRITEOVER-07-audit-candidate.zip;
 609629 bytes, Windows x64, version 0.1.0-complete-campaign-candidate,
-source d2654f8974922a1e8db9d23e1ef99819cb5f5524. Local candidate, no Release.
+source d2654f8974922a1e8db9d23e1ef99819cb5f5524. Originally a local candidate;
+Rain subsequently authorized publishing this unchanged ZIP as a Pre-release.
 
 PACKAGE_SHA256 = 1901D0FE2889C90818B83935CE40797C5D5914115AC2CD00A3BB9A4891B27799
 
-EXACT_HEAD_CI_RUN = resolve the post-push run whose headSha equals FINAL_HEAD;
-the local evidence/optimization_delivery_receipt_20260915.json and final chat
-record the exact run ID, jobs, conclusion and benchmark.
+EXACT_HEAD_CI_RUN = 34872278294; headSha=d5ef249adf54431e605603c3436000cc39421c36.
 
-EXACT_HEAD_CI = NOT_YET_OBSERVED_AT_DOCUMENT_AUTHORING; do not inherit a green run.
+EXACT_HEAD_CI = SUCCESS; Windows, Linux GCC, Linux Clang, macOS ARM64 and Linux
+ARM64 link all succeeded on the first attempt. These are the implementation
+delivery's results, not new tests of the later documentation commit.
+
+FINAL_CI_BENCHMARK = PVS_TOTAL_FRAME_TIME_MS: Windows 1.937, Linux GCC 1.905,
+macOS ARM64 2.953; all budgets passed. This is worst_1pct_avg_ms, not display FPS.
+The macOS tail sample did not improve over the comparison run; no rerun was used.
 
 COMPARISON_CI = 131556e/run 34866959456 succeeded in Windows, Linux GCC, Linux
 Clang, macOS ARM64 and Linux ARM64 link without retry. Comparison macOS render
@@ -208,7 +216,9 @@ audio listening, first-time classmate playtest and measured playtime. These rema
 open but do not block source/content freeze for mechanical audit.
 
 OUT_OF_SCOPE = 41 physically playable floors, more acts/endings, pixel renderer,
-generic UI/quest framework, broad architecture rewrite, public Release or Steam.
+generic UI/quest framework, broad architecture rewrite, formal 1.0 or Steam.
+The later explicit Pre-release publication authorization is limited to the
+existing Windows candidate, player documentation and version records.
 
 TASK_TEMP_CLEANUP = no broad cleanup. Prior untracked evidence/builds/settings
 preserved. This pass's named evidence and package retained. Temporary package

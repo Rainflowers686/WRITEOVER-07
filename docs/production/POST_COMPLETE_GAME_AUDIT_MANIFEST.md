@@ -6,12 +6,14 @@ START_HEAD = 43083373a03b5583ae207001067cd866bdb9a2cc
 
 BASELINE_HEAD = d2654f8974922a1e8db9d23e1ef99819cb5f5524
 
-DELIVERY_HEAD = the documentation/evidence descendant containing this manifest;
-resolve git rev-parse HEAD and match its exact GitHub Actions headSha.
+DELIVERY_HEAD = d5ef249adf54431e605603c3436000cc39421c36.
+EXACT_HEAD_CI = run 34872278294, SUCCESS in all five jobs without rerun.
+Later documentation commits do not change the implementation baseline or claim
+new tests. Player release provenance is in ../release/VERSIONING.md.
 
 AUTHORITATIVE_HANDOFF = POST_ULTRA_FINAL_HANDOFF.md
 
-STATUS = SOURCE_CONTENT_FROZEN_PENDING_DELIVERY_RECEIPT
+STATUS = READY_FOR_DSV4_1F_FINAL_AUDIT
 
 SUPERSESSION = this manifest and POST_ULTRA_FINAL_HANDOFF supersede the older
 director report's open Roof implementation decision and pre-audit human gate.
@@ -35,7 +37,9 @@ SAVE_SCHEMA_CHANGE = NO
 PUBLIC_CONTRACT_DELTA = two bounded Settings preference fields; ADR-0010
 WORLD_IDENTITY = authored CharCell/Unicode FPS/MUD; no rasterized image assets
 NOT_IMPLEMENTED = 41 playable floors, generic act/region/quest/UI framework,
-new tactical-combat model, new population, Product Gold or public Release.
+new tactical-combat model, new population or Product Gold.
+PUBLICATION = Rain authorized the unchanged Windows candidate as a Pre-release
+on 2026-09-15. It does not close the remaining human acceptance or final audit.
 
 ## Audit source map
 

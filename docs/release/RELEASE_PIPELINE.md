@@ -1,76 +1,31 @@
-# WRITEOVER-07 Release Pipeline
+# 发布流程
 
-This document covers the small portable player packages for
-`0.1.0-pvs01-gold`. It does not change the normal Gold CI workflow.
+## 2026-09-15：发布已验证 Windows 候选包
 
-## Source of truth
+这次是文档与既有包发布，不执行构建、测试、回放或重新打包。产品版本保持 `PRODUCT_VERSION` 中的 `0.1.0-complete-campaign-candidate`。
 
-`PRODUCT_VERSION` is the single release version source. CMake reads its numeric prefix
-for the project version, and the package tools use the complete value for
-`version.json`, archive names, README text, and the release tag.
+1. 对照包内 version.json、现有验证回执和 ZIP SHA-256。
+2. 提交玩家文档及发布记录到 main，使用 [skip ci]，不改工作流。
+3. 创建不存在的 candidate-0.1.0-complete-campaign-20260915 标签，目标为包实现提交 d2654f8974922a1e8db9d23e1ef99819cb5f5524。
+4. 创建新的 GitHub Pre-release，上传原 ZIP、中文玩家指南和校验文件。
+5. 只读核对发布属性、标签目标、附件大小／摘要与远端 main。保留旧标签、旧发布和原始验证证据。
 
-Runtime content is copied only from checked-in compiled `.woc` and `.bin`
-files. Authoring JSON, source, tests, build trees, and user data do not enter
-a player package.
+标签不使用 v 前缀，因此不会触发旧 v* 自动打包流程。这条发布路径由用户明确要求“发布上一轮已验证包且本步不跑测试”而采用，不表示取消未来代码变更的测试要求。
 
-## Local packaging
+当前版本与来源见 [VERSIONING.md](VERSIONING.md)，面向玩家的发布正文见 [本版说明](RELEASE_NOTES_0.1.0-complete-campaign-candidate.md)。
 
-From the repository root after a clean `main` checkout:
+## 既有打包工具
 
-```powershell
-pwsh -File scripts/package_windows.ps1
-python tools/release/package_smoke.py --platform windows-x64 --archive dist/WRITEOVER-07-v0.1.0-pvs01-gold-win-x64.zip
-```
+PRODUCT_VERSION 是包版本来源。CMake 读取数值前缀，打包工具把完整值写进 version.json、README 和通常的归档文件名。
 
-On Linux:
+scripts/package_windows.ps1、scripts/package_linux.sh、scripts/package_macos.sh 负责平台构建与打包。运行前应先阅读脚本参数及当前门槛；不要在只授权文档的任务中运行它们。SkipBuild 不等于跳过所有包检查。
 
-```bash
-bash scripts/package_linux.sh
-python3 tools/release/package_smoke.py --platform linux-x64 --archive dist/WRITEOVER-07-v0.1.0-pvs01-gold-linux-x64.tar.gz
-```
+运行时包包含程序、编译内容、字符资产及元数据，不应含用户存档、作者源码、测试输出或凭据。原有 package_smoke.py 会在独立目录中验证内容查找和用户数据分离。
 
-On an arm64 macOS runner:
+## 旧自动发布流程的限制
 
-```bash
-bash scripts/package_macos.sh
-python3 tools/release/package_smoke.py --platform macos-arm64 --archive dist/WRITEOVER-07-v0.1.0-pvs01-gold-macos-arm64.zip
-```
+.github/workflows/release.yml 监听 v* 标签及手动触发。虽然它核对标签是否匹配 PRODUCT_VERSION，归档名、上传路径、校验命令、发布标题和说明文件仍写死了旧 0.1.0-pvs01-gold。
 
-Each script performs the Release build/tests/bench, creates the same
-`dist/stage/<platform>/` payload used by future Steam depots, writes a
-per-package manifest and `SHA256SUMS.txt`, and creates one archive. The smoke
-tool extracts the archive into a temporary directory, runs the player with a
-different working directory, verifies executable-relative data lookup, and
-checks that the smoke save is written to a separate user-data directory.
+因此它目前不是新战役版本的可用自动发布入口。未来要发布重新构建的多平台包，应单独修正这些引用并验证，不要直接推新 v* 标签碰运气，也不要移动旧标签。
 
-`--skip-build` is available on the platform scripts when a caller has already
-run the exact Release gates. It does not weaken the clean-package smoke.
-
-## Tagged release
-
-The release workflow is `.github/workflows/release.yml`. It accepts a `v*` tag
-but verifies that the tag is exactly `v$(Get-Content PRODUCT_VERSION)` before doing
-any release work. Each platform job checks content, builds Release, runs
-tests/bench, packages, and clean-package smokes. The aggregate job computes
-the archive checksums and creates a GitHub pre-release with the three archives
-and `SHA256SUMS.txt`.
-
-The safe publication order is:
-
-1. Keep `main` clean and wait for the normal Gold CI to pass.
-2. Run all locally available package and clean-package gates.
-3. Confirm the tag does not already exist.
-4. Create `v0.1.0-pvs01-gold` on the already verified `main` commit and push
-   that tag. Do not force-move a tag.
-5. Wait for the tagged release workflow and verify the pre-release assets and
-   checksums.
-
-The workflow requires only the GitHub Actions `contents: write` permission;
-it does not read Apple or Windows signing secrets. Signing and notarization
-remain explicit `NOT_CONFIGURED` states until real credentials are supplied.
-
-If a tag-triggered run fails after the immutable tag has already been pushed,
-the workflow can be dispatched from `main` with `source_ref` set to that exact
-tag. The platform jobs still check out and package the requested immutable
-source ref; the current `main` checkout is used only for the release validator
-needed by the recovery run. This recovery path never moves or deletes a tag.
+本次没有改动该工作流。Windows 签名、macOS 签名／公证仍未配置；ARM64 交叉链接通过不能替代真机试玩。
