@@ -1334,6 +1334,10 @@ void RenderCharacterFrame(const GridCell* cells, int grid_w, int grid_h,
         for (int y = 0; y < cell_h; ++y) {
             const auto& plane = plane_samples[static_cast<size_t>(y)];
             if (plane.covered_by_wall) continue;
+            // No finite floor/ceiling intersection means open distance, not
+            // an invented textured plane at the ray limit. Preserve the
+            // clear CharCell; authored distant geometry still supplies glyphs.
+            if (!std::isfinite(plane.distance)) continue;
             const float distance = std::clamp(plane.distance, 0.25f, kMaxSpriteDistance);
             const Vec3 world_point = view.origin + horizontal * distance;
             const float world_x = world_point.x;

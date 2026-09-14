@@ -44,6 +44,9 @@ struct Settings {
     bool reduce_camera_shake = false;
     bool reduce_flicker = false;
     bool high_contrast = false;
+    // Presentation preferences only (settings.cfg); not world-save wire data.
+    uint8_t sensory_verbosity = 1;      // 0=off, 1=important, 2=detailed
+    uint8_t text_duration = 1;          // 0=short, 1=normal, 2=long
 
     // Defaults for all fields (including the binding tables).
     static Settings Defaults();

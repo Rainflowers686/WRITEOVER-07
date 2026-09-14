@@ -239,6 +239,7 @@ if(WO_BUILD_TESTS)
         tests/test_save_replay.cpp
         tests/test_systemic.cpp
         tests/test_campaign.cpp
+        tests/test_product.cpp
         src/app/tower_campaign_runtime.cpp
     )
     target_include_directories(writeover_tests PRIVATE

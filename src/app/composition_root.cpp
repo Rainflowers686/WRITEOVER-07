@@ -37,6 +37,9 @@
 #include "src/app/scene_runtime.h"
 #include "src/app/tower_campaign_runtime.h"
 #include "src/app/campaign_panel.h"
+#include "src/app/player_product.h"
+#include "src/app/product_save.h"
+#include "src/app/player_perception.h"
 #include "src/player/dynamic_collision.h"
 #include "src/app/runtime_paths.h"
 #include "writeover/platform/platform_api.h"
@@ -577,8 +580,12 @@ public:
         // decision) owns its small input transaction before normal movement
         // and pause handling. It does not add a second input system.
         if (input_overlay_callback_ && input_overlay_callback_(input_)) {
+            suppressed_after_overlay_ = input_.action_down;
+            overlay_last_tick_ = true;
             return;
         }
+        ProductInputLease gameplay_input(input_, suppressed_after_overlay_, overlay_last_tick_);
+        overlay_last_tick_ = false;
 
         if (input_.action_pressed[static_cast<size_t>(GameAction::Pause)]) {
             paused_ = !paused_;
@@ -809,6 +816,7 @@ public:
         if (save_callback_) save_callback_();
     }
     void SetLoadCallback(std::function<void()> cb) { load_callback_ = std::move(cb); }
+    void RequestLoad() { if (load_callback_) load_callback_(); }
     void SetPauseCallback(std::function<void()> cb) { pause_callback_ = std::move(cb); }
     void SetQuitCallback(std::function<void()> cb) { quit_callback_ = std::move(cb); }
     void SetTimeGate(RuntimeTimeGate* gate) { time_gate_ = gate; }
@@ -844,6 +852,8 @@ private:
     std::function<Vec3()> recovery_spawn_source_;
     bool paused_ = false;
     uint16_t health_ = 100;
+    std::array<bool, kGameActionCount> suppressed_after_overlay_{};
+    bool overlay_last_tick_ = false;
     bool dead_ = false;
     bool movement_demonstrated_ = false;
     uint64_t current_frame_ = 0;
@@ -984,14 +994,16 @@ public:
                         ++presented_action_count_;
                         queue_.Push(SubtitleLine{last_presented_text_,
                                                   static_cast<uint32_t>(frame),
-                                                  480, NarratorSpeakerId(),
+                                                  ctx_.settings && ctx_.settings->text_duration == 0 ? 300u :
+                                                  ctx_.settings && ctx_.settings->text_duration == 2 ? 900u : 480u, NarratorSpeakerId(),
                                                   value.persona, 0});
                     } else if constexpr (std::is_same_v<Action, DialogAction>) {
                         last_presented_text_ = resolved_text[value.text_id];
                         ++presented_action_count_;
                         queue_.Push(SubtitleLine{last_presented_text_,
                                                   static_cast<uint32_t>(frame),
-                                                  480, NpcId{}, 0, 0});
+                                                  ctx_.settings && ctx_.settings->text_duration == 0 ? 300u :
+                                                  ctx_.settings && ctx_.settings->text_duration == 2 ? 900u : 480u, NpcId{}, 0, 0});
                     } else if constexpr (std::is_same_v<Action, WorldCommandAction>) {
                         if (world_command_sink_) world_command_sink_(value.command);
                     } else if constexpr (std::is_same_v<Action, EndGameCommand>) {
@@ -1138,6 +1150,8 @@ public:
         scene_entities_ = entities;
     }
     void SetSettingsSource(const Settings* settings) { settings_ = settings; }
+    void SetProductSource(PlayerProductRuntime* product) { product_ = product; }
+    void SetPanelScrollSource(std::function<size_t()> source) { panel_scroll_source_ = std::move(source); }
     void SetPauseSource(std::function<bool()> source) {
         pause_source_ = std::move(source);
     }
@@ -1187,13 +1201,37 @@ public:
     void SetSubtitleOnce(const std::string& text, uint64_t frames,
                          uint8_t priority = 50) {
         const uint64_t frame = game_frame_source_ ? game_frame_source_() : 0;
+        if (product_ != nullptr && frames < 10000 && !text.empty() && text != "Overlay closed.") {
+            const bool speech = text.find("Guard:") != std::string::npos ||
+                text.find("Cleaner:") != std::string::npos || text.find("Doctor:") != std::string::npos ||
+                text.find("Technician:") != std::string::npos || text.find("Liaison:") != std::string::npos ||
+                text.find("Operator:") != std::string::npos || text.find("Archivist:") != std::string::npos ||
+                text.find("Dr. Vale:") != std::string::npos || text.find("Security:") != std::string::npos ||
+                text.find("Clerk:") != std::string::npos || text.find("Analyst:") != std::string::npos;
+            const bool danger = text.rfind("UNDER FIRE", 0) == 0 || text.rfind("YOU ARE DOWN", 0) == 0;
+            product_->feed.Publish(danger ? PerceptionCategory::Threat : speech ? PerceptionCategory::Dialogue : PerceptionCategory::Progress,
+                settings_ ? ProductControlText(text, *settings_) : text, text.substr(0, 80), scene_id_, frame,
+                true, true, settings_ ? (settings_->text_duration == 0 ? 300 : settings_->text_duration == 2 ? 900 : 540) : 540);
+        }
         if (frame < subtitle_override_until_ &&
             priority < subtitle_override_priority_) {
             return;
         }
-        subtitle_override_ = text;
-        subtitle_override_until_ = frame + frames;
+        subtitle_override_ = settings_ ? ProductControlText(text, *settings_) : text;
+        const uint64_t adjusted_frames = settings_ && frames < 10000
+            ? (settings_->text_duration == 0 ? frames * 2 / 3 : settings_->text_duration == 2 ? frames * 2 : frames)
+            : frames;
+        subtitle_override_until_ = frame + adjusted_frames;
         subtitle_override_priority_ = priority;
+    }
+    void ResetTransientPresentation() {
+        subtitle_override_.clear();
+        subtitle_override_until_ = 0;
+        subtitle_override_priority_ = 0;
+        subtitle_.clear();
+        last_perceived_subtitle_.clear();
+        last_traced_subtitle_.clear();
+        narrator_intrusion_remaining_ = 0;
     }
     void TriggerNarratorIntrusion(uint64_t frames) {
         narrator_intrusion_remaining_ = frames;
@@ -1504,6 +1542,12 @@ public:
         if (game_frame < subtitle_override_until_) {
             subtitle_ = subtitle_override_;
         }
+        if (product_ && !subtitle_.empty() && game_frame >= subtitle_override_until_ &&
+            subtitle_ != last_perceived_subtitle_) {
+            product_->feed.Publish(PerceptionCategory::Dialogue, subtitle_, "spoken:" + subtitle_.substr(0, 70),
+                scene_id_, game_frame, true, false);
+        }
+        last_perceived_subtitle_ = subtitle_;
         if (debug_overlay_) {
             subtitle_ = "F3 DEBUG | pos " + std::to_string(player_pos_.x) + "," +
                         std::to_string(player_pos_.y) + " yaw " + std::to_string(player_yaw_);
@@ -1570,14 +1614,17 @@ public:
         interaction_prompt_ = interaction_prompt_source_
                                   ? interaction_prompt_source_()
                                   : std::string{};
+        if (settings_) interaction_prompt_ = ProductControlText(interaction_prompt_, *settings_);
         hud.interaction_prompt = interaction_prompt_.empty()
                                      ? nullptr
                                      : interaction_prompt_.c_str();
         hud.grid_width = grid_w_;
         hud.grid_height = grid_h_;
         hud.developer_overlay = debug_overlay_;
-        const auto campaign_panel = campaign_panel_source_
+        auto campaign_panel = campaign_panel_source_
             ? campaign_panel_source_() : std::vector<std::string>{};
+        if (product_ != nullptr && product_->Active() && settings_) campaign_panel = product_->Rows(*settings_);
+        if (settings_) for (auto& line : campaign_panel) line = ProductControlText(line, *settings_);
         hud.subtitle = campaign_panel.empty() && (settings_ == nullptr || settings_->subtitles)
                            ? subtitle_.c_str() : nullptr;
         hud_.Draw(body_.data(), width_, height_, hud);
@@ -1621,7 +1668,22 @@ public:
             DrawNarratorTypography(elapsed, reduce_flicker, reduce_shake);
             if (!paused) --narrator_intrusion_remaining_;
         }
-        DrawCampaignPanel(body_.data(), width_, height_, campaign_panel);
+        if (product_ != nullptr && campaign_panel.empty() && settings_) {
+            const auto feed_rows = product_->feed.Visible(game_frame, settings_->sensory_verbosity, subtitle_, objective_);
+            for (size_t row = 0; row < feed_rows.size() && height_ >= 18; ++row) {
+                const size_t available = width_ > 4 ? static_cast<size_t>(width_ - 4) : 0;
+                const std::string line = available >= 3 && feed_rows[row].size() > available
+                    ? feed_rows[row].substr(0, available - 3) + "..." : feed_rows[row];
+                for (size_t x = 0; x < line.size() && x < available; ++x) {
+                    CharCell& cell = body_[(row + 7) * static_cast<size_t>(width_) + x + 2];
+                    cell.code_point = static_cast<unsigned char>(line[x]);
+                    cell.fg_r = 218; cell.fg_g = 210; cell.fg_b = 178;
+                    cell.bg_r = 8; cell.bg_g = 13; cell.bg_b = 19;
+                }
+            }
+        }
+        DrawCampaignPanel(body_.data(), width_, height_, campaign_panel,
+            product_ && product_->Active() ? product_->scroll : panel_scroll_source_ ? panel_scroll_source_() : 0);
         backend_->Submit(body_.data(), width_, height_);
         last_render_game_frame_ = game_frame;
         has_rendered_game_frame_ = true;
@@ -1782,6 +1844,7 @@ private:
     EventId last_discovery_speech_;
     bool presentation_trace_ = false;
     std::string last_traced_subtitle_;
+    std::string last_perceived_subtitle_;
     uint64_t subtitle_override_until_ = 0;
     uint8_t subtitle_override_priority_ = 0;
     uint64_t narrator_intrusion_remaining_ = 0;
@@ -1806,6 +1869,8 @@ private:
     std::function<bool()> chapter_closure_source_;
     std::function<std::string(size_t)> closure_text_source_;
     std::function<std::vector<std::string>()> campaign_panel_source_;
+    PlayerProductRuntime* product_ = nullptr;
+    std::function<size_t()> panel_scroll_source_;
     std::function<std::string()> interaction_prompt_source_;
     std::string objective_presentation_prefix_;
     uint64_t last_render_game_frame_ = 0;
@@ -2141,6 +2206,12 @@ int RunComposition(const GameConfig& config) {
     EventBus events;
     DeterministicRNG sim_rng(config.seed);
     Settings settings = Settings::Defaults();
+    PlayerProductRuntime product;
+    PlayerPerceptionObserver perception_observer;
+    std::string last_product_objective;
+    bool new_game_requested = false;
+    ProductSaveRole save_role = ProductSaveRole::Manual;
+    std::string requested_load;
     bool settings_loaded_from_disk = false;
     Logger logger;
     logger.SetMinLevel(LogLevel::Info);
@@ -2309,6 +2380,7 @@ int RunComposition(const GameConfig& config) {
                                                   terminal_w,
                                                   terminal_h);
     render->SetSettingsSource(&settings);
+    render->SetProductSource(&product);
     render->SetPresentationTrace(config.smoke || !config.replay_path.empty());
     render->SetPauseSource([&time_gate] { return time_gate.Paused(); });
     render->SetGameFrameSource([&time_gate] { return time_gate.GameFrame(); });
@@ -2495,7 +2567,7 @@ int RunComposition(const GameConfig& config) {
                 slice.player_died = true;
             }
             render->SetSubtitleOnce(services.player->Dead()
-                                        ? "YOU ARE DOWN. F9 loads a checkpoint or restarts this room."
+                                        ? "YOU ARE DOWN. Pause offers recovery points or a fresh game."
                                         : "UNDER FIRE / Break sight. Find cover.",
                                     services.player->Dead() ? 240 : 90,
                                     services.player->Dead() ? 100 : 80);
@@ -3217,7 +3289,14 @@ int RunComposition(const GameConfig& config) {
     };
 
     services.player->SetSaveCallback([&] {
+        const ProductSaveRole role = save_role;
+        save_role = ProductSaveRole::Manual;
         replay_save_attempted = true;
+        replay_save_ok = false;
+        if (services.player->Dead()) {
+            render->SetSubtitleOnce("Cannot save while dead. Load or start a new game from Pause.", 240);
+            return;
+        }
         std::vector<SaveSection> sections;
         std::vector<uint8_t> rng_b, ev_b, pl_b, w_b, ai_b, n_b, sy_b;
         { Serializer s(rng_b); sim_rng.Save(s); }
@@ -3247,21 +3326,39 @@ int RunComposition(const GameConfig& config) {
             return;
         }
         SaveManager save;
-        const auto res = save.SaveWorld((save_dir / "pvs_manual").string(), sections);
+        const auto res = save.SaveWorld((save_dir / ProductSaveName(role)).string(), sections);
         replay_save_ok = res.IsOk();
-        render->SetSubtitleOnce(res.IsOk() ? "Saved." : "Save failed.", 120);
+        if (res.IsOk()) {
+            const auto resume = save.SaveWorld((save_dir / "pvs_resume").string(), sections);
+            replay_save_ok = resume.IsOk();
+        }
+        product.continue_available = ProductSaveEnvelopeValid(save_dir / ProductResumeName(save_dir));
+        product.checkpoint_available = ProductSaveEnvelopeValid(save_dir / "pvs_checkpoint");
+        product.pre_final_available = ProductSaveEnvelopeValid(save_dir / "pvs_pre_final");
+        render->SetSubtitleOnce(!replay_save_ok ? (res.IsOk()
+            ? "Recovery slot written; Continue update failed. Check user-data access."
+            : "Save failed. Previous recovery files are retained.") :
+            role == ProductSaveRole::Manual ? "Manual save recorded." :
+            role == ProductSaveRole::PreFinal ? "Pre-final checkpoint secured. The ending will not overwrite it." :
+            role == ProductSaveRole::Completion ? "Ending saved. Pause offers Replay Final Choice." : "Checkpoint saved.", 240);
     });
     services.player->SetLoadCallback([&] {
         replay_load_attempted = true;
+        replay_load_ok = false;
         SaveManager save;
+        const std::string load_name = requested_load.empty()
+            ? ProductResumeName(user_data_root / "saves") : requested_load;
+        requested_load.clear();
         const auto loaded = save.LoadWorld(
-            (user_data_root / "saves" / "pvs_manual").string());
+            (user_data_root / "saves" / load_name).string());
         if (loaded.IsError()) {
             // A first death can legitimately happen before the player has made
             // a manual save.  Keep the dead state authoritative while the
             // load attempt is pending, then provide a deterministic authored
             // room restart instead of leaving the player in input limbo.
-            if (services.player->Dead() && services.world->HasLoadedRoom()) {
+            std::error_code save_error;
+            const bool save_exists = std::filesystem::exists(user_data_root / "saves" / (load_name + ".wo07"), save_error);
+            if (!save_exists && !save_error && services.player->Dead() && services.world->HasLoadedRoom()) {
                 const Room& room = services.world->LoadedRoom();
                 services.player->Locomotion().position = room.spawn_point;
                 services.player->Locomotion().velocity = Vec3{};
@@ -3271,7 +3368,7 @@ int RunComposition(const GameConfig& config) {
                 services.player->SetHealthState(100, false);
                 slice.player_restarted = true;
                 render->SetSubtitleOnce(
-                    "No checkpoint found. This room has been restarted.", 240);
+                    "No save found. Recovered at the room entrance; world progression is retained.", 240);
             } else {
                 render->SetSubtitleOnce("Load failed.", 120);
             }
@@ -3691,6 +3788,13 @@ int RunComposition(const GameConfig& config) {
             }
         }
         replay_load_ok = true;
+        render->ResetTransientPresentation();
+        product.feed.Clear();
+        product.ending_rows.clear();
+        perception_observer.Reset();
+        last_product_objective.clear();
+        product.notice.clear();
+        product.boot_context = false;
         render->SetSubtitleOnce("Loaded.", 120);
     });
     services.player->SetCurrentRoom(config.room_id.empty() ? std::string("room_b1_revival") : config.room_id);
@@ -3725,6 +3829,8 @@ int RunComposition(const GameConfig& config) {
         Ending,
     };
     CampaignOverlay campaign_overlay = CampaignOverlay::None;
+    size_t campaign_scroll = 0;
+    render->SetPanelScrollSource([&] { return campaign_scroll; });
     size_t directory_selection = 0;
     std::vector<size_t> directory_options;
     std::vector<TowerCampaignRuntime::EndingOption> ending_options;
@@ -3735,9 +3841,18 @@ int RunComposition(const GameConfig& config) {
             return campaign.DirectoryRows(services.player->CurrentRoom(), directory_selection);
         if (campaign_overlay == CampaignOverlay::CaseFile) {
             std::istringstream text(campaign.CaseFile(services.player->CurrentRoom(),
-                services.systemic->KnowledgeCount()));
+                PlayerKnownEvidence(*services.systemic, slice.player)));
             std::vector<std::string> rows;
             for (std::string line; std::getline(text, line);) rows.push_back(line);
+            if (!rows.empty()) rows.pop_back();
+            rows.insert(rows.begin() + 1, "LOCATION / " + product.location);
+            for (const auto& item : services.systemic->Items()) {
+                if (item.type == ItemType::Badge && services.systemic->ItemHeldBy(item.id, slice.player)) {
+                    rows.push_back(item.revoked ? "CREDENTIAL / held badge REVOKED" : "CREDENTIAL / held badge VALID; readers still check access");
+                }
+            }
+            rows.push_back(ProductBinding(settings, GameAction::MoveLeft) + "/" + ProductBinding(settings, GameAction::MoveRight) +
+                " SCROLL  " + ProductBinding(settings, GameAction::Pause) + " CLOSE");
             return rows;
         }
         if (campaign_overlay == CampaignOverlay::Ending) {
@@ -3936,6 +4051,11 @@ int RunComposition(const GameConfig& config) {
         if (link->id == "medical_to_staff") {
             services.world->SetBooleanFact(
                 RuntimeFactId("fact_chapter_staff_route"), slice.player, true);
+        }
+        if (link->id == "b1_to_calibration" || link->id == "elevator_to_act2_concourse" ||
+            link->id == "act2_transit_to_arrival") {
+            save_role = ProductSaveRole::Checkpoint;
+            services.player->RequestSave();
         }
         return true;
     };
@@ -4167,8 +4287,8 @@ int RunComposition(const GameConfig& config) {
             if (row == 2) return services.narrative->Text(
                 fact_is_true("fact_ending_disclose") ? "text_roof_disclose"
                 : fact_is_true("fact_ending_breach") ? "text_roof_breach" : "text_roof_amend");
-            if (row == 3) return std::string("F9 LOAD | ESC PAUSE, THEN Q QUIT");
-            return std::string("F1 CASE FILE | LIFT DOOR: RETURN");
+            if (row == 3) return ProductBinding(settings, GameAction::Pause) + " PAUSE / ENDING SUMMARY / REPLAY FINAL CHOICE / QUIT";
+            return ProductBinding(settings, GameAction::Help) + " CASE FILE | LIFT DOOR: RETURN";
         }
         if (row == 0) return services.narrative->Text("text_closure_title");
         if (row == 1) return services.narrative->Text("text_closure_departure");
@@ -4503,10 +4623,12 @@ int RunComposition(const GameConfig& config) {
         campaign_overlay = CampaignOverlay::None;
         directory_options.clear();
         ending_options.clear();
+        campaign_scroll = 0;
         time_gate.SetPaused(false);
-        render->SetSubtitleOnce("Overlay closed.", 60, 80);
     };
     const auto open_campaign_directory = [&] {
+        product.Close();
+        campaign_scroll = 0;
         directory_options = campaign.SelectableDestinations(
             services.player->CurrentRoom());
         directory_selection = 0;
@@ -4516,20 +4638,16 @@ int RunComposition(const GameConfig& config) {
         }
         campaign_overlay = CampaignOverlay::Directory;
         time_gate.SetPaused(true);
-        render->SetSubtitleOnce(
-            campaign.DirectoryLine(services.player->CurrentRoom(),
-                                   directory_selection),
-            100000, 90);
     };
     const auto open_case_file = [&] {
+        product.Close();
+        campaign_scroll = 0;
         campaign_overlay = CampaignOverlay::CaseFile;
         time_gate.SetPaused(true);
-        render->SetSubtitleOnce(
-            campaign.CaseFile(services.player->CurrentRoom(),
-                              services.systemic->KnowledgeCount()),
-            100000, 90);
     };
     const auto open_final_decision = [&] {
+        product.Close();
+        campaign_scroll = 0;
         if (fact_is_true("fact_campaign_completed")) {
             render->SetSubtitleOnce("This decision is already recorded. Your case file retains the outcome.", 240, 100);
             return;
@@ -4544,17 +4662,130 @@ int RunComposition(const GameConfig& config) {
         campaign_overlay = CampaignOverlay::Ending;
         directory_selection = 0;
         time_gate.SetPaused(true);
-        const auto& option = ending_options[directory_selection];
-        render->SetSubtitleOnce(
-            "FINAL DECISION  " + option.title + " / " + option.summary +
-                "  W/S SELECT  F CONFIRM  ESC CLOSE",
-            100000, 100);
     };
     services.player->SetInputOverlayCallback([&](const InputState& input) {
-        if (campaign_overlay == CampaignOverlay::None) return false;
         const auto pressed = [&](GameAction action) {
             return input.action_pressed[static_cast<size_t>(action)];
         };
+        product.dead = services.player->Dead();
+        product.completed = fact_is_true("fact_campaign_completed");
+        if (product.completed && product.ending_rows.empty()) {
+            const std::string ending = fact_is_true("fact_ending_disclose") ? "DISCLOSE" :
+                fact_is_true("fact_ending_breach") ? "BREACH" : "AMEND";
+            product.ending_rows = {"CAMPAIGN COMPLETE / " + ending,
+                ending == "DISCLOSE" ? "The record leaves the building. Authority no longer owns the only copy." :
+                ending == "BREACH" ? "You forced an exit. The institution retains the account you refused to sign." :
+                "Your correction is filed. The institution accepts a different version of Subject 07.",
+                "EVIDENCE KNOWN / " + std::to_string(PlayerKnownEvidence(*services.systemic, slice.player)),
+                fact_is_true("fact_act3_network_discovered") ? "You recovered the unlisted network feed." : "No unlisted network feed was recovered.",
+                fact_is_true("fact_act3_operations_cooperated") ? "Operations supplied a cooperative route." : "Operations did not supply a cooperative route.",
+                "You may explore the roof or return to the Case File.",
+                "Pause > Replay Final Choice loads the separate pre-final save; it does not rewrite this completion.",
+                "New Game rebuilds all live state. Existing recovery files remain until their next save."};
+        }
+        if (!product.completed) product.ending_rows.clear();
+        const std::string current_room = services.player->CurrentRoom();
+        product.location = "Facility";
+        for (const auto& destination : campaign.Destinations()) {
+            if (destination.room_id == current_room) product.location = destination.display_name;
+        }
+        const std::pair<const char*, const char*> local_names[] = {
+            {"room_b1_revival", "B1 / Revival"}, {"room_01_calibration", "Calibration"},
+            {"room_1f_security", "Security Checkpoint"}, {"room_service_medical", "Medical"},
+            {"room_restroom_staff", "Staff Quarters"}, {"room_elevator_lobby", "Service Lift"},
+            {"room_act2_service_concourse", "Service Concourse"}, {"room_act2_records_archive", "Records Annex"},
+            {"room_act2_power_utility", "Utility Relay"}, {"room_act2_observation_gallery", "Observation"},
+            {"room_act2_transit_control", "Transit Checkpoint"}};
+        for (const auto& name : local_names) if (current_room == name.first) product.location = name.second;
+        if (!input.has_focus) {
+            if (!product.Active() && campaign_overlay == CampaignOverlay::None) {
+                product.boot_context = false;
+                product.Open(ProductPage::Pause);
+                product.notice = "Focus lost. Resume when ready.";
+            }
+            time_gate.SetPaused(true);
+            return true;
+        }
+        if (!time_gate.Paused()) {
+            perception_observer.Observe(product, services.ai->Npcs(), scene_runtime,
+                *services.systemic, services.world->Query(), services.world->LoadedRoom().id,
+                services.player->CurrentRoom(), services.player->Locomotion(), services.player->CurrentFrame(), settings);
+            const std::string& objective = render->ObjectiveText();
+            if (!objective.empty() && objective != last_product_objective) {
+                product.feed.Publish(PerceptionCategory::Progress, "Objective: " + objective,
+                    "objective", services.player->CurrentRoom(), services.player->CurrentFrame());
+                last_product_objective = objective;
+            }
+        }
+        const auto load_product_save = [&] {
+            const bool was_dead = services.player->Dead();
+            services.player->RequestLoad();
+            if (replay_load_ok || (was_dead && !services.player->Dead())) {
+                product.Close(); campaign_overlay = CampaignOverlay::None;
+                time_gate.SetPaused(false);
+            } else product.notice = "Load rejected. No live state or recovery file was replaced.";
+        };
+        // World-mode load remains a normal player action. Only modal/death
+        // recovery owns the transaction and fences held menu keys.
+        if (pressed(GameAction::LoadGame) && (product.Active() ||
+            campaign_overlay != CampaignOverlay::None || services.player->Dead())) {
+            load_product_save(); return true;
+        }
+        if (product.Active()) {
+            const ProductCommand command = product.Handle(input, settings);
+            switch (command) {
+            case ProductCommand::Resume: time_gate.SetPaused(false); break;
+            case ProductCommand::Continue:
+            case ProductCommand::Load:
+            case ProductCommand::Checkpoint:
+            case ProductCommand::PreFinal:
+                requested_load = command == ProductCommand::Checkpoint ? "pvs_checkpoint" :
+                    command == ProductCommand::PreFinal ? "pvs_pre_final" : "";
+                load_product_save();
+                break;
+            case ProductCommand::Save:
+                services.player->RequestSave();
+                product.notice = replay_save_ok ? "Manual save recorded." : "Save failed; check user-data access.";
+                break;
+            case ProductCommand::NewGame:
+                std::fprintf(stderr, "PRODUCT_NEW_GAME_REQUEST previous_completed=%s previous_health=%u previous_evidence=%zu\n",
+                    product.completed ? "YES" : "NO", services.player->Health(), PlayerKnownEvidence(*services.systemic, slice.player));
+                new_game_requested = true; engine.RequestStop(); break;
+            case ProductCommand::Quit:
+                slice.normal_quit_requested = true; engine.RequestStop(); break;
+            case ProductCommand::CaseFile: open_case_file(); break;
+            case ProductCommand::SettingsChanged: {
+                SettingsRegistry registry;
+                const auto saved = registry.Save((user_data_root / "settings.cfg").string(), settings);
+                product.notice = saved.IsOk() ? "Preference saved." : "Preference active; persistence failed.";
+                if (audio) audio->SetVolume(settings.master_volume / 100.0f, settings.sfx_volume / 100.0f, settings.narrator_volume / 100.0f);
+                break;
+            }
+            default: break;
+            }
+            return true;
+        }
+        if (campaign_overlay == CampaignOverlay::None) {
+            if (pressed(GameAction::Pause) || services.player->Dead()) {
+                product.boot_context = false;
+                product.Open(ProductPage::Pause);
+                time_gate.SetPaused(true);
+                return true;
+            }
+            if (pressed(GameAction::AimDownSights)) {
+                product.boot_context = false;
+                product.inspect_rows = InspectVisibleTarget(services.ai->Npcs(), scene_runtime,
+                    *services.systemic, services.world->LoadedRoom().id, services.player->CurrentRoom(),
+                    services.player->Locomotion().EyePosition(), camera_looks_at, focused_scene_entity);
+                product.Open(ProductPage::Inspect);
+                time_gate.SetPaused(true);
+                return true;
+            }
+            if (pressed(GameAction::Help)) { open_case_file(); return true; }
+            return false;
+        }
+        if (pressed(GameAction::MoveLeft)) campaign_scroll = campaign_scroll > 0 ? campaign_scroll - 1 : 0;
+        if (pressed(GameAction::MoveRight)) ++campaign_scroll;
         if (pressed(GameAction::Pause)) {
             close_campaign_overlay();
             return true;
@@ -4573,16 +4804,8 @@ int RunComposition(const GameConfig& config) {
             if (pressed(GameAction::MoveForward)) {
                 directory_selection = directory_selection == 0
                     ? directory_options.size() - 1 : directory_selection - 1;
-                render->SetSubtitleOnce(
-                    campaign.DirectoryLine(services.player->CurrentRoom(),
-                                           directory_selection),
-                    100000, 90);
             } else if (pressed(GameAction::MoveBackward)) {
                 directory_selection = (directory_selection + 1) % directory_options.size();
-                render->SetSubtitleOnce(
-                    campaign.DirectoryLine(services.player->CurrentRoom(),
-                                           directory_selection),
-                    100000, 90);
             } else if (pressed(GameAction::Interact)) {
                 const auto& destination =
                     campaign.Destinations()[directory_options[directory_selection]];
@@ -4591,7 +4814,7 @@ int RunComposition(const GameConfig& config) {
                     return true;
                 }
                 const bool moved = switch_room(
-                    destination.room_id, Vec3{2.5f, 5.0f, 0.0f}, 0.0f);
+                    destination.room_id, Vec3{2.5f, destination.room_id == "room_roof_exit" ? 32.0f : 5.0f, 0.0f}, 0.0f);
                 if (!moved) {
                     render->SetSubtitleOnce("Lift destination unavailable.", 150, 100);
                 } else {
@@ -4616,16 +4839,10 @@ int RunComposition(const GameConfig& config) {
             } else if (pressed(GameAction::MoveBackward)) {
                 directory_selection = (directory_selection + 1) % ending_options.size();
             }
-            if (pressed(GameAction::MoveForward) ||
-                pressed(GameAction::MoveBackward)) {
-                const auto& option = ending_options[directory_selection];
-                render->SetSubtitleOnce(
-                    "FINAL DECISION  " + option.title + " / " + option.summary +
-                        "  W/S SELECT  F CONFIRM  ESC CLOSE",
-                    100000, 100);
-            } else if (pressed(GameAction::Interact)) {
+            if (!pressed(GameAction::MoveForward) && !pressed(GameAction::MoveBackward) &&
+                pressed(GameAction::Interact)) {
                 const auto option = ending_options[directory_selection];
-                if (!switch_room("room_roof_exit", Vec3{2.5f, 5.0f, 0.0f}, 0.0f)) {
+                if (!switch_room("room_roof_exit", Vec3{2.5f, 32.0f, 0.0f}, 0.0f)) {
                     render->SetSubtitleOnce("Roof unavailable. No decision was recorded.", 240, 105);
                     return true;
                 }
@@ -4635,6 +4852,7 @@ int RunComposition(const GameConfig& config) {
                 set_campaign_fact("fact_elevator_roof_unlocked");
                 // RequestSave invokes the callback immediately. Persist the
                 // destination and its facts, not a half-completed Authority state.
+                save_role = ProductSaveRole::Completion;
                 services.player->RequestSave();
                 campaign_overlay = CampaignOverlay::None;
                 ending_options.clear();
@@ -5823,6 +6041,7 @@ int RunComposition(const GameConfig& config) {
                     render->SetSubtitleOnce("AUTHORITY: the executive record is not yet reconciled.", 180, 95);
                 } else if (!fact_is_true("fact_pre_final_checkpoint")) {
                     set_campaign_fact("fact_pre_final_checkpoint");
+                    save_role = ProductSaveRole::PreFinal;
                     services.player->RequestSave();
                     render->SetSubtitleOnce(
                         "PRE-FINAL CHECKPOINT / The decision will be durable after you confirm it.",
@@ -5938,11 +6157,26 @@ int RunComposition(const GameConfig& config) {
         render->SetSubtitleOnce("QUIT REQUESTED - restoring terminal", 60);
         engine.RequestStop();
     });
+    const auto save_directory = user_data_root / "saves";
+    product.continue_available = ProductSaveEnvelopeValid(save_directory / ProductResumeName(save_directory));
+    product.checkpoint_available = ProductSaveEnvelopeValid(save_directory / "pvs_checkpoint");
+    product.pre_final_available = ProductSaveEnvelopeValid(save_directory / "pvs_pre_final");
+    if (config.skip_boot) {
+        const bool fresh = services.player->CurrentRoom() == "room_b1_revival" && !fact_is_true("fact_campaign_completed") &&
+            services.player->Health() == 100 && !services.player->Dead() && PlayerKnownEvidence(*services.systemic, slice.player) == 0;
+        std::fprintf(stderr, "PRODUCT_NEW_GAME_INITIAL_STATE=%s ROOM=%s HEALTH=%u EVIDENCE=%zu\n",
+            fresh ? "PASS" : "FAIL", services.player->CurrentRoom().c_str(), services.player->Health(), PlayerKnownEvidence(*services.systemic, slice.player));
+    }
+    if (!config.skip_boot && !config.smoke && config.replay_path.empty() && config.room_id.empty() && !config.camera_override) {
+        product.Open(ProductPage::Boot);
+        time_gate.SetPaused(true);
+    } else product.boot_context = false;
     engine.SetRenderModule(render.get());
 
     const int result = engine.Run(config.max_frames);
     events.Unregister(player_damage_consumer);
     events.Unregister(speech_consumer);
+    if (new_game_requested) return 10;
 
     // Discovery is an event-ledger fact, not an inference from the cleaner's
     // loop count.  Derive the slice receipts from the events that actually
@@ -6183,7 +6417,13 @@ int RunComposition(const GameConfig& config) {
         const bool campaign_reload_complete = campaign_reload_replay && replay_load_ok &&
             campaign_end_screen_ready && fact_is_true("fact_roof_reached") &&
             recorded_endings == 1 && !services.player->Dead();
-        const bool expected_state_reached = normal_quit_replay
+        const bool product_probe = config.replay_path.find("campaign_probe_amend_product") != std::string::npos;
+        const bool product_probe_ok = product.Visited(ProductPage::Inspect) && product.Visited(ProductPage::History) &&
+            product.Visited(ProductPage::Dialogue) && product.Visited(ProductPage::Ending) && product.preference_changes > 0 &&
+            !product.Active() && replay_save_ok && replay_load_ok && product.feed.Size() < PerceptionFeed::kCapacity;
+        if (product_probe) std::fprintf(stderr, "PRODUCT_INTEGRATED_PROBE=%s UI_PAGES=%u PREFERENCE_CHANGES=%zu HISTORY_SIZE=%zu\n",
+            product_probe_ok ? "PASS" : "FAIL", product.visited_pages, product.preference_changes, product.feed.Size());
+        const bool expected_state_reached = (product_probe ? product_probe_ok : true) && (normal_quit_replay
             ? slice.normal_quit_requested
             : campaign_reload_replay ? campaign_reload_complete
             : campaign_replay
@@ -6289,7 +6529,7 @@ int RunComposition(const GameConfig& config) {
                             ? (badge_held_by_player && !slice.access_attempted &&
                                !slice.access_denied && !slice.gate_open &&
                                !b1_checkpoint_reached)
-                            : false;
+                            : false);
         for (const auto& runtime : services.ai->Npcs()) {
             if (runtime.instance.cognition == CognitionTier::Full) {
                 ++full_npcs;

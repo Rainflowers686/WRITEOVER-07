@@ -10,6 +10,7 @@
 #include <cmath>
 #include <chrono>
 #include <cstdio>
+#include <ctime>
 #include <string>
 #include <vector>
 
@@ -478,13 +479,18 @@ double CharacterRuntimeFrameBenchmark(const CharacterArtBank& art) {
     std::string scratch;
     AnsiFrameEncoder encoder;
     FrameTimeSampler sampler;
+    struct SampleDetail { int frame; double wall; double process; double ai; double render; double sprites; double encode; };
+    std::vector<SampleDetail> details;
+    details.reserve(kFrames);
 
     for (int frame = 0; frame < kFrames; ++frame) {
+        const auto cpu0 = std::clock();
         const auto t0 = Clock::now();
         ai.SetPlayerPose(Vec3{4.5f + 0.002f * static_cast<float>(frame % 20),
                               9.0f, 1.6f}, 1.6f);
         ai.Tick(static_cast<uint64_t>(frame));
         events.Dispatch();
+        const auto ai_done = Clock::now();
 
         CharacterView view;
         view.origin = Vec3{1.5f, 15.5f, 1.6f};
@@ -494,6 +500,7 @@ double CharacterRuntimeFrameBenchmark(const CharacterArtBank& art) {
                             std::tan(60.0f * 3.14159265f / 360.0f);
         RenderCharacterFrame(grid.Data().data(), grid.Width(), grid.Height(),
                              view, cells.data(), cell_w, cell_h, focal);
+        const auto render_done = Clock::now();
         sprites.clear();
         for (int i = 0; i < 25; ++i) {
             sprites.push_back({
@@ -511,6 +518,7 @@ double CharacterRuntimeFrameBenchmark(const CharacterArtBank& art) {
         DrawCharacterEffects(cells.data(), cell_w, cell_h,
                              static_cast<uint64_t>(frame), frame % 3 == 0,
                              frame % 5 == 0, false, false, false);
+        const auto sprites_done = Clock::now();
         scratch.clear();
         encoder.Encode(cells.data(), cell_w, cell_h, scratch,
                        frame == 0 ? EncodeMode::ForceFull : EncodeMode::Auto);
@@ -518,9 +526,21 @@ double CharacterRuntimeFrameBenchmark(const CharacterArtBank& art) {
         const auto t1 = Clock::now();
         sampler.AddSample(
             std::chrono::duration<double, std::milli>(t1 - t0).count());
+        const auto cpu1 = std::clock();
+        const auto millis = [](auto span) { return std::chrono::duration<double, std::milli>(span).count(); };
+        details.push_back({frame, millis(t1 - t0), 1000.0 * static_cast<double>(cpu1 - cpu0) / CLOCKS_PER_SEC,
+            millis(ai_done - t0), millis(render_done - ai_done), millis(sprites_done - render_done), millis(t1 - sprites_done)});
     }
 
     PrintCsv("character_total_runtime_frame_240x67", sampler.Compute());
+    // Diagnostic only: retain all 1200 samples, original workload and 6ms gate.
+    // std::clock is process CPU on POSIX; MSVC implements elapsed time instead.
+    std::sort(details.begin(), details.end(), [](const auto& a, const auto& b) { return a.wall > b.wall; });
+    for (size_t i = 0; i < 12 && i < details.size(); ++i) {
+        const auto& s = details[i];
+        std::printf("PVS_SLOW_FRAME frame=%d wall_ms=%.3f std_clock_ms=%.3f ai_ms=%.3f render_ms=%.3f sprites_ms=%.3f encode_ms=%.3f\n",
+            s.frame, s.wall, s.process, s.ai, s.render, s.sprites, s.encode);
+    }
     return sampler.Compute().worst_1pct_avg_ms;
 }
 

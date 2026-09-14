@@ -13,6 +13,7 @@ void RegisterNarrativeTests(TestHarness&);
 void RegisterSaveReplayTests(TestHarness&);
 void RegisterSystemicTests(TestHarness&);
 void RegisterCampaignTests(TestHarness&);
+void RegisterProductTests(TestHarness&);
 
 } // namespace writeover
 
@@ -32,6 +33,7 @@ int RunAllTestsAndExit() {
         &writeover::RegisterSaveReplayTests,
         &writeover::RegisterSystemicTests,
         &writeover::RegisterCampaignTests,
+        &writeover::RegisterProductTests,
     };
     for (const auto reg : registers) {
         reg(harness);

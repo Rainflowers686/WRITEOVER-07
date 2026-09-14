@@ -15,6 +15,7 @@ namespace writeover {
 
 struct GameConfig {
     bool smoke = false;
+    bool skip_boot = false; // internal fresh-runtime New Game restart
     uint64_t max_frames = 0;
     uint64_t seed = 0x12345678;
     std::string executable_path;

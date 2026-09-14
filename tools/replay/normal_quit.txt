@@ -1,6 +1,7 @@
-# The existing gameplay pause binding remains Escape.  While paused, Q is
-# the intentional quit affordance shown by the pause prompt.
+# Open the real pause menu, wrap to its visible Quit entry, and confirm.
 0 ESC down
 1 ESC up
-2 Q down
-3 Q up
+2 W down
+3 W up
+4 F down
+5 F up

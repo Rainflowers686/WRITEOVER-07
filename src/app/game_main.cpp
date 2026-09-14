@@ -72,14 +72,25 @@ GameConfig ParseArgs(int argc, char** argv) {
 } // namespace
 
 int main(int argc, char** argv) {
-    const GameConfig config = ParseArgs(argc, argv);
+    GameConfig config = ParseArgs(argc, argv);
 
     std::fprintf(stderr, "WRITEOVER-07 v%s\n", WO_PRODUCT_VERSION);
 
     ConsoleGuard guard;                     // restores console mode on exit
     InstallPlatformAtomicReplace();          // MoveFileExW atomic saves
 
-    const int result = RunComposition(config);
+    int result = RunComposition(config);
+    while (result == 10) {
+        // Destroyed composition owns all world/AI/story/save state. A new game
+        // reconstructs it; preferences reload from the same user-data root.
+        config.skip_boot = true;
+        config.room_id.clear();
+        config.camera_override = false;
+        // A replay belongs to one runtime; do not replay consumed commands
+        // when New Game destroys and reconstructs that runtime.
+        config.replay_path.clear();
+        result = RunComposition(config);
+    }
     guard.Restore();
     std::fprintf(stderr, "writeover_game exit=%d%s\n", result,
                  config.smoke ? " (smoke)" : "");

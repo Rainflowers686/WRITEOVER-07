@@ -80,6 +80,9 @@ jobs:
       - name: Act II route coverage gate
         run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\act2_route_coverage_gate.ps1 -Executable out/build/release/Release/writeover_app.exe
 
+      - name: Player product and recovery ownership gate
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\player_product_gate.ps1 -Executable out/build/release/Release/writeover_app.exe
+
       - name: Clean package smoke (Release runtime assets)
         run: |
           $packageRoot = Join-Path $env:RUNNER_TEMP "writeover-07-package"

@@ -240,6 +240,10 @@ void ApplyKeyValue(Settings& s, const KeyValue& kv) {
         s.reduce_flicker = tmpb;
     } else if (kv.key == "highcontrast" && ParseBool(kv.value, tmpb)) {
         s.high_contrast = tmpb;
+    } else if (kv.key == "sensoryverbosity" && ParseU8(kv.value, tmp8) && tmp8 <= 2) {
+        s.sensory_verbosity = tmp8;
+    } else if (kv.key == "textduration" && ParseU8(kv.value, tmp8) && tmp8 <= 2) {
+        s.text_duration = tmp8;
     } else if (kv.key.rfind("bind.", 0) == 0) {
         // New format: bind.<contextIndex>.<actionIndex>=<PhysicalKeyValue>
         const std::string spec = kv.key.substr(5);
@@ -286,6 +290,8 @@ std::string ComposeKeyValues(const Settings& s) {
     out << "reducecamerashake=" << (s.reduce_camera_shake ? "true" : "false") << "\n";
     out << "reduceflicker=" << (s.reduce_flicker ? "true" : "false") << "\n";
     out << "highcontrast=" << (s.high_contrast ? "true" : "false") << "\n";
+    out << "sensoryverbosity=" << static_cast<unsigned>(s.sensory_verbosity) << "\n";
+    out << "textduration=" << static_cast<unsigned>(s.text_duration) << "\n";
     for (size_t c = 0; c < kInputContextCount; ++c) {
         for (size_t i = 0; i < kGameActionCount; ++i) {
             out << "bind." << c << "." << i << "="

@@ -1,0 +1,17 @@
+# Load a real completed campaign save, then choose New Game via Pause.
+0 F9 down
+1 F9 up
+10 ESC down
+11 ESC up
+20 W down
+21 W up
+30 W down
+31 W up
+40 W down
+41 W up
+50 F down
+51 F up
+60 S down
+61 S up
+70 F down
+71 F up
