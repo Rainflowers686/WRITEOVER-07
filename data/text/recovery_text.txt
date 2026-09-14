@@ -72,3 +72,11 @@ text_act2_transit_denied	TRANSIT: no route has been filed. The guard is not the 
 text_act2_transit_alert	TRANSIT: the maintenance bypass worked. It also made a noise.
 text_act2_checkpoint	Act II-A checkpoint recorded. The facility has opened a deeper question.
 text_act2_checkpoint_repeat	Act II-A checkpoint already recorded. Continue only when you are ready.
+text_arrival_arrive	ARRIVAL / The public lobby is clean enough to hide the fact that it is a checkpoint.
+text_records_first_look	NARRATOR / Records does not ask who you are. It asks which version will survive.
+text_operations_first_look	OPERATIONS / The facility can respond to a person, a credential, or a gap in the cameras.
+text_network_discovery	NARRATOR / An unlisted feed is still a witness. Someone chose not to put it on the directory.
+text_transfer_warning	SECURITY / Upper transfer is not a corridor. It is a decision with a uniform around it.
+text_archive_reveal	NARRATOR / The executive archive contains no secret door. It contains a door everyone agreed not to mention.
+text_authority_arrival	AUTHORITY / Your file has reached the level where correction and escape become different words.
+text_roof_epilogue	ROOF / The sky does not confirm the record. It only gives you somewhere else to stand.

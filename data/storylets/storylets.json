@@ -274,6 +274,101 @@
       "actions": [
         {"type": "narrator", "textId": "text_act2_checkpoint", "persona": 1}
       ]
+    },
+    {
+      "id": "storylet_arrival_arrive",
+      "textId": "text_arrival_arrive",
+      "priority": 218,
+      "once": true,
+      "conditions": [
+        {"type": "flag", "flag": "scene:room_1f_arrival_lobby"},
+        {"type": "fact", "fact": "fact_act3_arrival_reached", "equals": true},
+        {"type": "fact", "fact": "fact_act3_hub_reviewed", "equals": false}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_arrival_arrive", "persona": 1}
+      ]
+    },
+    {
+      "id": "storylet_records_first_look",
+      "textId": "text_records_first_look",
+      "priority": 170,
+      "once": true,
+      "conditions": [
+        {"type": "flag", "flag": "scene:room_8f_records_core"},
+        {"type": "fact", "fact": "fact_act3_records_accessed", "equals": false}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_records_first_look", "persona": 1}
+      ]
+    },
+    {
+      "id": "storylet_operations_first_look",
+      "textId": "text_operations_first_look",
+      "priority": 170,
+      "once": true,
+      "conditions": [
+        {"type": "flag", "flag": "scene:room_12f_operations_control"},
+        {"type": "fact", "fact": "fact_act3_operations_accessed", "equals": false}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_operations_first_look", "persona": 1}
+      ]
+    },
+    {
+      "id": "storylet_network_discovery",
+      "textId": "text_network_discovery", "priority": 165, "once": true,
+      "conditions": [
+        {"type": "flag", "flag": "scene:room_18f_network_node"},
+        {"type": "fact", "fact": "fact_act3_network_discovered", "equals": false}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_network_discovery", "persona": 1}
+      ]
+    },
+    {
+      "id": "storylet_transfer_warning",
+      "textId": "text_transfer_warning", "priority": 175, "once": true,
+      "conditions": [
+        {"type": "flag", "flag": "scene:room_24f_security_transfer"},
+        {"type": "fact", "fact": "fact_act4_transfer_reached", "equals": false}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_transfer_warning", "persona": 2}
+      ]
+    },
+    {
+      "id": "storylet_archive_reveal",
+      "textId": "text_archive_reveal", "priority": 168, "once": true,
+      "conditions": [
+        {"type": "flag", "flag": "scene:room_30f_executive_archive"},
+        {"type": "fact", "fact": "fact_act4_archive_opened", "equals": false}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_archive_reveal", "persona": 1}
+      ]
+    },
+    {
+      "id": "storylet_authority_arrival",
+      "textId": "text_authority_arrival", "priority": 220, "once": true,
+      "conditions": [
+        {"type": "flag", "flag": "scene:room_36f_authority_core"},
+        {"type": "fact", "fact": "fact_pre_final_checkpoint", "equals": false}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_authority_arrival", "persona": 1}
+      ]
+    },
+    {
+      "id": "storylet_roof_epilogue",
+      "textId": "text_roof_epilogue", "priority": 230, "once": true,
+      "conditions": [
+        {"type": "flag", "flag": "scene:room_roof_exit"},
+        {"type": "fact", "fact": "fact_campaign_completed", "equals": true}
+      ],
+      "actions": [
+        {"type": "narrator", "textId": "text_roof_epilogue", "persona": 1}
+      ]
     }
   ]
 }

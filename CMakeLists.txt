@@ -178,6 +178,7 @@ add_executable(writeover_app
     src/app/interaction_runtime.cpp
     src/app/scene_runtime.cpp
     src/app/runtime_paths.cpp
+    src/app/tower_campaign_runtime.cpp
 )
 target_include_directories(writeover_app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(writeover_app PRIVATE
@@ -237,6 +238,8 @@ if(WO_BUILD_TESTS)
         tests/test_narrative.cpp
         tests/test_save_replay.cpp
         tests/test_systemic.cpp
+        tests/test_campaign.cpp
+        src/app/tower_campaign_runtime.cpp
     )
     target_include_directories(writeover_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}

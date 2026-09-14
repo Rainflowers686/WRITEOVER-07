@@ -110,6 +110,83 @@
       "health": 100,
       "isCritical": false,
       "perception": {"sightRange": 14.0, "sightFovRad": 2.09, "hearingRange": 8.0}
+    },
+    {
+      "id": "arrival_clerk",
+      "name": "Arrival Clerk",
+      "cognition": "Full",
+      "faction": "GeneralStaff",
+      "role": "Administrator",
+      "spawn": {"room": "room_1f_arrival_lobby", "x": 11.0, "y": 6.0, "yaw": 3.14},
+      "health": 100,
+      "isCritical": false,
+      "perception": {"sightRange": 11.0, "sightFovRad": 2.09, "hearingRange": 7.0}
+    },
+    {
+      "id": "records_archivist",
+      "name": "Records Archivist",
+      "cognition": "Full",
+      "faction": "GeneralStaff",
+      "role": "Administrator",
+      "spawn": {"room": "room_8f_records_core", "x": 10.0, "y": 6.0, "yaw": 3.14},
+      "health": 100,
+      "isCritical": false,
+      "perception": {"sightRange": 12.0, "sightFovRad": 2.09, "hearingRange": 7.0}
+    },
+    {
+      "id": "operations_operator",
+      "name": "Operations Operator",
+      "cognition": "Full",
+      "faction": "GeneralStaff",
+      "role": "Administrator",
+      "spawn": {"room": "room_12f_operations_control", "x": 10.0, "y": 5.0, "yaw": 3.14},
+      "health": 100,
+      "isCritical": false,
+      "perception": {"sightRange": 12.0, "sightFovRad": 2.09, "hearingRange": 7.0}
+    },
+    {
+      "id": "network_analyst",
+      "name": "Network Analyst",
+      "cognition": "Full",
+      "faction": "Research",
+      "role": "Researcher",
+      "spawn": {"room": "room_18f_network_node", "x": 9.0, "y": 5.0, "yaw": 3.14},
+      "health": 100,
+      "isCritical": false,
+      "perception": {"sightRange": 13.0, "sightFovRad": 2.09, "hearingRange": 8.0}
+    },
+    {
+      "id": "transfer_guard",
+      "name": "Transfer Guard",
+      "cognition": "SemiHuman",
+      "faction": "Security",
+      "role": "Guard",
+      "spawn": {"room": "room_24f_security_transfer", "x": 9.0, "y": 5.0, "yaw": 3.14},
+      "health": 100,
+      "isCritical": false,
+      "perception": {"sightRange": 14.0, "sightFovRad": 2.09, "hearingRange": 10.0}
+    },
+    {
+      "id": "executive_liaison",
+      "name": "Executive Liaison",
+      "cognition": "Full",
+      "faction": "Executive",
+      "role": "Executive",
+      "spawn": {"room": "room_30f_executive_archive", "x": 9.0, "y": 5.0, "yaw": 3.14},
+      "health": 100,
+      "isCritical": false,
+      "perception": {"sightRange": 12.0, "sightFovRad": 2.09, "hearingRange": 7.0}
+    },
+    {
+      "id": "authority_presence",
+      "name": "Authority Presence",
+      "cognition": "Full",
+      "faction": "Executive",
+      "role": "Administrator",
+      "spawn": {"room": "room_36f_authority_core", "x": 9.0, "y": 5.0, "yaw": 3.14},
+      "health": 100,
+      "isCritical": true,
+      "perception": {"sightRange": 15.0, "sightFovRad": 2.09, "hearingRange": 8.0}
     }
   ]
 }

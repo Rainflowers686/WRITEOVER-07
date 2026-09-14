@@ -1,0 +1,296 @@
+# Quiet Chapter One route, the full Act II-A transfer, then the bounded
+# campaign route through all authored tower destinations. The quiet route is
+# intentional: it preserves the Operations cooperation required for DISCLOSE.
+0 W down
+0 SHIFT down
+1 MOUSEMOVE -177 0
+390 W up
+390 SHIFT up
+351 MOUSEMOVE -48 0
+352 W down
+426 W up
+427 V down
+428 V up
+429 W down
+512 W up
+513 S down
+530 S up
+530 MOUSEMOVE 0 200
+531 F down
+532 F up
+535 F down
+536 F up
+537 MOUSEMOVE 1120 0
+538 W down
+850 W up
+850 MOUSEMOVE 956 0
+851 F down
+852 F up
+900 MOUSEMOVE -113 0
+902 MOUSEMOVE -604 0
+903 MOUSEMOVE 0 -175
+904 MOUSEMOVE 0 175
+920 W down
+960 W up
+961 F down
+962 F up
+1010 MOUSEMOVE 960 0
+1190 D down
+1210 D up
+1200 W down
+1200 SHIFT down
+1330 F down
+1331 F up
+1450 W up
+1450 SHIFT up
+1451 MOUSEMOVE 1047 0
+1470 F down
+1471 F up
+1472 W down
+1472 SHIFT down
+1605 W up
+1606 A down
+1695 A up
+1696 F down
+1697 F up
+1705 W down
+1794 W up
+1795 A down
+1817 A up
+1818 F down
+1819 F up
+1860 F down
+1861 F up
+1900 F down
+1901 F up
+1940 F down
+1941 F up
+2009 F down
+2010 F up
+2050 W down
+2183 W up
+2184 A down
+2228 A up
+2235 F down
+2236 F up
+2245 F down
+2246 F up
+2250 F5 down
+2251 F5 up
+2260 F9 down
+2261 F9 up
+2280 D down
+2324 D up
+2325 W down
+2435 W up
+2436 A down
+2546 A up
+2550 F down
+2551 F up
+2570 W down
+2892 W up
+2895 F down
+2896 F up
+2910 W down
+3066 W up
+3067 A down
+3089 A up
+3090 F down
+3091 F up
+# Enter Act II-A and follow Records back to the deep transfer.
+3100 F down
+3101 F up
+3110 W down
+3300 W up
+3301 F down
+3302 F up
+3310 S down
+3395 S up
+3396 F down
+3397 F up
+3405 W down
+3590 W up
+3591 MOUSEMOVE -665 0
+3595 W down
+3855 W up
+3856 MOUSEMOVE 490 0
+3857 F down
+3858 F up
+3865 MOUSEMOVE 524 0
+3866 F down
+3867 F up
+3875 MOUSEMOVE 236 0
+3876 W down
+4020 W up
+4021 F down
+4022 F up
+4105 MOUSEMOVE 983 0
+4115 W down
+4305 W up
+4306 MOUSEMOVE -622 0
+4307 F down
+4308 F up
+4315 MOUSEMOVE -524 0
+4316 W down
+4316 D down
+4460 W up
+4460 D up
+4465 W down
+4640 W up
+4645 F down
+4646 F up
+4655 D down
+4705 D up
+4710 W down
+4760 W up
+4765 F down
+4766 F up
+4773 NUM3 down
+4774 NUM3 up
+4775 W down
+4905 W up
+4910 F down
+4911 F up
+4915 W down
+4970 W up
+4975 F down
+4976 F up
+4985 W down
+5215 W up
+5220 F down
+5221 F up
+5230 F down
+5231 F up
+5235 W down
+5345 W up
+5350 F down
+5351 F up
+5360 F down
+5361 F up
+5365 W down
+5425 W up
+5430 F down
+5431 F up
+5435 S down
+5436 S up
+5440 F down
+5441 F up
+5450 W down
+5525 W up
+5530 F down
+5531 F up
+5540 S down
+5620 S up
+5625 MOUSEMOVE 1047 0
+5630 F down
+5631 F up
+# Operations -> Network -> Transfer -> Executive -> Authority.
+5710 W down
+5900 W up
+5905 F down
+5906 F up
+5910 S down
+5911 S up
+5915 S down
+5916 S up
+5920 F down
+5921 F up
+5930 W down
+6005 W up
+6010 F down
+6011 F up
+6020 S down
+6100 S up
+6105 MOUSEMOVE 1047 0
+6110 F down
+6111 F up
+6120 F down
+6121 F up
+6125 S down
+6126 S up
+6130 S down
+6131 S up
+6135 S down
+6136 S up
+6140 F down
+6141 F up
+6150 W down
+6225 W up
+6230 F down
+6231 F up
+6240 S down
+6320 S up
+6325 MOUSEMOVE 1047 0
+6330 F down
+6331 F up
+6340 F down
+6341 F up
+6345 S down
+6346 S up
+6350 S down
+6351 S up
+6355 S down
+6356 S up
+6360 S down
+6361 S up
+6365 F down
+6366 F up
+6375 W down
+6450 W up
+6455 F down
+6456 F up
+6465 S down
+6545 S up
+6550 MOUSEMOVE 1047 0
+6555 F down
+6556 F up
+6565 F down
+6566 F up
+6570 S down
+6571 S up
+6575 S down
+6576 S up
+6580 S down
+6581 S up
+6585 S down
+6586 S up
+6590 S down
+6591 S up
+6595 F down
+6596 F up
+6600 W down
+6675 W up
+6680 F down
+6681 F up
+6690 S down
+6770 S up
+6775 MOUSEMOVE 1047 0
+6780 F down
+6781 F up
+6790 F down
+6791 F up
+6795 S down
+6796 S up
+6800 S down
+6801 S up
+6805 S down
+6806 S up
+6810 S down
+6811 S up
+6815 S down
+6816 S up
+6820 S down
+6821 S up
+6825 F down
+6826 F up
+6830 W down
+6905 W up
+6910 F down
+6911 F up
+6920 F down
+6921 F up
+# Ending overlay: one step selects DISCLOSE instead of the default AMEND.
+6925 S down
+6926 S up
+6930 F down
+6931 F up

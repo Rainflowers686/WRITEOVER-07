@@ -124,6 +124,69 @@
         "quiet",
         "curious"
       ]
+    },
+    {
+      "id": "arrival_clerk",
+      "faction": "GeneralStaff",
+      "cognition": "Full",
+      "role": "Administrator",
+      "occupation": "Arrival_Clerk",
+      "fullHumanIllusion": true,
+      "personalityTags": ["welcoming", "careful"]
+    },
+    {
+      "id": "records_archivist",
+      "faction": "GeneralStaff",
+      "cognition": "Full",
+      "role": "Administrator",
+      "occupation": "Records_Archivist",
+      "fullHumanIllusion": true,
+      "personalityTags": ["precise", "guarded"]
+    },
+    {
+      "id": "operations_operator",
+      "faction": "GeneralStaff",
+      "cognition": "Full",
+      "role": "Administrator",
+      "occupation": "Operations_Operator",
+      "fullHumanIllusion": true,
+      "personalityTags": ["technical", "distracted"]
+    },
+    {
+      "id": "network_analyst",
+      "faction": "Research",
+      "cognition": "Full",
+      "role": "Researcher",
+      "occupation": "Network_Analyst",
+      "fullHumanIllusion": true,
+      "personalityTags": ["curious", "quiet"]
+    },
+    {
+      "id": "transfer_guard",
+      "faction": "Security",
+      "cognition": "SemiHuman",
+      "role": "Guard",
+      "occupation": "Transfer_Guard",
+      "fullHumanIllusion": false,
+      "personalityTags": ["procedural", "alert"]
+    },
+    {
+      "id": "executive_liaison",
+      "faction": "Executive",
+      "cognition": "Full",
+      "role": "Executive",
+      "occupation": "Executive_Liaison",
+      "fullHumanIllusion": true,
+      "personalityTags": ["polished", "evasive"]
+    },
+    {
+      "id": "authority_presence",
+      "faction": "Executive",
+      "cognition": "Full",
+      "role": "Administrator",
+      "occupation": "Authority_Presence",
+      "fullHumanIllusion": true,
+      "personalityTags": ["institutional", "patient"]
     }
   ],
   "items": [
