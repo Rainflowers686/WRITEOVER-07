@@ -1,14 +1,14 @@
 # Post-expansion completion handoff map
 
 Date: 2026-09-14  
-HANDOFF_STATUS = `READY_FOR_LUNA_FINAL_COMPLETION`
-CREATIVE_PASS_STATUS = `POST_ASTRA_CREATIVE_BASELINE_FROZEN`
+HANDOFF_STATUS = `NOT_YET_AUTHORIZED`
+CREATIVE_PASS_STATUS = `CREATIVE_BASELINE_FROZEN_CI_GATE_UNRESOLVED`
 BASELINE_HEAD = `0123a4c` (`feat: finalize chapter one visual baseline`)
 
-This document is now an actionable transfer map. The readiness state does not
-dispatch another task or change the current owner; it records that the
-high-value creative closure is complete and routine completion may be handed
-off when the owner chooses.
+This document is an actionable transfer map, but it is not a transfer signal
+yet. The high-value creative closure is complete; the final delivery head is
+not eligible for handoff while the macOS Release benchmark gate remains
+unresolved. The current owner remains responsible for the project.
 
 ## BASELINE_HEAD
 
@@ -126,12 +126,20 @@ baseline. This is a bounded stylized acceptance, not a photorealism claim.
   remain.
 - Local package smoke and the post-face Release benchmark pass locally
   (`PVS_RENDER_TIME_MS=1.237`, `PVS_TOTAL_FRAME_TIME_MS=2.169`). The exact
-  pushed creative head `52cc29f112ff7db2cfabd1a2951b48d4e5c2e568` is PASS in
-  CI run `34804411002` after one controlled macOS benchmark rerun: macOS
+  creative source head `52cc29f112ff7db2cfabd1a2951b48d4e5c2e568` is PASS
+  in CI run `34804411002` after one controlled macOS benchmark rerun: macOS
   `TERMINAL_FULL_TIME_MS=0.882`, `PVS_RENDER_TIME_MS=1.293`, and
   `PVS_TOTAL_FRAME_TIME_MS=4.642`, all within their gates. The initial
   macOS attempt (`3.689 ms` full-terminal time) remains historical evidence
   of platform variance, not a source change or a silently relabeled PASS.
+- The later documentation delivery head
+  `6ddbf2678cc1d602a9b24749a135a7247c6f5ff1` is not green in CI run
+  `34805619450`: three macOS attempts failed different timing gates
+  (`DELTA=1.657 ms` plus `UNCHANGED=0.270 ms`; then `FULL=2.018 ms` and
+  `PVS_RENDER=12.963 ms`). Linux, clang, ARM64 link, the main build,
+  recovery replay, package smoke, and all non-platform gates passed. This is
+  an environment/performance-gate blocker, not a player-facing art defect;
+  do not mark the handoff READY until a fresh final head gets a real PASS.
 
 ## REMAINING_OBJECTIVE_WORK
 
@@ -214,8 +222,9 @@ public binary schemas, Character-Art renderer paradigm or module boundaries.
    baseline; update it only when the protected source baseline changes.
 5. Commit documentation/package metadata coherently, push main normally, and
    watch the exact final-head CI run.
-6. The current state is `READY_FOR_LUNA_FINAL_COMPLETION`; never call it product
-   gold, visual gold, course final or public release ready.
+6. Only change the status to `READY_FOR_LUNA_FINAL_COMPLETION` after a fresh
+   final head gets an exact-head CI PASS; never call it product gold, visual
+   gold, course final or public release ready.
 
 ## PRESENTER_CRITICAL_KNOWLEDGE
 

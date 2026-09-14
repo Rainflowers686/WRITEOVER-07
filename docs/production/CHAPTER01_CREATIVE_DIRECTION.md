@@ -239,8 +239,10 @@ content. Benchmark the authored bank, never a silent diagnostic fallback.
 
 `OPEN_FATAL = none known` and `OPEN_P0 = none known` after the current local
 regression. The face remains a subjective visual acceptance boundary rather
-than a hidden claim of photorealism. The pushed creative head has a fresh
-exact-head CI PASS in run `34804411002`; this records readiness for routine
-completion, not product, visual or release gold.
+than a hidden claim of photorealism. The creative source head has an
+exact-head CI PASS in run `34804411002`; a later documentation delivery head
+hit a macOS-only benchmark timing gate, so the handoff document remains
+`NOT_YET_AUTHORIZED` until a fresh final head gets a real CI PASS. This is a
+delivery-gate boundary, not a reason to redesign the visual contract.
 Use [POST_LUNA_GPT6_HANDOFF.md](POST_LUNA_GPT6_HANDOFF.md) as a future
 execution map, not as permission to redesign this contract.
