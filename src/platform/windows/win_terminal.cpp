@@ -150,13 +150,16 @@ public:
         std::fflush(stdout);
     }
 
-    const TerminalCaps& GetCaps() const override { return caps_; }
+    const TerminalCaps& GetCaps() const override {
+        (void)QueryConsoleSurface(GetStdHandle(STD_OUTPUT_HANDLE), caps_.max_width, caps_.max_height);
+        return caps_;
+    }
     const char* Name() const override { return "ansi-truecolor"; }
 
 private:
     int width_ = 0;
     int height_ = 0;
-    TerminalCaps caps_;
+    mutable TerminalCaps caps_;
     AnsiFrameEncoder encoder_;
 };
 
@@ -207,9 +210,11 @@ public:
                                                     kAnsi16[bi].bg_attr);
         }
         COORD origin{0, 0};
-        SMALL_RECT region{0, 0,
-                          static_cast<SHORT>(width - 1),
-                          static_cast<SHORT>(height - 1)};
+        CONSOLE_SCREEN_BUFFER_INFO info{};
+        if (!GetConsoleScreenBufferInfo(out_, &info)) return false;
+        SMALL_RECT region{info.srWindow.Left, info.srWindow.Top,
+                          static_cast<SHORT>(info.srWindow.Left + width - 1),
+                          static_cast<SHORT>(info.srWindow.Top + height - 1)};
         return WriteConsoleOutputW(
                    out_, cells.data(),
                    COORD{static_cast<SHORT>(width), static_cast<SHORT>(height)},
@@ -224,7 +229,10 @@ public:
 
     void Restore() override {}
 
-    const TerminalCaps& GetCaps() const override { return caps_; }
+    const TerminalCaps& GetCaps() const override {
+        (void)QueryConsoleSurface(out_, caps_.max_width, caps_.max_height);
+        return caps_;
+    }
     const char* Name() const override { return "win32-writeconsole"; }
 
 private:
@@ -233,7 +241,7 @@ private:
 #endif
     int width_ = 0;
     int height_ = 0;
-    TerminalCaps caps_;
+    mutable TerminalCaps caps_;
 };
 
 } // namespace

@@ -94,16 +94,16 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
         result.changed_cells = cell_count;
 
         // Full encode: home + every cell with color-run compression.
-        out.append("\x1b[H");
+        out.append("\x1b[2J\x1b[H");
         CharCell state = InitialSgrState(frame[0]);
         for (int y = 0; y < height; ++y) {
+            out.append("\x1b[" + std::to_string(y + 1) + ";1H");
             for (int x = 0; x < width; ++x) {
                 const CharCell& cell = frame[static_cast<size_t>(y) * width + x];
                 AppendSgr(out, state, cell);
                 detail::AppendUtf8(out, cell.code_point);
                 state = cell;
             }
-            out.push_back('\n');
         }
         out.append("\x1b[0m");
         result.payload_bytes = out.size();
@@ -147,13 +147,13 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
         out.append("\x1b[H");
         CharCell state = InitialSgrState(frame[0]);
         for (int y = 0; y < height; ++y) {
+            out.append("\x1b[" + std::to_string(y + 1) + ";1H");
             for (int x = 0; x < width; ++x) {
                 const CharCell& cell = frame[static_cast<size_t>(y) * width + x];
                 AppendSgr(out, state, cell);
                 detail::AppendUtf8(out, cell.code_point);
                 state = cell;
             }
-            out.push_back('\n');
         }
         out.append("\x1b[0m");
         result.payload_bytes = out.size();

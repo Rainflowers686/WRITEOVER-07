@@ -702,24 +702,24 @@ bool TerminalOptimizedEncodingPreservesBytes() {
         WO_CHECK(BuildSgr(c, c).empty());
         WO_CHECK(CharCellToUtf8(glyphs[i % 10].first) == glyphs[i % 10].second);
     }
-    const auto full = [&] {
-        std::string expected = "\x1b[H";
+    const auto full = [&](bool fresh) {
+        std::string expected = fresh ? "\x1b[2J\x1b[H" : "\x1b[H";
         CharCell state = frame[0]; state.flags ^= 1;
         for (int y = 0; y < 2; ++y) {
+            expected += "\x1b[" + std::to_string(y + 1) + ";1H";
             for (int x = 0; x < width; ++x) {
                 const size_t i = static_cast<size_t>(y * width + x);
                 expected += ReferenceSgr(state, frame[i]);
                 expected += glyphs[i % 10].second;
                 state = frame[i];
             }
-            expected += '\n';
         }
         return expected + "\x1b[0m";
     };
     AnsiFrameEncoder encoder;
     std::string output;
     WO_CHECK(encoder.Encode(frame.data(), width, 2, output).full);
-    WO_CHECK(output == full());
+    WO_CHECK(output == full(true));
     // Disjoint runs, including both row edges; compare the complete payload.
     const int indices[] = {0, 1, 17, 255, 256, 511};
     for (int i : indices) frame[static_cast<size_t>(i)].fg_r ^= 0x80;
@@ -745,7 +745,7 @@ bool TerminalOptimizedEncodingPreservesBytes() {
     WO_CHECK(output.empty());
     frame[0].fg_r ^= 0x80;
     WO_CHECK(encoder.Encode(frame.data(), width, 2, output, EncodeMode::ForceFull).full);
-    WO_CHECK(output == full());
+    WO_CHECK(output == full(false));
     return true;
 }
 
@@ -757,10 +757,10 @@ bool TerminalColorStateSurvivesRowsAndCursorMoves() {
     AnsiFrameEncoder encoder;
     std::string output;
     encoder.Encode(frame.data(), 2, 2, output);
-    // A newline does not reset terminal SGR. The next row must explicitly
+    // Cursor positioning does not reset terminal SGR. The next row must explicitly
     // restore white-on-black rather than inheriting the red row's background.
-    const std::string expected = "\x1b[H" + ReferenceSgr(CharCell{}, red) + "XX\n" +
-        ReferenceSgr(red, CharCell{}) + "  \n\x1b[0m";
+    const std::string expected = "\x1b[2J\x1b[H\x1b[1;1H" + ReferenceSgr(CharCell{}, red) + "XX\x1b[2;1H" +
+        ReferenceSgr(red, CharCell{}) + "  \x1b[0m";
     WO_CHECK(output == expected);
     frame[0] = CharCell{}; frame[0].code_point = U'W';
     frame[3].code_point = U'W';

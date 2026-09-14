@@ -5,11 +5,53 @@
 #include "src/app/campaign_panel.h"
 #include "src/app/product_save.h"
 #include "src/app/player_save.h"
+#include "src/app/terminal_surface.h"
+#include "src/app/runtime_time_gate.h"
+#include "writeover/render/frame_encoder.h"
 #include "writeover/render/character_renderer.h"
 #include "writeover/world/room.h"
 
 namespace writeover {
 namespace {
+bool SurfaceResizeAndRecovery() {
+    RuntimeTimeGate clock;
+    clock.ObserveSchedulerFrame(0); clock.ObserveSchedulerFrame(10);
+    WO_CHECK_EQ(clock.GameFrame(), 10);
+    clock.SetSurfacePaused(true); clock.ObserveSchedulerFrame(100);
+    WO_CHECK_EQ(clock.GameFrame(), 10);
+    clock.SetPaused(true); clock.SetSurfacePaused(false); clock.ObserveSchedulerFrame(150);
+    WO_CHECK(clock.Paused()); WO_CHECK_EQ(clock.GameFrame(), 10);
+    clock.SetPaused(false); clock.ObserveSchedulerFrame(151);
+    WO_CHECK_EQ(clock.GameFrame(), 11);
+    TerminalCaps caps;
+    caps.max_width = 120; caps.max_height = 40;
+    auto fitted = FitTerminalSurface(240, 67, caps);
+    WO_CHECK_EQ(fitted.width, 120); WO_CHECK_EQ(fitted.height, 40);
+    WO_CHECK(fitted.Usable());
+    AnsiFrameEncoder encoder;
+    std::vector<CharCell> cells(120 * 40);
+    std::string output;
+    WO_CHECK(encoder.Encode(cells.data(), 120, 40, output).full);
+    // Full frames must use absolute row addressing, not LF at the bottom
+    // margin, which scrolls the actual terminal and invalidates delta state.
+    WO_CHECK(output.find('\n') == std::string::npos);
+    for (const auto size : {TerminalSurface{20, 8}, TerminalSurface{48, 18}, TerminalSurface{240, 67}}) {
+        caps.max_width = size.width; caps.max_height = size.height;
+        fitted = FitTerminalSurface(240, 67, caps);
+        WO_CHECK_EQ(fitted.width, size.width); WO_CHECK_EQ(fitted.height, size.height);
+        cells.assign(static_cast<size_t>(size.width) * size.height, CharCell{});
+        DrawCampaignPanel(cells.data(), size.width, size.height, {"PAUSE", "Resume", "Escape: back"});
+        output.clear();
+        WO_CHECK(encoder.Encode(cells.data(), size.width, size.height, output).full);
+        WO_CHECK(output.find("\x1b[2J") != std::string::npos);
+        output.clear();
+        WO_CHECK(encoder.Encode(cells.data(), size.width, size.height, output).unchanged);
+    }
+    caps.max_width = 0; caps.max_height = 0;
+    WO_CHECK_EQ(FitTerminalSurface(240, 67, caps).width, 240);
+    WO_CHECK(!FitTerminalSurface(20, 8, caps).Usable());
+    return true;
+}
 Result<void> FailSelectedSaveReplace(const std::string& tmp, const std::string& dest, void* selected) {
     if (std::filesystem::path(dest).filename().string() == *static_cast<std::string*>(selected)) {
         return Result<void>::Err(1, "injected selected role failure");
@@ -338,6 +380,7 @@ bool KnownEvidenceAndNearestInspect() {
 }
 } // namespace
 void RegisterProductTests(TestHarness& harness) {
+    harness.Add("product.surface resize and recovery", &SurfaceResizeAndRecovery);
     harness.Add("product.save role partial failure", &SaveRolePartialFailurePreservesFiles);
     harness.Add("product.player payload versions and truncation", &PlayerPayloadVersionsAndTruncation);
     harness.Add("product.feed boundaries", &FeedBoundaries);

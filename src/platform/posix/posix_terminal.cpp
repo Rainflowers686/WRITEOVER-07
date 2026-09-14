@@ -82,7 +82,16 @@ public:
         encoder_.Reset();
     }
 
-    const TerminalCaps& GetCaps() const override { return caps_; }
+    const TerminalCaps& GetCaps() const override {
+#if defined(__unix__) || defined(__APPLE__)
+        struct winsize ws{};
+        if (::ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
+            caps_.max_width = static_cast<int>(ws.ws_col);
+            caps_.max_height = static_cast<int>(ws.ws_row);
+        }
+#endif
+        return caps_;
+    }
     const char* Name() const override { return "ansi-posix"; }
 
 private:
@@ -90,7 +99,7 @@ private:
     int height_ = 0;
     bool initialized_ = false;
     bool is_tty_ = false;
-    TerminalCaps caps_{};
+    mutable TerminalCaps caps_{};
     AnsiFrameEncoder encoder_;
 };
 

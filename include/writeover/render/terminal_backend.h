@@ -44,6 +44,8 @@ public:
     virtual void Shutdown() = 0;
     virtual bool Submit(const CharCell* buffer, int width, int height) = 0;
     virtual void Restore() = 0;
+    // Refreshes available surface dimensions when the host can report them.
+    // Unknown/redirected dimensions retain the last valid capability value.
     virtual const TerminalCaps& GetCaps() const = 0;
     virtual const char* Name() const = 0;
 };

@@ -41,6 +41,8 @@
 #include "src/app/presentation_pulse.h"
 #include "src/app/product_save.h"
 #include "src/app/player_save.h"
+#include "src/app/terminal_surface.h"
+#include "src/app/runtime_time_gate.h"
 #include "src/app/player_perception.h"
 #include "src/player/dynamic_collision.h"
 #include "src/app/runtime_paths.h"
@@ -177,33 +179,6 @@ uint64_t StableContentId(std::string_view value) {
 FactId RuntimeFactId(std::string_view value) {
     return FactId::New(StableContentId(value));
 }
-
-// The scheduler keeps its fixed 120 Hz cadence, while gameplay time is
-// frozen by the player pause gate.  This private composition seam avoids
-// changing the frozen public EngineContext/SimClock contract.
-class RuntimeTimeGate {
-public:
-    void ObserveSchedulerFrame(uint64_t scheduler_frame) {
-        if (!observed_) {
-            observed_ = true;
-            last_scheduler_frame_ = scheduler_frame;
-            return;
-        }
-        if (scheduler_frame <= last_scheduler_frame_) return;
-        if (!paused_) game_frame_ += scheduler_frame - last_scheduler_frame_;
-        last_scheduler_frame_ = scheduler_frame;
-    }
-
-    void SetPaused(bool paused) { paused_ = paused; }
-    bool Paused() const { return paused_; }
-    uint64_t GameFrame() const { return game_frame_; }
-
-private:
-    uint64_t last_scheduler_frame_ = 0;
-    uint64_t game_frame_ = 0;
-    bool observed_ = false;
-    bool paused_ = false;
-};
 
 } // namespace
 
@@ -570,13 +545,20 @@ public:
     }
 
     void SimTick(const SimClock& clock) override {
+        const bool surface_ready = !surface_ready_source_ || surface_ready_source_();
         if (time_gate_ != nullptr) {
+            time_gate_->SetSurfacePaused(!surface_ready);
             time_gate_->ObserveSchedulerFrame(clock.FrameCount());
         }
         const uint64_t frame = time_gate_ != nullptr
                                    ? time_gate_->GameFrame()
                                    : clock.FrameCount();
         current_frame_ = frame;
+        if (!surface_ready) {
+            suppressed_after_overlay_ = input_.action_down;
+            overlay_last_tick_ = true;
+            return;
+        }
 
         // A bounded application overlay (tower directory, case file or final
         // decision) owns its small input transaction before normal movement
@@ -822,6 +804,7 @@ public:
     void SetPauseCallback(std::function<void()> cb) { pause_callback_ = std::move(cb); }
     void SetQuitCallback(std::function<void()> cb) { quit_callback_ = std::move(cb); }
     void SetTimeGate(RuntimeTimeGate* gate) { time_gate_ = gate; }
+    void SetSurfaceReadySource(std::function<bool()> source) { surface_ready_source_ = std::move(source); }
     void SetMeleeCallback(std::function<void()> cb) { melee_callback_ = std::move(cb); }
     void SetFireCallback(std::function<void(const FireRequest&, const WeaponDef&)> cb) {
         fire_callback_ = std::move(cb);
@@ -860,6 +843,7 @@ private:
     bool movement_demonstrated_ = false;
     uint64_t current_frame_ = 0;
     RuntimeTimeGate* time_gate_ = nullptr;
+    std::function<bool()> surface_ready_source_;
 };
 
 class NarrativeModule final : public IEngineModule {
@@ -1129,12 +1113,22 @@ bool SceneDoorWallPosition(const SceneEntity& entity, const GridCell* cells,
 
 class RenderModule final : public IRenderModule {
 public:
-    RenderModule(std::unique_ptr<ITerminalBackend> backend, int w, int h)
+    RenderModule(std::unique_ptr<ITerminalBackend> backend, int& w, int& h,
+                 int requested_w, int requested_h)
         : backend_(std::move(backend)),
           width_(w),
-        height_(h) {
+        height_(h), requested_width_(requested_w), requested_height_(requested_h) {
         body_.assign(static_cast<size_t>(w) * h, CharCell{});
         backend_->Init(w, h);
+    }
+
+    bool RefreshSurface() {
+        const auto surface = FitTerminalSurface(requested_width_, requested_height_, backend_->GetCaps());
+        if (surface.width != width_ || surface.height != height_) {
+            width_ = surface.width; height_ = surface.height;
+            body_.assign(static_cast<size_t>(width_) * height_, CharCell{});
+        }
+        return surface.Usable();
     }
 
     void SetPlayerView(const Vec3& pos, float yaw) {
@@ -1288,6 +1282,11 @@ public:
 
     void RenderFrame(uint64_t frame_index, float alpha) override {
         (void)alpha;
+        if (width_ < 48 || height_ < 18) {
+            DrawCampaignPanel(body_.data(), width_, height_, {"RESIZE"});
+            backend_->Submit(body_.data(), width_, height_);
+            return;
+        }
         const uint64_t game_frame = game_frame_source_
                                         ? game_frame_source_()
                                         : frame_index;
@@ -1808,8 +1807,10 @@ private:
     }
 
     std::unique_ptr<ITerminalBackend> backend_;
-    const int width_;
-    const int height_;
+    int& width_;
+    int& height_;
+    const int requested_width_;
+    const int requested_height_;
     HudRenderer hud_;
     CharacterArtBank character_art_;
     std::vector<CharCell> body_;
@@ -2363,7 +2364,8 @@ int RunComposition(const GameConfig& config) {
                  probe.vt_probe_succeeded ? "SUCCESS" : "FAILED_OR_UNAVAILABLE");
     auto render = std::make_unique<RenderModule>(std::move(backend),
                                                   terminal_w,
-                                                  terminal_h);
+                                                  terminal_h, config.terminal_w, config.terminal_h);
+    services.player->SetSurfaceReadySource([&render] { return render->RefreshSurface(); });
     render->SetSettingsSource(&settings);
     render->SetProductSource(&product);
     render->SetPresentationTrace(config.smoke || !config.replay_path.empty());
