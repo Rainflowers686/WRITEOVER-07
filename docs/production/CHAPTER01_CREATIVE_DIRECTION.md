@@ -4,8 +4,9 @@
 
 PROTECTED_CREATIVE_BASELINE = POST_ASTRA_CREATIVE_BASELINE /
 CHAPTER01_AUTHORED_FPS_20260913.
-CURRENT_PRODUCTION_LAYER = ACT2_AUTHORED_SPACES_23EADDB.
-The source/content baseline is commit `23eaddb`; the later documentation
+CURRENT_PRODUCTION_LAYER = ACT2_AUTHORED_SPACES_23EADDB +
+AUTHORED_FACE_PLANES_B221E37.
+The source/content baseline is commit `b221e37`; the later documentation
 commit may become the delivery HEAD, but it must not change this contract.
 This is a stylized character-built FPS, not photorealism, VISUAL_GOLD or a
 claim of Rain's subjective foreground-terminal acceptance. Production frames,
@@ -49,7 +50,9 @@ Their galvanized surface and edge lip have bounded presentation contrast so
 the overhead mass reads as architecture rather than a missing black patch.
 The current production references are the new four-room contact sheet at
 `out/creative_review_final_visual01/contact.png`, the no-HUD authored face
-sheet at `out/creative_review_face12_art/human_sheet.png`, and the synchronized
+sheet at `out/creative_review_face18_art/human_sheet.png` plus the real release
+capture at `docs/production/evidence/chapter01_creative_polish/face_retouch18/human.png`,
+and the synchronized
 weapon sheet at `out/act2_art_review_weapon07/weapon_sheet.png`. Historical
 evidence under `docs/production/evidence/` remains useful for comparison but
 does not override these current renders.
@@ -62,11 +65,14 @@ transitions. This is an expansion of content, not a new renderer or content
 schema.
 
 The current face pass is deliberately bounded. Full Human and Maintenance
-faces have hair boundary, tapered lower face, low-contrast eye marks, nasal
-plane and neutral mouth suggestion; the black eye-band failure is fixed. They
-remain authored low-resolution faces and must not be sold as photorealistic
-models. If foreground play still reads a face as uncanny, record that as a
-subjective visual P1 and revise the asset, not the renderer paradigm.
+faces have hair boundary, a continuous authored skin plane, low-contrast eye
+marks, nasal plane and neutral mouth suggestion; the black eye-band and
+punctuation-texture failures are fixed. The `^` marker is an occupied blank
+skin plane routed through the existing `OpaqueEmpty` CharCell path, so it does
+not add a public renderer type or a raster layer. These remain authored
+low-resolution faces and must not be sold as photorealistic models. If
+foreground play still reads a face as uncanny, record that as a subjective
+visual P1 and revise the asset, not the renderer paradigm.
 
 The current production camera opens with a small downward pitch and a modest
 surface lift so floors, routes and equipment survive a real terminal capture.
@@ -101,7 +107,8 @@ file names alone can conceal an inverted selector.
 Each distance has its own drawing. Near adds construction, not a bigger face.
 Bodies lie across the floor: a curled knee and supporting arm for unconscious,
 extended legs and a slack arm for dead. Shape, not an eye symbol, states the
-difference. Spaces are open air; `~` occupies only enclosed cloth/metal volume.
+difference. Spaces are open air; `~` occupies enclosed cloth/metal volume and
+`^` occupies only an authored skin plane.
 
 The pistol has an inward slide, substantial rear body and one enclosed gripping
 hand. The stunner has two contact rails and a broader battery housing. Each has

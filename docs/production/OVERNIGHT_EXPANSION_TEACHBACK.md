@@ -63,6 +63,7 @@ Every row supplies the required teach-back fields.
 | Four Act II NPCs | `data/npcs/npcs.json`; `data/systemic/systemic_seed.json`; `data/characters/b1_character_art.txt` | `AutonomousNpcSystem`; `CharacterArtBank` | NPC profile binding in `composition_root.cpp`; `CharacterArtBank::Find`; `SelectCharacterFacing` | Roles are readable from silhouette, context and voice, not from labels alone. | “AI state and visual identity are separate data, joined by stable content IDs.” |
 | Door architecture | `data/scenes/recovery_scene.json`; `data/characters/b1_character_art.txt`; `include/writeover/render/character_renderer.h` | `CharacterArtBank`; character renderer | `DrawDoorPlane`; `ResolveFacingCell`; `CharacterSpriteKind::DoorFrame` | A frame and panel share a wall plane and depth; the door is architecture, not a floating sprite. | “The frame is a visual-only layer; it has no interaction or save semantics.” |
 | Character proportions and directions | `data/characters/b1_character_art.txt`; `tests/test_render.cpp`; `tools/art_review/main.cpp` | `CharacterArtAsset`; `CharacterArtBank` | `SelectCharacterFacing`; `SpatialActorFacingOrbit`; `DrawOneSprite` | Front/back/left/right are authored poses with changed overlap and equipment. | “We validate actor yaw, camera relation, enum, asset and inspection label together.” |
+| Facial material plane | `data/characters/b1_character_art.txt`; `src/render/character_renderer.cpp` | `CharacterArtAsset`; `CharacterCellOpacity` | `DecodeArtRow`; `SpriteBackground`; `DrawOneSprite` | A `^` authored occupied blank gives cheeks/forehead continuous skin color while sparse glyphs carry the face; it reuses `OpaqueEmpty` and keeps the public API stable. | “The renderer still draws CharCells through depth; the marker changes semantic material, not the rendering paradigm.” |
 | Pistol/Stunner viewmodels | `data/characters/b1_character_art.txt`; `src/render/character_renderer.cpp` | weapon renderer path and `CharacterArtBank` | `FindPistol`; `DrawWeaponViewmodel` | Big body mass, trigger area, grip, hand and forearm make the first-person object believable. | “Weapon identity is a silhouette and anchoring problem before it is a texture problem.” |
 | Opening composition | `src/app/composition_root.cpp`; `src/app/game_main.cpp`; `src/render/character_renderer.cpp` | `SliceRuntime`; `RenderModule` | room spawn/switch pitch setup; `SurfaceColor`; `CeilingMaterial`; `CeilingLight` | A small downward opening pitch and continuous ceiling material make functional space readable without changing the engine paradigm. | “Camera presentation changes what the player reads first; it does not grant gameplay authority.” |
 | Public interface record | `docs/adr/ADR-0012-authored-door-frame-layer.md`; `tools/contract_check/.contract_baseline.json` | public render enum | `CharacterSpriteKind::DoorFrame` | The one public enum addition is explicit, reviewable and bounded. | “A public header change requires an ADR and a refreshed hash; silent drift is a contract failure.” |
@@ -75,7 +76,9 @@ Every row supplies the required teach-back fields.
 metadata. Transparent spaces are real negative space; an occupied blank is not
 the same as transparent air. The renderer projects individual cells through
 the world camera and depth buffer. It does not sample an image or quantize a
-framebuffer.
+framebuffer. In the face pass, `^` remains an occupied blank and selects a
+bounded skin background only for Full Human/Maintenance; it is not emitted as
+a glyph and is not a screen-space face mask.
 
 The current art rules are:
 
@@ -88,9 +91,10 @@ The current art rules are:
   dialogue.
 - Back views expose nape, shoulder/back equipment and coat seam; side views
   change chest width, arm placement, leg overlap and equipment position.
-- The current near face fixes the black eye-band failure and avoids huge eyes,
-  emoji smiles and nostril punctuation. It remains stylized low-resolution
-  authored art; subjective terminal acceptance is still a human check.
+- The current near face fixes the black eye-band and punctuation-texture
+  failures and avoids huge eyes, emoji smiles and nostril punctuation. It
+  remains stylized low-resolution authored art; subjective terminal acceptance
+  is still a human check.
 
 ## Safe operating sequence for the next maintainer
 
