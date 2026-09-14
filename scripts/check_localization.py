@@ -115,7 +115,7 @@ def inspect():
                     continue
                 # A substring of a dynamically assembled message is not a
                 # standalone acceptance case. Keep it visible in the report.
-                if value != value.strip() or value.endswith((": ", ":")) or value.startswith(". "):
+                if value != value.strip() or value.endswith((": ", ":")) or value.startswith((". ", ": ")):
                     fragments.setdefault(value, []).append(origin)
                     continue
                 candidates.setdefault(value, []).append(origin)
@@ -136,7 +136,7 @@ def inspect():
     # All prompt literals, including ternary branches.
     for match in re.finditer(r'"\[F\] (?:\\.|[^"\\])*"', app):
         collect(match.group(), "composition_root.cpp:interaction prompt")
-    for filename in ("player_product.h", "player_perception.h", "perception_feed.h", "product_records.h"):
+    for filename in ("player_product.h", "player_perception.h", "perception_feed.h", "product_records.h", "product_onboarding.h"):
         collect((ROOT / "src/app" / filename).read_text(encoding="utf-8"), filename)
     tower = (ROOT / "src/app/tower_campaign_runtime.cpp").read_text(encoding="utf-8")
     collect(tower[tower.index("std::string TowerCampaignRuntime::Objective"):],

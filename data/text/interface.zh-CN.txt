@@ -221,6 +221,12 @@ ui_history_empty	暂无近期记录。读取存档会清空这段历史。
 ui_heard	听到
 ui_nearby	附近
 ui_prompt	[{0}] {1}
+ui_hint_1	{0}：移动。鼠标：环视。
+ui_hint_2	对准目标，然后按 {0} 交互。
+ui_hint_3	{0}：查看目标和线索。
+ui_hint_4	弹匣已空。按 {0} 装填。
+ui_hint_5	{0}：阅读已取得的记录。
+ui_hint_6	{0}：在暂停菜单查看恢复点。
 ui_record_trace	痕迹：设施记录中留有强行通行的记录。
 ui_record_001	关键记录
 ui_record_002	转运清单

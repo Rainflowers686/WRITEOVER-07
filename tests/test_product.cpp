@@ -11,6 +11,7 @@
 #include "src/app/presentation_text.h"
 #include "src/app/product_preferences.h"
 #include "src/app/product_records.h"
+#include "src/app/product_onboarding.h"
 #include "writeover/render/frame_encoder.h"
 #include "writeover/render/hud.h"
 #include "writeover/render/character_renderer.h"
@@ -18,6 +19,40 @@
 
 namespace writeover {
 namespace {
+bool ContextHintsAreBoundedAndStateAware() {
+    Settings settings = Settings::Defaults();
+    settings.key_bindings[0][static_cast<size_t>(GameAction::Interact)] = PhysicalKey::E;
+    ProductOnboarding hints;
+    OnboardingContext context;
+    context.in_b1 = true;
+    context.frame = 1;
+    WO_CHECK(hints.Line(context, settings) == "W/A/S/D: move. Mouse: look.");
+    context.moved = true; context.frame = 2;
+    WO_CHECK(hints.Line(context, settings).empty()); // dismiss demonstrated action
+    context.frame = 62;
+    WO_CHECK(hints.Line(context, settings) == "Look directly at an object, then press E.");
+    PresentationText translations;
+    WO_CHECK(translations.Load(std::filesystem::path(__FILE__).parent_path().parent_path() / "data/text"));
+    WO_CHECK(translations.Present(hints.Line(context, settings), "zh-CN") == "对准目标，然后按 E 交互。");
+    context.needs_reload = true; context.frame = 63;
+    WO_CHECK(hints.Line(context, settings) == "Empty magazine. Press R to reload.");
+    context.needs_reload = false; context.frame = 64;
+    WO_CHECK(hints.Line(context, settings).empty());
+    context.interacted = true; context.frame = 124;
+    WO_CHECK(hints.Line(context, settings) == "F1: review your objective and leads.");
+    context.case_file_used = true; context.frame = 125;
+    WO_CHECK(hints.Line(context, settings).empty());
+    context.frame = 1000;
+    WO_CHECK(hints.Line(context, settings).empty()); // no recurring reminder spam
+    context.has_checkpoint = true;
+    WO_CHECK(hints.Line(context, settings) == "ESC: recovery points are in Pause.");
+    hints.Continued();
+    context = {}; context.in_b1 = true;
+    WO_CHECK(hints.Line(context, settings).empty());
+    ProductOnboarding new_game;
+    WO_CHECK(!new_game.Line(context, settings).empty());
+    return true;
+}
 bool KeyRecordsRespectAcquisition() {
     SystemicWorld world;
     const auto player = EntityId::New(1);
@@ -611,6 +646,7 @@ bool KnownEvidenceAndNearestInspect() {
 }
 } // namespace
 void RegisterProductTests(TestHarness& harness) {
+    harness.Add("product.context hints state and continuation", &ContextHintsAreBoundedAndStateAware);
     harness.Add("product.key records acquisition and persistence", &KeyRecordsRespectAcquisition);
     harness.Add("product.translation template validation", &TranslationTemplateValidation);
     harness.Add("product.functional preference consumers", &FunctionalPreferenceConsumers);

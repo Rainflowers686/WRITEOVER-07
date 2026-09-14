@@ -46,6 +46,7 @@
 #include "src/app/presentation_text.h"
 #include "src/app/product_preferences.h"
 #include "src/app/product_records.h"
+#include "src/app/product_onboarding.h"
 #include "src/app/player_perception.h"
 #include "src/player/dynamic_collision.h"
 #include "src/app/runtime_paths.h"
@@ -1186,6 +1187,12 @@ public:
     void SetInteractionPromptSource(std::function<std::string()> source) {
         interaction_prompt_source_ = std::move(source);
     }
+    void SetContextHintSource(std::function<std::string()> source) {
+        context_hint_source_ = std::move(source);
+    }
+    bool HasFocusedInteraction() const {
+        return interaction_prompt_source_ && interaction_prompt_source_().rfind("[F]", 0) == 0;
+    }
     bool LoadCharacterArt(const std::string& path) {
         return character_art_.Load(path);
     }
@@ -1623,6 +1630,7 @@ public:
         interaction_prompt_ = interaction_prompt_source_
                                   ? interaction_prompt_source_()
                                   : std::string{};
+        if (interaction_prompt_.empty() && context_hint_source_) interaction_prompt_ = context_hint_source_();
         if (settings_) interaction_prompt_ = ProductControlText(interaction_prompt_, *settings_);
         hud.interaction_prompt = interaction_prompt_.empty()
                                      ? nullptr
@@ -1891,6 +1899,7 @@ private:
     PlayerProductRuntime* product_ = nullptr;
     std::function<size_t()> panel_scroll_source_;
     std::function<std::string()> interaction_prompt_source_;
+    std::function<std::string()> context_hint_source_;
     std::string objective_presentation_prefix_;
     std::map<uint64_t, CharacterLod> lod_states_;
 };
@@ -2242,6 +2251,7 @@ int RunComposition(const GameConfig& config) {
         return 8;
     }
     PlayerProductRuntime product;
+    ProductOnboarding onboarding;
     PlayerPerceptionObserver perception_observer;
     std::string last_product_objective;
     bool new_game_requested = false;
@@ -3748,6 +3758,7 @@ int RunComposition(const GameConfig& config) {
             }
         }
         replay_load_ok = true;
+        onboarding.Continued();
         render->ResetTransientPresentation();
         product.feed.Clear();
         product.ending_rows.clear();
@@ -4261,6 +4272,21 @@ int RunComposition(const GameConfig& config) {
     });
     render->SetObjectivePresentationPrefix("B1:");
     bool interaction_demonstrated = false;
+    bool case_file_demonstrated = false;
+    render->SetContextHintSource([&] {
+        if (product.Active() || campaign_overlay != CampaignOverlay::None ||
+            services.player->Dead() || time_gate.Paused()) return std::string{};
+        const auto& combat = services.player->Combat();
+        const size_t slot = static_cast<size_t>(combat.slot);
+        return onboarding.Line({services.player->CurrentFrame(),
+            services.player->CurrentRoom() == "room_b1_revival",
+            services.player->MovementDemonstrated(), interaction_demonstrated,
+            case_file_demonstrated,
+            slot < combat.ammo_in_mag.size() && combat.ammo_in_mag[slot] == 0 &&
+                combat.reserve[slot] > 0 && combat.reload_frames_left == 0,
+            PlayerKnownEvidence(*services.systemic, slice.player) != 0,
+            product.checkpoint_available}, settings);
+    });
     render->SetInteractionPromptSource([&] {
         const std::string& room = services.player->CurrentRoom();
         if (room == "room_b1_revival") {
@@ -4314,11 +4340,6 @@ int RunComposition(const GameConfig& config) {
                                : std::string("[F] TALK");
                 }
             }
-            if (services.player->CurrentFrame() < 360 &&
-                !services.player->MovementDemonstrated() &&
-                !interaction_demonstrated) {
-                return std::string("WASD MOVE | MOUSE LOOK | F INTERACT | LMB FIRE");
-            }
             return std::string{};
         }
         if (room == "room_01_calibration") {
@@ -4331,11 +4352,7 @@ int RunComposition(const GameConfig& config) {
             if (focused_scene_entity("calibration_service_door")) {
                 return std::string("[F] ENTER MEDICAL SERVICE");
             }
-            return services.player->CurrentFrame() < 360 &&
-                           !services.player->MovementDemonstrated() &&
-                           !interaction_demonstrated
-                       ? std::string("WASD MOVE | MOUSE LOOK | F INTERACT")
-                       : std::string{};
+            return std::string{};
         }
         if (room == "room_1f_security") {
             for (const auto& runtime : services.ai->Npcs()) {
@@ -4604,6 +4621,7 @@ int RunComposition(const GameConfig& config) {
         time_gate.SetPaused(true);
     };
     const auto open_case_file = [&] {
+        case_file_demonstrated = true;
         product.Close();
         campaign_scroll = 0;
         campaign_overlay = CampaignOverlay::CaseFile;
@@ -4856,7 +4874,7 @@ int RunComposition(const GameConfig& config) {
         (void)services.systemic->AddKnowledgeAsset(asset);
     };
     services.player->SetInteractCallback([&] {
-        interaction_demonstrated = true;
+        if (render->HasFocusedInteraction()) interaction_demonstrated = true;
         const Vec3& p = services.player->Locomotion().position;
         const uint64_t frame = services.player->CurrentFrame();
         const EntityId player = slice.player;

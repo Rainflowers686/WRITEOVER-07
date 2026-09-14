@@ -222,6 +222,12 @@ ui_history_empty	No recent entries. Loading a save clears this history.
 ui_heard	HEARD
 ui_nearby	NEARBY
 ui_prompt	[{0}] {1}
+ui_hint_1	{0}: move. Mouse: look.
+ui_hint_2	Look directly at an object, then press {0}.
+ui_hint_3	{0}: review your objective and leads.
+ui_hint_4	Empty magazine. Press {0} to reload.
+ui_hint_5	{0}: read the records you acquired.
+ui_hint_6	{0}: recovery points are in Pause.
 ui_record_trace	TRACE: forced access remains on the facility record.
 ui_record_001	KEY RECORDS
 ui_record_002	TRANSFER MANIFEST
