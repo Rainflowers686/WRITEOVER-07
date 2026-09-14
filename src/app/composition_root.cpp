@@ -4625,15 +4625,21 @@ int RunComposition(const GameConfig& config) {
                     100000, 100);
             } else if (pressed(GameAction::Interact)) {
                 const auto option = ending_options[directory_selection];
+                if (!switch_room("room_roof_exit", Vec3{2.5f, 5.0f, 0.0f}, 0.0f)) {
+                    render->SetSubtitleOnce("Roof unavailable. No decision was recorded.", 240, 105);
+                    return true;
+                }
                 selected_ending = option.ending;
                 set_campaign_fact(TowerCampaignRuntime::EndingFact(selected_ending));
                 set_campaign_fact("fact_campaign_completed");
                 set_campaign_fact("fact_elevator_roof_unlocked");
+                // RequestSave invokes the callback immediately. Persist the
+                // destination and its facts, not a half-completed Authority state.
                 services.player->RequestSave();
                 campaign_overlay = CampaignOverlay::None;
                 ending_options.clear();
                 time_gate.SetPaused(false);
-                if (switch_room("room_roof_exit", Vec3{2.5f, 5.0f, 0.0f}, 0.0f)) {
+                {
                     render->SetSubtitleOnce(
                         std::string("Decision recorded: ") +
                             TowerCampaignRuntime::EndingLabel(selected_ending) +
@@ -6169,8 +6175,17 @@ int RunComposition(const GameConfig& config) {
             (fact_is_true("fact_ending_amend") ||
              fact_is_true("fact_ending_disclose") ||
              fact_is_true("fact_ending_breach"));
+        const bool campaign_reload_replay =
+            std::filesystem::path(config.replay_path).filename() == "campaign_completed_reload.txt";
+        const int recorded_endings = static_cast<int>(fact_is_true("fact_ending_amend")) +
+            static_cast<int>(fact_is_true("fact_ending_disclose")) +
+            static_cast<int>(fact_is_true("fact_ending_breach"));
+        const bool campaign_reload_complete = campaign_reload_replay && replay_load_ok &&
+            campaign_end_screen_ready && fact_is_true("fact_roof_reached") &&
+            recorded_endings == 1 && !services.player->Dead();
         const bool expected_state_reached = normal_quit_replay
             ? slice.normal_quit_requested
+            : campaign_reload_replay ? campaign_reload_complete
             : campaign_replay
                 ? (campaign_route_complete && campaign_ending_reached &&
                    campaign_end_screen_ready)
@@ -6292,7 +6307,7 @@ int RunComposition(const GameConfig& config) {
         std::fprintf(stderr, "CHAPTER_CHECKPOINT_REACHED=%s\n",
                      chapter_checkpoint_reached ? "YES" : "NO");
         std::fprintf(stderr, "CAMPAIGN_COMPLETION_REACHED=%s\n",
-                     campaign_route_complete ? "YES" : "NO");
+                     campaign_route_complete || campaign_reload_complete ? "YES" : "NO");
         std::fprintf(stderr, "CAMPAIGN_END_SCREEN_READY=%s\n",
                      campaign_end_screen_ready ? "YES" : "NO");
         std::fprintf(stderr, "REPLAY_RESULT=%s\n",

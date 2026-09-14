@@ -62,7 +62,7 @@ $cases = @(
             "REPLAY_PROCESS_EXIT_OK=YES",
             "REPLAY_INPUT_CONSUMED=YES",
             "room_act2_service_concourse>room_act2_transit_control",
-            "IMPACT. Health is now authoritative.",
+            "UNDER FIRE / Break sight. Find cover.",
             "Target down. Search the body before moving on.",
             "Act II-A checkpoint recorded. The facility has opened a deeper question.",
             "TRANSITION_DENIED=NO",

@@ -64,6 +64,19 @@ try {
                 $case.Name, $exitCode, $missingText, $logPath)
         }
         Write-Host ("PASS {0}" -f $case.Name)
+        # A successful live ending does not prove its synchronous autosave
+        # contains Roof. Restart the executable against the exact saved slot.
+        $reloadLog = Join-Path $tempRoot ($case.Name + "_reload.log")
+        & $exePath --replay (Join-Path $replayRoot "campaign_completed_reload.txt") `
+            --data-dir $dataRoot --user-data-dir $userData --frames 60 *> $reloadLog
+        $reloadExit = $LASTEXITCODE
+        $reloadOutput = Get-Content -LiteralPath $reloadLog -Raw
+        $reloadRequired = @("REPLAY_RESULT=PASS", "LOAD_OK=YES",
+            "CAMPAIGN_END_SCREEN_READY=YES", ("CAMPAIGN_FACTS .* {0}=YES" -f $case.Ending))
+        if ($reloadExit -ne 0 -or @($reloadRequired | Where-Object { $reloadOutput -notmatch $_ }).Count -gt 0) {
+            throw ("{0} completed-save reload failed: {1}" -f $case.Name, $reloadLog)
+        }
+        Write-Host ("PASS {0} completed-save reload" -f $case.Name)
     }
     Write-Host "COMPLETE_GAME_CAMPAIGN_GATE=PASS"
     Write-Host ("CAMPAIGN_EVIDENCE=" + $tempRoot)

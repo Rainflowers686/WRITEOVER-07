@@ -1,0 +1,4 @@
+# Second process: load a completed campaign saved by the full-route gate.
+# The assertion requires Roof, one ending, completion, successful load and a live player.
+1 F9 down
+2 F9 up
