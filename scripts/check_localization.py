@@ -161,5 +161,7 @@ def inspect():
 
 if __name__ == "__main__":
     result = inspect()
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    # Redirected Windows CI stdout may use cp1252. Escaped JSON retains every
+    # code point without making the validation receipt depend on console locale.
+    print(json.dumps(result, ensure_ascii=True, indent=2))
     raise SystemExit(0 if result["status"] == "PASS" else 1)

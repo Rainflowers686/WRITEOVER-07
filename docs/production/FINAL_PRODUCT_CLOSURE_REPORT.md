@@ -112,6 +112,13 @@ routes and four independent completed-save reloads passed in
 `evidence/post_audit_campaign_final_20260915/`. The already-passing recovery and
 scenario gates were not redundantly repeated after this assertion-only repair.
 
+The first exact-head CI (34894714725, 59ff797) passed Linux GCC, Clang, macOS
+ARM64 and Linux ARM64 link. Windows failed while printing the localization JSON:
+redirected Python stdout used cp1252 and could not encode Chinese fragments.
+The checker now emits ASCII-escaped JSON without changing coverage or assertions.
+A forced-cp1252 local run verifies the receipt remains valid. That failed run and
+its downloaded log are retained; publication requires the successor exact-head CI.
+
 That run measured PVS_RENDER_TIME_MS=0.711, PVS_TOTAL_FRAME_TIME_MS=0.984 and
 SYSTEMIC_UPDATE_TIME_MS=0.128, with OVERALL_BUDGET=PASS. These are the benchmark's
 worst_1pct_avg_ms statistics, not p99, terminal-write timing or display FPS.
