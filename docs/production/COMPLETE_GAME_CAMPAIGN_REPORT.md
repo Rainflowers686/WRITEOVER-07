@@ -332,6 +332,10 @@ The following were run locally against this source baseline:
 - Recovery replay gate: PASS, 21/21 legacy replay cases.
 - Scenario matrix: PASS; 36 classified rows, 35 executed, 1
   INVALID_BY_GAME_RULES, 0 VALID_STATE_NOT_COVERED.
+- Exact-head GitHub Actions run 34819800645: PASS on head
+  5f8893130d2b2a40638ef61f54348b9c4054ac82 after the failed macOS benchmark
+  job was rerun; build, Linux, Linux Clang, Linux ARM64 link, and macOS ARM64
+  all finished successfully.
 
 The exact remote CI result for this new head is intentionally not recorded here
 until the normal push and a fresh exact-head run have completed.

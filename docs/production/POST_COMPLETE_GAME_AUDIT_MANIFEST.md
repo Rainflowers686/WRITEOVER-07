@@ -10,7 +10,21 @@ BASELINE_COMMIT = feat: complete bounded tower campaign path
 
 REMOTE_HEAD_AT_SOURCE_COMMIT = 6b0d44cedc34df4ef62c1ec03cbf26d530c6a746
 
-EXACT_HEAD_CI = PENDING_NORMAL_PUSH
+EXACT_HEAD_CI = PASS (run 34819800645, head
+5f8893130d2b2a40638ef61f54348b9c4054ac82)
+
+EXACT_HEAD_CI_JOBS = build 103902064569 PASS, linux 103902064089 PASS,
+linux-clang 103902064264 PASS, linux-arm64-link 103902064556 PASS,
+macos-arm64 rerun 103902063068 PASS
+
+EXACT_HEAD_CI_MACOS_RELEASE_BENCHMARK = TERMINAL_FULL_TIME_MS=0.287,
+TERMINAL_DELTA_TIME_MS=0.105, TERMINAL_UNCHANGED_TIME_MS=0.047,
+TERMINAL_WORSTCASE_TIME_MS=0.364, PVS_RENDER_TIME_MS=0.500,
+PVS_TOTAL_FRAME_TIME_MS=1.625, OVERALL_BUDGET=PASS
+
+EXACT_HEAD_CI_FIRST_ATTEMPT_OUTLIER = macOS arm64 full benchmark
+TERMINAL_FULL_TIME_MS=3.546 and TERMINAL_FULL_BUDGET=FAIL; failed job was
+rerun without source or threshold changes and passed.
 
 ## Scope
 
@@ -141,7 +155,7 @@ docs/production/evidence/complete_game_scenario_matrix_20260914
 
 ## Required post-push gates
 
-PENDING = normal push of main from this baseline plus exact-head CI.
+COMPLETE = normal push of main from this baseline plus exact-head CI.
 
 PENDING = final package generation and package smoke from the pushed binary.
 
