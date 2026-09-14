@@ -2,15 +2,17 @@
 
 This is the current closure record, superseding POST_ULTRA_FINAL_HANDOFF.md and
 the older audit manifest for post-audit work. Historical evidence remains intact.
-Publication fields below are deliberately pending until exact-head CI and upload
-verification complete; a tag or a document name is not evidence of acceptance.
+Local validation is complete. Publication is a separate gate: the release's
+`RELEASE_VERIFICATION.json` will carry the resolved delivery SHA, exact-head CI run
+and archive digest. Referencing that receipt avoids a self-referential commit/hash
+in this tracked report. Until it exists and is verified, publication is unconfirmed.
 
 ## Delivery identity and acceptance
 
 ```text
 START_HEAD = ec0a8a92765918a6e6fd0da952aa588b069c342b
 FINAL_IMPLEMENTATION_HEAD = d0c67db (runtime); 73f826f (version and validation tooling)
-FINAL_HEAD = PENDING_FINAL_DELIVERY_COMMIT
+FINAL_HEAD = resolved commit of refs/tags/v0.2.0-candidate.1; recorded in release RELEASE_VERIFICATION.json
 VERSION = 0.2.0-candidate.1
 LANGUAGES = zh-CN / en
 CHINESE_RUNTIME_STATUS = IMPLEMENTED; automated catalogs and representative production renders checked; native human review pending
@@ -22,16 +24,16 @@ ONBOARDING_STATUS = bounded contextual first-run hints; Continue suppression; Ne
 SETTINGS_STATUS = production preferences wired and inventoried; reserved legacy fields explicitly not advertised
 KEY_REBINDING_STATUS = conflict checks, confirmation, persistence and menu escape path implemented
 AUDIO_ACCESSIBILITY_STATUS = subtitles, bounded sensory/history and threat direction implemented; listening pending
-TEST_FAST_REQUIRED = first run FAIL on stale contract hashes; reviewed fix and focused checks PASS; final full run pending
-TEST_EXTENDED = RUNNING
+TEST_FAST_REQUIRED = PASS; post_audit_fast_final_20260915/qa-result.json
+TEST_EXTENDED = PASS across retained recovery/scenario receipts and corrected Act II/full-campaign reruns; original failed tier receipt preserved
 TESTS_REMOVED_OR_MOVED = duplicate invocations removed; extended route matrix moved to explicit tier; assertions retained
-FINAL_LOCAL_VALIDATION = PENDING_FINAL_FULL_RUN
-FINAL_CI_RUN = PENDING
-FINAL_CI_RESULT = PENDING
-PACKAGE = PENDING_FINAL_TESTED_ARCHIVE
-PACKAGE_SHA256 = PENDING
-PRE_RELEASE_TAG = v0.2.0-candidate.1 (reserved, not yet published)
-PRE_RELEASE_URL = PENDING
+FINAL_LOCAL_VALIDATION = Debug/Release builds, full FAST, EXTENDED constituent gates, bilingual and package preflight PASS
+FINAL_CI_RUN = release RELEASE_VERIFICATION.json exact-head run; not yet established by this source document
+FINAL_CI_RESULT = publication requires five jobs success; consult the actual run, not this gate definition
+PACKAGE = WRITEOVER-07-v0.2.0-candidate.1-win-x64.zip
+PACKAGE_SHA256 = release SHA256SUMS.txt and RELEASE_VERIFICATION.json; verify against GitHub asset digest
+PRE_RELEASE_TAG = v0.2.0-candidate.1
+PRE_RELEASE_URL = https://github.com/Rainflowers686/WRITEOVER-07/releases/tag/v0.2.0-candidate.1 (publication conditional on CI)
 README_ZH = README.zh-CN.md
 README_EN = README.en.md
 PLAYER_GUIDE_ZH = docs/release/PLAYER_GUIDE.zh-CN.md
@@ -46,7 +48,7 @@ PPT = docs/course/output/WRITEOVER07_Course_Presentation_v2.pptx
 DEMO_SCRIPT = docs/course/DEMO_5_MINUTES.md
 OPEN_FATAL = none identified in scoped closure; not an exhaustive new audit
 OPEN_P0 = none identified in scoped closure
-OPEN_P1 = publication/exact-head validation pending, no known unresolved scoped runtime P1
+OPEN_P1 = none known in scoped runtime; exact-head CI/publication remain separate delivery gates
 HUMAN_ACCEPTANCE_ITEMS = native terminals, fonts/resize, audio, first-time play, visual acceptance, measured playtime, member identity and classroom rehearsal
 SAFE_CLEANUP = NO_DELETION_PERFORMED; task evidence retained
 ```
@@ -95,11 +97,27 @@ tests, CTest 2/2, content/schema negatives, bilingual catalogs, product/save,
 rebind, 36 facing selections, package smoke and five package-negative probes
 passed before the stale public-header hash gate failed. That FAIL is preserved.
 After the reviewed correction, the contract checker passed and static audit
-reported COUNT=0. A complete final FAST run is still required.
+reported COUNT=0. The complete final FAST run also passed, in
+`evidence/post_audit_fast_final_20260915/`. It began at 4936304 and ended at
+d753174; intervening commits changed documentation and the separate Act II
+assertion, not runtime code or FAST logic. The receipt records the ending HEAD.
+
+EXTENDED's initial receipt is also preserved as FAIL: recovery 21 and the
+scenario matrix passed (35 executed / 36 definitions; one invalid by game rules),
+but Act II expected the obsolete non-directional threat sentence. Commit 436cc1b
+requires the actual transit-room, from-ahead warning instead, preserving all route,
+target-down, checkpoint, survival and access assertions. All three Act II routes
+passed in `evidence/post_audit_act2_final_20260915/`. All four complete campaign
+routes and four independent completed-save reloads passed in
+`evidence/post_audit_campaign_final_20260915/`. The already-passing recovery and
+scenario gates were not redundantly repeated after this assertion-only repair.
 
 That run measured PVS_RENDER_TIME_MS=0.711, PVS_TOTAL_FRAME_TIME_MS=0.984 and
 SYSTEMIC_UPDATE_TIME_MS=0.128, with OVERALL_BUDGET=PASS. These are the benchmark's
 worst_1pct_avg_ms statistics, not p99, terminal-write timing or display FPS.
+The final FAST measured render 0.714, total frame 1.002 and systemic update 0.255
+under those same named metrics, also OVERALL_BUDGET=PASS. Local values fluctuate;
+this is not evidence of a statistically significant speedup or slowdown.
 No benchmark threshold was relaxed. Localization menus/history are bounded;
 no claim of a universal frame-rate improvement is made from this one run.
 
