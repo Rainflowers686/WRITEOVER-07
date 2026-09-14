@@ -47,10 +47,9 @@ Result<void> DefaultAtomicReplace(const std::string& tmp_path,
                                   const std::string& dest_path,
                                   void*) {
     std::error_code ec;
-    // Best-effort: remove destination first, then rename. On Windows this is
-    // not crash-atomic; the platform layer replaces this provider with
-    // MoveFileExW (see src/platform/windows/win_file_io.cpp).
-    std::filesystem::remove(dest_path, ec);
+    // POSIX rename replaces an existing file atomically. Never unlink the good
+    // destination first: a missing/unusable temp must leave it intact. Windows
+    // production uses the installed MoveFileExW provider (including write-through).
     std::filesystem::rename(tmp_path, dest_path, ec);
     if (ec) {
         return Result<void>::Err(6, "atomic replace failed: " + dest_path +

@@ -14,8 +14,9 @@ namespace writeover {
 Result<std::vector<uint8_t>> ReadFileBinary(const std::string& path);
 Result<void> WriteFileBinary(const std::string& path, const std::vector<uint8_t>& data);
 
-// Default provider: temp + remove + rename (crash-safe on POSIX, best-effort
-// on Windows). Platform layer wiring may replace it with MoveFileExW-based.
+// Default provider: rename-over-existing, without pre-deleting the destination.
+// POSIX replacement is atomic; the Windows runtime installs MoveFileExW-based
+// replacement. On failure the caller retains ownership of the temporary file.
 using AtomicReplaceFn = Result<void> (*)(const std::string& tmp_path,
                                          const std::string& dest_path,
                                          void* user_data);

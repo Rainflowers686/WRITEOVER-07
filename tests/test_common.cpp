@@ -3,8 +3,10 @@
 #include "writeover/common/rng.h"
 #include "writeover/common/serialize.h"
 #include "writeover/common/world_event.h"
+#include "writeover/common/io.h"
 
 #include <cmath>
+#include <filesystem>
 
 namespace writeover {
 
@@ -17,6 +19,40 @@ bool RngRepeatableDeterministic() {
             return false;
         }
     }
+    return true;
+}
+
+bool AtomicReplacePreservesDestination() {
+    // Claim only a fresh task-owned directory; never remove an existing fixture.
+    std::filesystem::path directory;
+    for (int i = 0; i < 100; ++i) {
+        const auto candidate = std::filesystem::temp_directory_path() /
+            ("writeover_atomic_regression_" + std::to_string(i));
+        std::error_code ec;
+        if (std::filesystem::create_directory(candidate, ec)) { directory = candidate; break; }
+    }
+    WO_CHECK(!directory.empty());
+    const auto dest = directory / "save.bin";
+    const auto tmp = directory / "save.tmp";
+    const std::vector<uint8_t> old_bytes{1, 2, 3};
+    const std::vector<uint8_t> new_bytes{4, 5};
+    SetAtomicReplaceProvider({});
+    WO_CHECK(WriteFileBinary(dest.string(), old_bytes).IsOk());
+    const bool failure_reported = ReplaceFileAtomic(tmp.string(), dest.string()).IsError();
+    const auto after_failure = ReadFileBinary(dest.string());
+    const bool preserved = after_failure.IsOk() && after_failure.Value() == old_bytes;
+    WO_CHECK(WriteFileBinary(tmp.string(), new_bytes).IsOk());
+    const bool replaced = ReplaceFileAtomic(tmp.string(), dest.string()).IsOk();
+    const auto after_success = ReadFileBinary(dest.string());
+    const bool correct = after_success.IsOk() && after_success.Value() == new_bytes;
+    const bool consumed_tmp = !std::filesystem::exists(tmp);
+    std::error_code ec;
+    std::filesystem::remove(tmp, ec);
+    std::filesystem::remove(dest, ec);
+    std::filesystem::remove(directory, ec);
+    WO_CHECK(failure_reported);
+    WO_CHECK(preserved);
+    WO_CHECK(replaced && correct && consumed_tmp);
     return true;
 }
 
@@ -96,6 +132,7 @@ bool CheckPassKeepsGoing() {
 } // namespace
 
 void RegisterCommonTests(TestHarness& test) {
+    test.Add("io.atomic_replace_preserves_destination", &AtomicReplacePreservesDestination);
     test.Add("rng.repeatable", &RngRepeatableDeterministic);
     test.Add("rng.state_round_trip", &RngStateRoundTrip);
     test.Add("serialize.round_trip", &SerializeRoundTrip);
