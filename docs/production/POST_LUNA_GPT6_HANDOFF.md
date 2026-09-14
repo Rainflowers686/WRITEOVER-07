@@ -1,22 +1,21 @@
 # Post-expansion completion handoff map
 
 Date: 2026-09-14  
-HANDOFF_STATUS = `NOT_YET_AUTHORIZED`  
-CREATIVE_PASS_STATUS = `GPT6_CRITICAL_PATH_CONTINUES`  
+HANDOFF_STATUS = `READY_FOR_LUNA_FINAL_COMPLETION`
+CREATIVE_PASS_STATUS = `POST_ASTRA_CREATIVE_BASELINE_FROZEN`
 BASELINE_HEAD = `0123a4c` (`feat: finalize chapter one visual baseline`)
 
-This document is intentionally actionable but is not a transfer signal yet.
-The owner explicitly asked the current creative pass to continue instead of
-handing the project to Luna. It becomes an active handoff only after the
-foreground visual boundary, Act II acceptance and exact pushed-head CI are
-honestly closed.
+This document is now an actionable transfer map. The readiness state does not
+dispatch another task or change the current owner; it records that the
+high-value creative closure is complete and routine completion may be handed
+off when the owner chooses.
 
 ## BASELINE_HEAD
 
 Commit `0123a4c` preserves ancestor `5434f8a`, adds the five Act II-A
 rooms, synchronizes the authored weapon states, adds the bounded face/room
 presentation pass, and records the door-frame public enum in ADR-0012. The
-current source state also contains the face32 production retouch: cheek/temple
+current source state also contains the face33 production retouch: cheek/temple
 planes, sparse horizontal eye marks, tapered lower contour and no hard side
 frame. It keeps the Full Human/Maintenance face on the authored continuous
 skin plane routed through the existing `OpaqueEmpty` CharCell path.
@@ -82,7 +81,7 @@ backtracking and existing recoverable failure remain available.
 
 Visual status: authored low-resolution FPS density is materially improved in
 the current production frames. The latest real release capture is
-`docs/production/evidence/chapter01_creative_polish/face_retouch32/`; it uses
+`docs/production/evidence/chapter01_creative_polish/face_retouch33/`; it uses
 a continuous skin plane with cheek shadow and sparse facial glyphs, removing
 the old punctuation texture and hard frame that made the face read like a
 mask. `room_structure_retouch04/` is the current B1/Security/Elevator room
@@ -116,7 +115,7 @@ baseline. This is a bounded stylized acceptance, not a photorealism claim.
 ## OPEN_P1
 
 - No known player-critical P1 remains in the Chapter One art pass after the
-  face32 production render, the synchronized weapon render, and the room04
+  face33 production render, the synchronized weapon render, and the room04
   structure render. The face remains intentionally stylized and must not be
   described as photorealistic; any future subjective objection should first
   be tested against the protected CharCell contract and revised as an asset,
@@ -126,11 +125,13 @@ baseline. This is a bounded stylized acceptance, not a photorealism claim.
   first-time human playthrough and focused Power/Observation/Transit fixtures
   remain.
 - Local package smoke and the post-face Release benchmark pass locally
-  (`PVS_RENDER_TIME_MS=0.737`, `PVS_TOTAL_FRAME_TIME_MS=1.335`). Exact-head
-  CI for `f15b7ffd71ffdc73201693fe0b3e9bbaeb198a8b` is PASS in run
-  `34794078556`, including the macOS arm64 benchmark and recovery replay. The
-  previous documentation-only head's two macOS tail failures remain preserved
-  as historical evidence; they are not silently relabeled as source fixes.
+  (`PVS_RENDER_TIME_MS=1.237`, `PVS_TOTAL_FRAME_TIME_MS=2.169`). The exact
+  pushed creative head `52cc29f112ff7db2cfabd1a2951b48d4e5c2e568` is PASS in
+  CI run `34804411002` after one controlled macOS benchmark rerun: macOS
+  `TERMINAL_FULL_TIME_MS=0.882`, `PVS_RENDER_TIME_MS=1.293`, and
+  `PVS_TOTAL_FRAME_TIME_MS=4.642`, all within their gates. The initial
+  macOS attempt (`3.689 ms` full-terminal time) remains historical evidence
+  of platform variance, not a source change or a silently relabeled PASS.
 
 ## REMAINING_OBJECTIVE_WORK
 
@@ -163,12 +164,12 @@ schema/invalid-seed tests, mandatory replays, the Act II expansion gate,
 scenario matrix, save-fault regression, art review and relevant render
 assertions. The current local Release benchmark and package smoke are already
 recorded as PASS; rerun them if source/content changes.
-Record the exact command and result in the audit manifest, then observe the
-exact post-face pushed-head CI.
+Record any later command and result in the audit manifest, then observe the
+exact pushed-head CI whenever source or package content changes.
 
 ## REMAINING_PACKAGE_WORK
 
-The current Release package was built from `c760abd8c25dacd2b82f25e83ccffc2b1a4939ea`
+The current Release package was built from `52cc29f112ff7db2cfabd1a2951b48d4e5c2e568`
 and passed clean-package smoke, executable-relative data, manifest/hash,
 secret-scan and user-data-separation checks. Rebuild only if source/content
 changes; no public release is implied.
@@ -203,16 +204,17 @@ public binary schemas, Character-Art renderer paradigm or module boundaries.
 
 ## LIKELY_COMPLETION_SEQUENCE
 
-1. Treat the face32/weapon06/room04 visuals as the protected Chapter One
-   baseline and close only an observed first-time Act II read blocker.
+1. Treat the face33/synchronized-weapon/room04 visuals as the protected
+   Chapter One baseline and close only an observed first-time Act II read
+   blocker.
 2. Add focused Power/Observation/Transit route fixtures and rerun Chapter One
    regression plus the existing Records expansion gate.
 3. Refresh Debug/Release, package smoke and benchmark.
-4. Update this file's `BASELINE_HEAD` only if a deliberate source baseline
-   changes; update status only after owner approval.
+4. Keep this file's `BASELINE_HEAD` on the deliberate creative source
+   baseline; update it only when the protected source baseline changes.
 5. Commit documentation/package metadata coherently, push main normally, and
    watch the exact final-head CI run.
-6. Only then consider `READY_FOR_LUNA_FINAL_COMPLETION`; never call it product
+6. The current state is `READY_FOR_LUNA_FINAL_COMPLETION`; never call it product
    gold, visual gold, course final or public release ready.
 
 ## PRESENTER_CRITICAL_KNOWLEDGE

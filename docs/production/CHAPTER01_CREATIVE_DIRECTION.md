@@ -5,7 +5,7 @@
 PROTECTED_CREATIVE_BASELINE = POST_ASTRA_CREATIVE_BASELINE /
 CHAPTER01_AUTHORED_FPS_20260913.
 CURRENT_PRODUCTION_LAYER = ACT2_AUTHORED_SPACES_23EADDB +
-AUTHORED_FACE_PLANES_B221E37 + CHAPTER01_VISUAL_RETOUCH_FACE32.
+AUTHORED_FACE_PLANES_B221E37 + CHAPTER01_VISUAL_RETOUCH_FACE33.
 The source/content baseline is the creative freeze commit recorded below;
 the later documentation commit may become the delivery HEAD, but it must
 not change this contract.
@@ -51,9 +51,9 @@ Low service housings retain their physical clearance and simulation light.
 Their galvanized surface and edge lip have bounded presentation contrast so
 the overhead mass reads as architecture rather than a missing black patch.
 The current production references are the release captures at
-`docs/production/evidence/chapter01_creative_polish/face_retouch32/` and
+`docs/production/evidence/chapter01_creative_polish/face_retouch33/` and
 `room_structure_retouch04/`, the no-HUD directional art review at
-`out/creative_review_face32_art/`, and the synchronized weapon sheet emitted
+`out/creative_review_face33_art/`, and the synchronized weapon sheet emitted
 by the same review. Historical evidence under `docs/production/evidence/`
 remains useful for comparison but does not override these current renders.
 
@@ -239,7 +239,8 @@ content. Benchmark the authored bank, never a silent diagnostic fallback.
 
 `OPEN_FATAL = none known` and `OPEN_P0 = none known` after the current local
 regression. The face remains a subjective visual acceptance boundary rather
-than a hidden claim of photorealism. The first complete expansion handoff is
-not authorized until the final pushed head has a fresh exact-head CI result.
+than a hidden claim of photorealism. The pushed creative head has a fresh
+exact-head CI PASS in run `34804411002`; this records readiness for routine
+completion, not product, visual or release gold.
 Use [POST_LUNA_GPT6_HANDOFF.md](POST_LUNA_GPT6_HANDOFF.md) as a future
 execution map, not as permission to redesign this contract.
