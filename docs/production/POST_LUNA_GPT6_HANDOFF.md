@@ -3,7 +3,7 @@
 Date: 2026-09-14  
 HANDOFF_STATUS = `NOT_YET_AUTHORIZED`  
 CREATIVE_PASS_STATUS = `GPT6_CRITICAL_PATH_CONTINUES`  
-BASELINE_HEAD = `23eaddbe1a2476519fc91dd66d5dfefef069e512`
+BASELINE_HEAD = `b221e37` (`feat: refine authored human face planes`)
 
 This document is intentionally actionable but is not a transfer signal yet.
 The owner explicitly asked the current creative pass to continue instead of
@@ -13,17 +13,19 @@ honestly closed.
 
 ## BASELINE_HEAD
 
-`23eaddbe1a2476519fc91dd66d5dfefef069e512` is the source/content and
+`b221e37` is the source/content and
 focused-route baseline.
 It preserves ancestor `5434f8a`, adds the five Act II-A rooms, synchronizes
 the authored weapon states, adds the bounded face/room presentation pass, and
-records the door-frame public enum in ADR-0012.
+records the door-frame public enum in ADR-0012. It also replaces the Full
+Human/Maintenance punctuation-texture face with an authored continuous skin
+plane routed through the existing `OpaqueEmpty` CharCell path.
 
 ## PROTECTED_CREATIVE_BASELINE
 
 `POST_ASTRA_CREATIVE_BASELINE / CHAPTER01_AUTHORED_FPS_20260913` remains the
 protected Chapter One contract. The current expansion layer is
-`ACT2_AUTHORED_SPACES_23EADDB`.
+`ACT2_AUTHORED_SPACES_23EADDB + AUTHORED_FACE_PLANES_B221E37`.
 
 Protect these decisions:
 
@@ -74,9 +76,10 @@ resolve Transit Control. Each route can be quieter or more confrontational;
 backtracking and existing recoverable failure remain available.
 
 Visual status: authored low-resolution FPS density is materially improved in
-the current production frames. The face no longer has the black eye band or
-exaggerated emoji features, but close foreground acceptance is still a
-subjective boundary. This is not a photorealism claim.
+the current production frames. The new real release capture uses a continuous
+skin plane with sparse facial glyphs, removing the old colon/punctuation
+texture that made the face read like a mask. Close foreground acceptance is
+still a subjective boundary. This is not a photorealism claim.
 
 ## CURRENT_MAJOR_SYSTEMS
 
@@ -84,6 +87,8 @@ subjective boundary. This is not a photorealism claim.
 - Height-span DDA, shared camera projection, finite floor/ceiling planes and
   character depth/occlusion.
 - Authored directional LOD Character-Art and first-person weapon viewmodels.
+- Semantic `^` authored skin plane through existing `OpaqueEmpty` cells; no
+  new public renderer type and no framebuffer path.
 - Ray/visibility-based interaction with nearest-target ordering.
 - Deterministic NPC perception, memory, intent and motor updates.
 - Body, credential, camera, relationship and Act II route facts.
@@ -104,15 +109,20 @@ subjective boundary. This is not a photorealism claim.
 ## OPEN_P1
 
 - Foreground-terminal/human acceptance of the stylized Full Human face is not
-  closed by an automated sheet. If Rain still reads it as uncanny at play
-  distance, revise only the authored head silhouette/face plane first.
+  closed by an automated sheet. The latest real capture is recorded at
+  `docs/production/evidence/chapter01_creative_polish/face_retouch18/human.png`;
+  if Rain still reads it as uncanny at play distance, revise only the
+  authored head silhouette/face plane first.
 - Act II has production smoke renders and one dedicated Records route gate
   (Dispatch -> terminal -> operator -> Concourse backtrack). A focused
   first-time human playthrough and focused Power/Observation/Transit fixtures
   remain.
-- Local package smoke and Release benchmark pass at the current documentation
-  baseline. The pushed head `e933ad7cef2b82a1f807cf9b65c6d25776557690` also
-  has an exact-head CI PASS (run `34791383959`).
+- Local package smoke and the post-face Release benchmark pass locally
+  (`PVS_RENDER_TIME_MS=0.737`, `PVS_TOTAL_FRAME_TIME_MS=1.335`). The exact
+  remote CI for the pending post-face push is not yet recorded here. The
+  previous documentation-only head had a macOS benchmark tail failure on two
+  attempts (`4.968/8.011`, then `4.384/7.012`) while its parent source head
+  passed; do not call that gate green by inference.
 
 ## REMAINING_OBJECTIVE_WORK
 
@@ -145,7 +155,8 @@ schema/invalid-seed tests, mandatory replays, the Act II expansion gate,
 scenario matrix, save-fault regression, art review and relevant render
 assertions. The current local Release benchmark and package smoke are already
 recorded as PASS; rerun them if source/content changes.
-Record the exact command and result in the audit manifest.
+Record the exact command and result in the audit manifest, then observe the
+exact post-face pushed-head CI.
 
 ## REMAINING_PACKAGE_WORK
 

@@ -11,11 +11,11 @@ PROJECT = WRITEOVER-07
 REPOSITORY = Rainflowers686/WRITEOVER-07
 BRANCH = main
 CANONICAL_ROOT = D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS
-BASELINE_HEAD = 23eaddbe1a2476519fc91dd66d5dfefef069e512
+BASELINE_HEAD = b221e37
 REMOTE_BASELINE_BEFORE_PUSH = 187806b95506f9f7d17279eb1af5f338ee3cb9b2
 ANCESTOR_PRESERVED = 5434f8a
-PUSH_STATUS_AT_MANIFEST_CREATION = PUSHED_NORMALLY
-PUSHED_HEAD = e933ad7cef2b82a1f807cf9b65c6d25776557690
+PUSH_STATUS_AT_MANIFEST_CREATION = PENDING_FACE_REFINEMENT_PUSH
+PUSHED_HEAD = NOT_YET_RECORDED
 STATUS = CREATIVE_BASELINE_ESTABLISHED_ACT2_RECORDS_ROUTE_VERIFIED_NOT_READY_FOR_HANDOFF
 ```
 
@@ -76,8 +76,8 @@ utility noise, Transit guard outcomes, checkpoint and access denial.
 
 | Area | Files | Result |
 |---|---|---|
-| Authored characters/weapons | `data/characters/b1_character_art.txt` | Full Human/Maintenance face hierarchy, directional art, synchronized Pistol/Stunner states, door frame and room prop art. |
-| Renderer | `src/render/character_renderer.cpp`; `include/writeover/render/character_renderer.h` | Door-frame layer, continuous ceiling material, restrained surface lift, semantic face colors, grounded weapon anchor. |
+| Authored characters/weapons | `data/characters/b1_character_art.txt` | Full Human/Maintenance face hierarchy with continuous `^` skin planes, directional art, synchronized Pistol/Stunner states, door frame and room prop art. |
+| Renderer | `src/render/character_renderer.cpp`; `include/writeover/render/character_renderer.h` | Door-frame layer, continuous ceiling material, restrained surface lift, semantic face/skin-plane colors through existing `OpaqueEmpty`, grounded weapon anchor. |
 | Composition/runtime | `src/app/composition_root.cpp`; `src/app/game_main.cpp`; `src/app/scene_runtime.cpp` | Act II NPCs, terminals, facts, storylets, transitions, backtracking, signed camera pitch parsing and opening composition. |
 | Content | `data/rooms/room_act2_*.json`; `data/scenes/recovery_scene.json`; `data/npcs/npcs.json`; facts/storylets/text/systemic | Five spaces with focal equipment, role NPCs, systemic branches and durable consequences. |
 | Contract | `docs/adr/ADR-0012-authored-door-frame-layer.md`; `tools/contract_check/.contract_baseline.json` | The one public enum addition is recorded and hash-pinned. |
@@ -92,8 +92,9 @@ CURRENT_B1_FRAME = out/creative_review_final_visual01/b1-final/frame.png
 CURRENT_SECURITY_FRAME = out/creative_review_final_visual01/security-final/frame.png
 CURRENT_ELEVATOR_FRAME = out/creative_review_final_visual01/elevator-final/frame.png
 CURRENT_ACT2_CONCOURSE_FRAME = out/creative_review_final_visual01/concourse-final/frame.png
-CURRENT_FACE_SHEET = out/creative_review_face12_art/human_sheet.png
-CURRENT_FACE_ZOOM = out/creative_review_face12_art/human_face_zoom.png
+CURRENT_FACE_SHEET = out/creative_review_face18_art/human_sheet.png
+CURRENT_FACE_ZOOM = out/creative_review_face18_art/human_face_zoom.png
+CURRENT_FACE_PRODUCTION_CAPTURE = docs/production/evidence/chapter01_creative_polish/face_retouch18/human.png
 CURRENT_WEAPON_SHEET = out/act2_art_review_weapon07/weapon_sheet.png
 CURRENT_DOOR_CONTACT = out/creative_review_doors_final/contact.png
 ```
@@ -109,8 +110,9 @@ Visual observations from the current production render:
 - Concourse has dispatch equipment, side groupings and a clear transfer lane.
 - Pistol and Stunner have distinct body masses, trigger/emitter areas, grips,
   hands and forearms.
-- Full Human face is an authored stylized low-resolution face with the black
-  eye-band issue removed; close subjective acceptance is still not claimed.
+- Full Human face is an authored stylized low-resolution face with a continuous
+  skin plane, sparse facial glyphs and the black eye-band/punctuation-texture
+  issues removed; close subjective acceptance is still not claimed.
 
 ## Executed checks and results
 
@@ -154,10 +156,10 @@ to the Concourse.
 
 ```text
 PACKAGE_SMOKE = PASS; dist/overnight_expansion_package03/WRITEOVER-07-v0.1.0-pvs01-gold-win-x64.zip; PACKAGE_COMMIT=c760abd8c25dacd2b82f25e83ccffc2b1a4939ea; SIZE=531628
-RELEASE_BENCHMARK = PASS; release; PVS_RENDER_TIME_MS=0.711; PVS_TOTAL_FRAME_TIME_MS=1.292; OVERALL_BUDGET=PASS
+RELEASE_BENCHMARK = PASS; release; PVS_RENDER_TIME_MS=0.737; PVS_TOTAL_FRAME_TIME_MS=1.335; OVERALL_BUDGET=PASS; post-face local run
 ACT2_DEDICATED_REPLAY_FIXTURES = PASS_RECORDS_ROUTE; POWER_TRANSIT_OBSERVATION_FOCUSED_FIXTURES_OPEN
 FOREGROUND_TERMINAL_FACE_ACCEPTANCE = OPEN_SUBJECTIVE
-EXACT_PUSHED_HEAD_CI = PASS; run=34791383959; head=e933ad7cef2b82a1f807cf9b65c6d25776557690
+EXACT_PUSHED_HEAD_CI = PENDING_POST_FACE_REFINEMENT_PUSH
 PUBLIC_ALPHA_RELEASE = NOT_AUTHORIZED
 ```
 
