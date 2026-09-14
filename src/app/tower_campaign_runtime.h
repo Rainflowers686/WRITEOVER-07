@@ -43,6 +43,8 @@ public:
     std::string Objective(std::string_view room_id) const;
     std::string DirectoryLine(std::string_view current_room,
                               size_t selected_index) const;
+    std::vector<std::string> DirectoryRows(std::string_view current_room,
+                                           size_t selected_index) const;
     std::string CaseFile(std::string_view current_room,
                          size_t knowledge_count) const;
 

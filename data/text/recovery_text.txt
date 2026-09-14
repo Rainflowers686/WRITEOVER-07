@@ -51,7 +51,7 @@ text_intro_room_act2_records_archive	RECORDS / A clean file is still a choice.
 text_intro_room_act2_power_utility	UTILITY / The building is running on borrowed current.
 text_intro_room_act2_transit_control	TRANSIT / Present a route, or make one.
 text_intro_room_act2_observation_gallery	OBSERVATION / The cameras are patient. People are not.
-text_act2_concourse	Two corridors leave the transfer zone. The facility calls that redundancy.
+text_act2_concourse	Dispatch files a route. Records and Utility disagree about how to make one.
 text_act2_dispatch	Dispatch has three ways to describe your arrival. It has not chosen one.
 text_act2_records_operator	Operator: I can release the clean manifest. I cannot make it true.
 text_act2_records_operator_repeat	Operator: The clean passage is still available. Use it before someone edits it.
@@ -77,6 +77,9 @@ text_records_first_look	NARRATOR / Records does not ask who you are. It asks whi
 text_operations_first_look	OPERATIONS / The facility can respond to a person, a credential, or a gap in the cameras.
 text_network_discovery	NARRATOR / An unlisted feed is still a witness. Someone chose not to put it on the directory.
 text_transfer_warning	SECURITY / Upper transfer is not a corridor. It is a decision with a uniform around it.
-text_archive_reveal	NARRATOR / The executive archive contains no secret door. It contains a door everyone agreed not to mention.
+text_archive_reveal	The order that held you here also names its reviewer. You should read that part.
 text_authority_arrival	AUTHORITY / Your file has reached the level where correction and escape become different words.
 text_roof_epilogue	ROOF / The sky does not confirm the record. It only gives you somewhere else to stand.
+text_roof_amend	Your account is official now. The original remains in their custody.
+text_roof_disclose	Both versions are outside now. The facility no longer chooses who reads them.
+text_roof_breach	No signature. The file stays open. You do not have to stay with it.

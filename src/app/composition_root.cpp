@@ -36,6 +36,7 @@
 #include "src/app/interaction_runtime.h"
 #include "src/app/scene_runtime.h"
 #include "src/app/tower_campaign_runtime.h"
+#include "src/app/campaign_panel.h"
 #include "src/player/dynamic_collision.h"
 #include "src/app/runtime_paths.h"
 #include "writeover/platform/platform_api.h"
@@ -1157,6 +1158,9 @@ public:
     void SetClosureTextSource(std::function<std::string(size_t)> source) {
         closure_text_source_ = std::move(source);
     }
+    void SetCampaignPanelSource(std::function<std::vector<std::string>()> source) {
+        campaign_panel_source_ = std::move(source);
+    }
     void SetObjectivePresentationPrefix(std::string prefix) {
         objective_presentation_prefix_ = std::move(prefix);
     }
@@ -1572,18 +1576,21 @@ public:
         hud.grid_width = grid_w_;
         hud.grid_height = grid_h_;
         hud.developer_overlay = debug_overlay_;
-        hud.subtitle = settings_ == nullptr || settings_->subtitles
+        const auto campaign_panel = campaign_panel_source_
+            ? campaign_panel_source_() : std::vector<std::string>{};
+        hud.subtitle = campaign_panel.empty() && (settings_ == nullptr || settings_->subtitles)
                            ? subtitle_.c_str() : nullptr;
         hud_.Draw(body_.data(), width_, height_, hud);
         if (chapter_closure_source_ && chapter_closure_source_() && text_source_ &&
             width_ >= 48 && height_ >= 24) {
             // The durable checkpoint owns this quiet epilogue, including after
             // load. It does not pause input, invent a cutscene or run a timer.
-            const std::array<const char*, 3> lines{{"text_closure_title",
-                "text_closure_departure", "text_closure_status"}};
+            const std::array<const char*, 5> lines{{"text_closure_title",
+                "text_closure_departure", "text_closure_status", "", ""}};
             for (size_t row = 0; row < lines.size(); ++row) {
                 const std::string text = closure_text_source_
                     ? closure_text_source_(row) : text_source_(lines[row]);
+                if (text.empty()) continue;
                 const int count = std::min(static_cast<int>(text.size()), width_ - 8);
                 const int left = (width_ - count) / 2;
                 const int y = height_ / 5 + static_cast<int>(row) * 2;
@@ -1614,6 +1621,7 @@ public:
             DrawNarratorTypography(elapsed, reduce_flicker, reduce_shake);
             if (!paused) --narrator_intrusion_remaining_;
         }
+        DrawCampaignPanel(body_.data(), width_, height_, campaign_panel);
         backend_->Submit(body_.data(), width_, height_);
         last_render_game_frame_ = game_frame;
         has_rendered_game_frame_ = true;
@@ -1797,6 +1805,7 @@ private:
     std::function<std::string()> objective_source_;
     std::function<bool()> chapter_closure_source_;
     std::function<std::string(size_t)> closure_text_source_;
+    std::function<std::vector<std::string>()> campaign_panel_source_;
     std::function<std::string()> interaction_prompt_source_;
     std::string objective_presentation_prefix_;
     uint64_t last_render_game_frame_ = 0;
@@ -2487,7 +2496,7 @@ int RunComposition(const GameConfig& config) {
             }
             render->SetSubtitleOnce(services.player->Dead()
                                         ? "YOU ARE DOWN. F9 loads a checkpoint or restarts this room."
-                                        : "IMPACT. Health is now authoritative.",
+                                        : "UNDER FIRE / Break sight. Find cover.",
                                     services.player->Dead() ? 240 : 90,
                                     services.player->Dead() ? 100 : 80);
         });
@@ -3721,6 +3730,38 @@ int RunComposition(const GameConfig& config) {
     std::vector<TowerCampaignRuntime::EndingOption> ending_options;
     TowerCampaignRuntime::Ending selected_ending =
         TowerCampaignRuntime::Ending::Amend;
+    render->SetCampaignPanelSource([&]() -> std::vector<std::string> {
+        if (campaign_overlay == CampaignOverlay::Directory)
+            return campaign.DirectoryRows(services.player->CurrentRoom(), directory_selection);
+        if (campaign_overlay == CampaignOverlay::CaseFile) {
+            std::istringstream text(campaign.CaseFile(services.player->CurrentRoom(),
+                services.systemic->KnowledgeCount()));
+            std::vector<std::string> rows;
+            for (std::string line; std::getline(text, line);) rows.push_back(line);
+            return rows;
+        }
+        if (campaign_overlay == CampaignOverlay::Ending) {
+            std::vector<std::string> rows{"FINAL DECISION / SUBJECT 07",
+                ending_options.empty() ? "" : "> SELECTED: " +
+                    ending_options[std::min(directory_selection, ending_options.size() - 1)].title};
+            if (!ending_options.empty()) {
+                rows.push_back(ending_options[std::min(directory_selection,
+                    ending_options.size() - 1)].summary);
+            }
+            rows.push_back("F records this choice and takes you to Roof.");
+            for (size_t i = 0; i < ending_options.size(); ++i) {
+                rows.push_back(std::string(i == directory_selection ? "> " : "  ") +
+                    ending_options[i].title);
+                rows.push_back("  " + ending_options[i].summary);
+                rows.push_back("");
+            }
+            rows.push_back("These resolutions reflect your filed route and evidence.");
+            rows.push_back("F commits this resolution and takes you to Roof.");
+            rows.push_back("W/S SELECT   F CONFIRM   ESC CLOSE");
+            return rows;
+        }
+        return {};
+    });
     const auto set_campaign_fact = [&](const char* name) {
         services.world->SetBooleanFact(RuntimeFactId(name), slice.player, true);
     };
@@ -4113,7 +4154,7 @@ int RunComposition(const GameConfig& config) {
         if (services.player->CurrentRoom() == "room_roof_exit" &&
             fact_is_true("fact_campaign_completed")) {
             if (row == 0) {
-                return std::string("WRITEOVER-07 / COURSE PROJECT / CAMPAIGN COMPLETE");
+                return std::string("WRITEOVER-07 / CAMPAIGN COMPLETE");
             }
             if (row == 1) {
                 const std::string ending = fact_is_true("fact_ending_disclose")
@@ -4121,19 +4162,18 @@ int RunComposition(const GameConfig& config) {
                     : fact_is_true("fact_ending_breach")
                         ? "ENDING / BREACH - THE EXIT WAS FORCED"
                         : "ENDING / AMEND - THE RECORD WAS RECONCILED";
-                const std::string trace = fact_is_true("fact_act4_security_alerted")
-                    ? " / SECURITY TRACE ELEVATED"
-                    : fact_is_true("fact_act3_operations_cooperated")
-                        ? " / OPERATIONS TRACE COOPERATIVE"
-                        : " / SECURITY TRACE LOW EXPOSURE";
-                return ending + trace;
+                return ending;
             }
-            return services.narrative->Text("text_roof_epilogue") +
-                   "  F9 REPLAY CHECKPOINT  WALK TO DOOR: RETURN  ESC PAUSE / Q QUIT";
+            if (row == 2) return services.narrative->Text(
+                fact_is_true("fact_ending_disclose") ? "text_roof_disclose"
+                : fact_is_true("fact_ending_breach") ? "text_roof_breach" : "text_roof_amend");
+            if (row == 3) return std::string("F9 LOAD | ESC PAUSE, THEN Q QUIT");
+            return std::string("F1 CASE FILE | LIFT DOOR: RETURN");
         }
         if (row == 0) return services.narrative->Text("text_closure_title");
         if (row == 1) return services.narrative->Text("text_closure_departure");
-        return services.narrative->Text("text_closure_status");
+        if (row == 2) return services.narrative->Text("text_closure_status");
+        return std::string{};
     });
     render->SetObjectivePresentationPrefix("B1:");
     bool interaction_demonstrated = false;
@@ -4440,6 +4480,9 @@ int RunComposition(const GameConfig& config) {
         }
         if (room == "room_36f_authority_core") {
             if (focused_scene_entity("authority_decision_terminal")) {
+                if (fact_is_true("fact_campaign_completed")) {
+                    return std::string("[F] REVIEW RECORDED DECISION");
+                }
                 return fact_is_true("fact_pre_final_checkpoint")
                            ? std::string("[F] OPEN FINAL DECISION")
                            : std::string("[F] ESTABLISH FINAL CHECKPOINT");
@@ -4487,6 +4530,10 @@ int RunComposition(const GameConfig& config) {
             100000, 90);
     };
     const auto open_final_decision = [&] {
+        if (fact_is_true("fact_campaign_completed")) {
+            render->SetSubtitleOnce("This decision is already recorded. Your case file retains the outcome.", 240, 100);
+            return;
+        }
         ending_options = campaign.EligibleEndings();
         if (ending_options.empty()) {
             render->SetSubtitleOnce(
@@ -4590,7 +4637,7 @@ int RunComposition(const GameConfig& config) {
                     render->SetSubtitleOnce(
                         std::string("Decision recorded: ") +
                             TowerCampaignRuntime::EndingLabel(selected_ending) +
-                            ". Reach the roof.",
+                            ". You are outside the authorization chain.",
                         240, 105);
                 }
             }
@@ -5548,7 +5595,7 @@ int RunComposition(const GameConfig& config) {
             if (focused_scene_entity("records_subject_terminal")) {
                 if (use_act2_terminal(
                         slice.records_subject_terminal, "query_subject_07",
-                        "RECORDS: Subject 07 file opened. Authorization chain continues above.")) {
+                        "RECORDS / SUBJECT 07: release denied before revival. Review owner: Authority, 36F.")) {
                     set_campaign_fact("fact_act3_records_accessed");
                     set_campaign_fact("fact_act3_authority_lead");
                     set_campaign_fact("fact_elevator_operations_unlocked");
@@ -5564,7 +5611,7 @@ int RunComposition(const GameConfig& config) {
                 set_campaign_fact("fact_elevator_operations_unlocked");
                 add_campaign_knowledge(9401, KnowledgeAssetType::AccessProcedure, 0.82f);
                 render->SetSubtitleOnce(
-                    "Archivist: I can show you the chain. I cannot certify the name at its end.",
+                    "Archivist: Your release was denied before you woke. Not by Medical. The order came from 36F.",
                     240, 85);
                 return;
             }
@@ -5577,15 +5624,15 @@ int RunComposition(const GameConfig& config) {
         }
 
         if (services.player->CurrentRoom() == "room_12f_operations_control") {
+            const bool forced = fact_is_true("fact_chapter_aggressive_route") ||
+                                fact_is_true("fact_b1_loud_action") ||
+                                services.systemic->AlertLevel() >= FacilityAlertLevel::Suspicious;
             if (focused_scene_entity("operations_control_terminal")) {
                 if (use_act2_terminal(
                         slice.operations_control_terminal, "reconcile_operations",
                         "OPERATIONS: response map reconciled. A quiet route is available.")) {
                     set_campaign_fact("fact_act3_operations_accessed");
                     set_campaign_fact("fact_elevator_network_unlocked");
-                    const bool forced = fact_is_true("fact_chapter_aggressive_route") ||
-                                        fact_is_true("fact_b1_loud_action") ||
-                                        services.systemic->AlertLevel() >= FacilityAlertLevel::Suspicious;
                     if (forced) {
                         set_campaign_fact("fact_act3_force_route");
                         set_campaign_fact("fact_act4_security_alerted");
@@ -5609,9 +5656,9 @@ int RunComposition(const GameConfig& config) {
             if (focused_npc(NpcId::New(StableContentId("operations_operator")))) {
                 set_campaign_fact("fact_act3_operations_accessed");
                 set_campaign_fact("fact_elevator_network_unlocked");
-                if (fact_is_true("fact_chapter_aggressive_route") ||
-                    services.systemic->AlertLevel() >= FacilityAlertLevel::Suspicious) {
+                if (forced) {
                     set_campaign_fact("fact_act3_force_route");
+                    set_campaign_fact("fact_act4_security_alerted");
                     // Preserve a complete force route without making the
                     // optional Network discovery a hard prerequisite.
                     set_campaign_fact("fact_elevator_transfer_unlocked");
@@ -5621,7 +5668,7 @@ int RunComposition(const GameConfig& config) {
                 } else {
                     set_campaign_fact("fact_act3_operations_cooperated");
                     render->SetSubtitleOnce(
-                        "Operator: I left one corridor quiet. Do not turn it into a story.",
+                    "Operator: I've filed your transfer. Network has the feed they left out of your record.",
                         220, 85);
                 }
                 add_campaign_knowledge(9402, KnowledgeAssetType::Route, 0.8f);
@@ -5733,7 +5780,7 @@ int RunComposition(const GameConfig& config) {
                     render->SetSubtitleOnce("ARCHIVE: the executive record rejects this route.", 180, 95);
                 } else if (use_act2_terminal(
                                slice.executive_archive_terminal, "open_executive_record",
-                               "ARCHIVE: executive record opened. Authority Core is no longer sealed.")) {
+                               "ORDER 07: hold subject unresolved until they certify their own account. Review authority transfers to Subject 07.")) {
                     set_campaign_fact("fact_act4_archive_opened");
                     set_campaign_fact("fact_act4_authority_ready");
                     set_campaign_fact("fact_elevator_authority_unlocked");
@@ -5749,7 +5796,7 @@ int RunComposition(const GameConfig& config) {
                     set_campaign_fact("fact_elevator_authority_unlocked");
                     add_campaign_knowledge(9405, KnowledgeAssetType::Secret, 0.82f);
                     render->SetSubtitleOnce(
-                        "Liaison: The Authority Core will ask for a choice, not an explanation.",
+                        "Liaison: They need your signature to close the file. The order gives you authority to write it. Read it carefully.",
                         240, 85);
                 } else {
                     render->SetSubtitleOnce("Liaison: The archive is not open to an unfiled route.", 180, 90);
@@ -5783,7 +5830,7 @@ int RunComposition(const GameConfig& config) {
                 set_campaign_fact("fact_act4_authority_ready");
                 set_campaign_fact("fact_elevator_authority_unlocked");
                 render->SetSubtitleOnce(
-                    "Authority: You have brought the record to its last human-readable room.",
+                    "Authority: I can certify an account. I cannot make it what happened. The signature is yours.",
                     240, 90);
                 return;
             }
@@ -5798,12 +5845,9 @@ int RunComposition(const GameConfig& config) {
         if (services.player->CurrentRoom() == "room_roof_exit") {
             if (focused_scene_entity("roof_epilogue_marker")) {
                 set_campaign_fact("fact_roof_reached");
-                const char* epilogue = fact_is_true("fact_ending_disclose")
-                    ? "ROOF: The record left the facility before the facility could edit it."
-                    : fact_is_true("fact_ending_breach")
-                        ? "ROOF: The exit was forced. The record remains contested."
-                        : "ROOF: The record was reconciled. The response still leaves a trace.";
-                render->SetSubtitleOnce(epilogue, 240, 100);
+                render->SetSubtitleOnce(services.narrative->Text(
+                    fact_is_true("fact_ending_disclose") ? "text_roof_disclose"
+                    : fact_is_true("fact_ending_breach") ? "text_roof_breach" : "text_roof_amend"), 360, 100);
                 return;
             }
             render->SetSubtitleOnce("ROOF: the campaign is complete.", 180, 90);
