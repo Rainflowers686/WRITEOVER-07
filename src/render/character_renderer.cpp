@@ -537,7 +537,7 @@ CharCell WallCell(const OccludingSegment& segment, float surface_u,
         : WallGlyph(segment.material, segment.distance,
                     surface_u, surface_z, segment.flag);
     const float detail = glyph == U'░' || glyph == U'·' || glyph == U':'
-        ? 0.70f : 0.94f;
+        ? (service_housing ? 0.70f : 0.54f) : glyph == U'▒' ? 0.62f : 0.94f;
     const Color fg = ScaleColor(base, scale * bevel * height_light * detail, 196);
     const Color bg = ScaleColor(base, scale * 0.40f, 64);
     return MakeCell(glyph, fg, bg, glyph == U'╬' || glyph == U'═' ? 0x01 : 0);
@@ -581,7 +581,9 @@ Color ApplyFullHumanForegroundFloor(const CharacterArtAsset& asset,
 Color SpriteForeground(const CharacterArtAsset& asset, char32_t glyph,
                        float distance, uint8_t light,
                        const CharacterRenderOptions& options) {
-    const InkPalette palette = Palette(asset.ink);
+    const bool architectural = asset.sprite_kind == CharacterSpriteKind::Door ||
+        asset.sprite_kind == CharacterSpriteKind::DoorFrame;
+    const InkPalette palette = Palette(architectural ? CharacterInk::Security : asset.ink);
     const float depth = 0.52f + 0.48f * Saturate(1.0f - distance / 32.0f);
     const float light_level = 0.45f + 0.55f * (light / 255.0f);
     const Color shaded = ScaleColor(palette.base, depth * light_level *
@@ -651,6 +653,15 @@ Color SpriteBackground(const CharacterArtAsset& asset, char32_t glyph,
     // planes. Transparent space and occupied blanks keep their old semantics;
     // monochrome glyph silhouettes remain complete without this colour.
     const float depth = 0.72f + 0.28f * Saturate(1.0f - distance / 32.0f);
+    if (asset.sprite_kind == CharacterSpriteKind::Door ||
+        asset.sprite_kind == CharacterSpriteKind::DoorFrame) {
+        // Steel leaves and the recessed jamb remain joined masses. Glass and
+        // recess marks stay dark; authored seams/windows still read uncoloured.
+        if (glyph == U'░') return ScaleColor({51, 64, 69}, depth, 75);
+        if (glyph == U'▒') return ScaleColor({34, 45, 51}, depth, 65);
+        if (glyph == U'▓') return ScaleColor({18, 28, 34}, depth, 45);
+        return {5, 9, 14};
+    }
     if ((glyph == U'^' || glyph == U'&') &&
         (asset.ink == CharacterInk::FullHuman ||
          asset.ink == CharacterInk::Maintenance)) {
@@ -888,10 +899,12 @@ void DrawDoorPlane(const CameraProjection& camera,
                     const CharacterDepthBuffer& wall_depths,
                     CharacterDepthBuffer& sprite_depths,
                     const CharacterRenderOptions& options) {
+    const int source_width = asset.Width();
+    const int source_height = asset.Height();
     const float nx = std::cos(door.yaw);
     const float ny = std::sin(door.yaw);
-    const float width = door.height * static_cast<float>(asset.Width()) /
-        static_cast<float>(asset.Height()) * kCharacterCellAspect;
+    const float width = door.height * static_cast<float>(source_width) /
+        static_cast<float>(source_height) * kCharacterCellAspect;
     if (width <= 0.0f || door.height <= 0.0f) return;
     for (int x = 0; x < camera.screen_width; ++x) {
         const Vec3 direction = camera.HorizontalColumnDirection(x);
@@ -905,8 +918,8 @@ void DrawDoorPlane(const CameraProjection& camera,
             (hit.y - door.position.y) * nx) / width + 0.5f;
         if (u < 0.0f || u >= 1.0f) continue;
         // Doors can be viewed from either side without backwards lettering.
-        const int sx = std::min(asset.Width() - 1, static_cast<int>(
-            (denom > 0.0f ? u : 1.0f - u) * asset.Width()));
+        const int sx = std::min(source_width - 1, static_cast<int>(
+            (denom > 0.0f ? u : 1.0f - u) * source_width));
         const float horizontal_depth = camera.HorizontalDepth(hit);
         const float top = camera.ScreenYAtHorizontalDepth(
             door.position.z + door.height, horizontal_depth);
@@ -919,7 +932,7 @@ void DrawDoorPlane(const CameraProjection& camera,
         for (int y = first; y <= last; ++y) {
             const int sy = std::clamp(static_cast<int>(
                 (static_cast<float>(y) + 0.5f - top) / (bottom - top) *
-                    asset.Height()), 0, asset.Height() - 1);
+                    source_height), 0, source_height - 1);
             char32_t glyph = U' ';
             CharacterCellOpacity opacity = CharacterCellOpacity::Transparent;
             ResolveFacingCell(asset, sx, sy, CharacterFacing::Front, glyph, opacity);
@@ -937,7 +950,8 @@ void DrawDoorPlane(const CameraProjection& camera,
                 continue;
             }
             cells[index] = MakeCell(glyph,
-                SpriteForeground(asset, glyph, distance, 230, options), {5, 9, 14});
+                SpriteForeground(asset, glyph, distance, 230, options),
+                SpriteBackground(asset, glyph, distance));
             if (!frame_layer) sprite_depths[index] = distance;
         }
     }
@@ -989,7 +1003,10 @@ void DrawOneSprite(const CharacterView& view,
         fallback_facing = asset != nullptr && facing != CharacterFacing::Front;
         mirror_side = fallback_facing && facing == CharacterFacing::SideLeft;
     }
-    if (asset == nullptr || asset->Height() <= 0 || asset->Width() <= 0) return;
+    if (asset == nullptr) return;
+    const int source_width = asset->Width();
+    const int source_height = asset->Height();
+    if (source_height <= 0 || source_width <= 0) return;
 
     if (instance.kind == CharacterSpriteKind::Door ||
         instance.kind == CharacterSpriteKind::DoorFrame) {
@@ -1013,8 +1030,8 @@ void DrawOneSprite(const CharacterView& view,
     const int dst_h = std::clamp(static_cast<int>(std::lround(projected_height)),
                                  1, lod_cap);
     const int dst_w = std::max(1, static_cast<int>(std::lround(
-        static_cast<float>(asset->Width()) * dst_h /
-        static_cast<float>(asset->Height()))));
+        static_cast<float>(source_width) * dst_h /
+        static_cast<float>(source_height))));
     const float ground_raw = projection.ScreenY(instance.position);
     if (!std::isfinite(ground_raw)) return;
     // Every vertical placement uses the same effective scale as the capped
@@ -1041,18 +1058,18 @@ void DrawOneSprite(const CharacterView& view,
 
         const int local_x = x - left;
         int source_x = std::clamp(
-            static_cast<int>(static_cast<float>(local_x) * asset->Width() /
+            static_cast<int>(static_cast<float>(local_x) * source_width /
                              static_cast<float>(dst_w)),
-            0, asset->Width() - 1);
+            0, source_width - 1);
         if (fallback_facing && (facing == CharacterFacing::Back || mirror_side)) {
-            source_x = asset->Width() - 1 - source_x;
+            source_x = source_width - 1 - source_x;
         }
         for (int y = top; y <= bottom; ++y) {
             const int local_y = std::clamp(
                 static_cast<int>((static_cast<float>(y) - top_row) *
-                                 asset->Height() /
+                                 source_height /
                                  std::max(1.0f, bottom_row - top_row)),
-                0, asset->Height() - 1);
+                0, source_height - 1);
             char32_t glyph = U' ';
             CharacterCellOpacity opacity = CharacterCellOpacity::Transparent;
             ResolveFacingCell(*asset, source_x, local_y,

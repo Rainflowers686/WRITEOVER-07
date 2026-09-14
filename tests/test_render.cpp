@@ -672,6 +672,106 @@ bool TerminalDeltaSmallerThanFull() {
 }
 
 // Issue C: the encoder is deterministic for identical input.
+std::string ReferenceSgr(const CharCell& prev, const CharCell& cell) {
+    if (prev.fg_r == cell.fg_r && prev.fg_g == cell.fg_g && prev.fg_b == cell.fg_b &&
+        prev.bg_r == cell.bg_r && prev.bg_g == cell.bg_g && prev.bg_b == cell.bg_b &&
+        (prev.flags & 1) == (cell.flags & 1)) return {};
+    return std::string(cell.flags & 1 ? "\x1b[1m" : "\x1b[0m") +
+        "\x1b[38;2;" + std::to_string(cell.fg_r) + ";" + std::to_string(cell.fg_g) + ";" +
+        std::to_string(cell.fg_b) + "m\x1b[48;2;" + std::to_string(cell.bg_r) + ";" +
+        std::to_string(cell.bg_g) + ";" + std::to_string(cell.bg_b) + "m";
+}
+
+bool TerminalOptimizedEncodingPreservesBytes() {
+    // Independent decimal/UTF-8 oracle, including width boundaries and bold.
+    const std::pair<char32_t, std::string> glyphs[] = {
+        {U' ', " "}, {U'A', "A"}, {0x7F, "\x7f"}, {0x80, "\xc2\x80"},
+        {0x7FF, "\xdf\xbf"}, {0x800, "\xe0\xa0\x80"},
+        {0x2588, "\xe2\x96\x88"}, {0xFFFF, "\xef\xbf\xbf"},
+        {0x10000, "\xf0\x90\x80\x80"}, {0x10FFFF, "\xf4\x8f\xbf\xbf"}};
+    constexpr int width = 256;
+    std::vector<CharCell> frame(width * 2);
+    for (size_t i = 0; i < frame.size(); ++i) {
+        auto& c = frame[i];
+        c.code_point = glyphs[i % 10].first;
+        c.fg_r = static_cast<uint8_t>(i); c.fg_g = static_cast<uint8_t>(255 - i % 256);
+        c.fg_b = static_cast<uint8_t>(i * 3); c.bg_r = static_cast<uint8_t>(i * 5);
+        c.bg_g = static_cast<uint8_t>(i * 7); c.bg_b = static_cast<uint8_t>(i * 11);
+        c.flags = static_cast<uint8_t>(i % 4);
+        WO_CHECK(BuildSgr(CharCell{}, c) == ReferenceSgr(CharCell{}, c));
+        WO_CHECK(BuildSgr(c, c).empty());
+        WO_CHECK(CharCellToUtf8(glyphs[i % 10].first) == glyphs[i % 10].second);
+    }
+    const auto full = [&] {
+        std::string expected = "\x1b[H";
+        CharCell state = frame[0]; state.flags ^= 1;
+        for (int y = 0; y < 2; ++y) {
+            for (int x = 0; x < width; ++x) {
+                const size_t i = static_cast<size_t>(y * width + x);
+                expected += ReferenceSgr(state, frame[i]);
+                expected += glyphs[i % 10].second;
+                state = frame[i];
+            }
+            expected += '\n';
+        }
+        return expected + "\x1b[0m";
+    };
+    AnsiFrameEncoder encoder;
+    std::string output;
+    WO_CHECK(encoder.Encode(frame.data(), width, 2, output).full);
+    WO_CHECK(output == full());
+    // Disjoint runs, including both row edges; compare the complete payload.
+    const int indices[] = {0, 1, 17, 255, 256, 511};
+    for (int i : indices) frame[static_cast<size_t>(i)].fg_r ^= 0x80;
+    std::string expected;
+    for (size_t j = 0; j < 6;) {
+        const int start = indices[j];
+        expected += "\x1b[" + std::to_string(start / width + 1) + ";" +
+                    std::to_string(start % width + 1) + "H";
+        CharCell state = frame[static_cast<size_t>(start)]; state.flags ^= 1;
+        do {
+            const size_t i = static_cast<size_t>(indices[j]);
+            expected += ReferenceSgr(state, frame[i]);
+            expected += glyphs[i % 10].second;
+            state = frame[i];
+            ++j;
+        } while (j < 6 && indices[j] == indices[j - 1] + 1 && indices[j] / width == start / width);
+    }
+    output.clear();
+    WO_CHECK(!encoder.Encode(frame.data(), width, 2, output).full);
+    WO_CHECK(output == expected + "\x1b[0m");
+    output.clear();
+    WO_CHECK(encoder.Encode(frame.data(), width, 2, output).unchanged);
+    WO_CHECK(output.empty());
+    frame[0].fg_r ^= 0x80;
+    WO_CHECK(encoder.Encode(frame.data(), width, 2, output, EncodeMode::ForceFull).full);
+    WO_CHECK(output == full());
+    return true;
+}
+
+bool TerminalColorStateSurvivesRowsAndCursorMoves() {
+    CharCell red;
+    red.code_point = U'X'; red.fg_r = 180; red.fg_g = 50; red.fg_b = 30;
+    red.bg_r = 70; red.bg_g = 20; red.bg_b = 10;
+    std::vector<CharCell> frame{red, red, CharCell{}, CharCell{}};
+    AnsiFrameEncoder encoder;
+    std::string output;
+    encoder.Encode(frame.data(), 2, 2, output);
+    // A newline does not reset terminal SGR. The next row must explicitly
+    // restore white-on-black rather than inheriting the red row's background.
+    const std::string expected = "\x1b[H" + ReferenceSgr(CharCell{}, red) + "XX\n" +
+        ReferenceSgr(red, CharCell{}) + "  \n\x1b[0m";
+    WO_CHECK(output == expected);
+    frame[0] = CharCell{}; frame[0].code_point = U'W';
+    frame[3].code_point = U'W';
+    output.clear();
+    encoder.Encode(frame.data(), 2, 2, output);
+    CharCell unknown; unknown.flags = 1;
+    const std::string white = ReferenceSgr(unknown, CharCell{});
+    WO_CHECK(output == "\x1b[1;1H" + white + "W\x1b[2;2H" + white + "W\x1b[0m");
+    return true;
+}
+
 bool TerminalEncoderDeterministic() {
     const int w = 40, h = 10;
     std::vector<CharCell> frame(static_cast<size_t>(w) * h);
@@ -1865,6 +1965,8 @@ void RegisterRenderTests(TestHarness& test) {
     test.Add("terminal.unchanged_frame_emits_no_payload", &TerminalUnchangedFrameNoPayload);
     test.Add("terminal.delta_smaller_than_full_for_small_change", &TerminalDeltaSmallerThanFull);
     test.Add("terminal.encoder_deterministic", &TerminalEncoderDeterministic);
+    test.Add("terminal.optimized_byte_equivalence", &TerminalOptimizedEncodingPreservesBytes);
+    test.Add("terminal.color_state_across_rows_and_runs", &TerminalColorStateSurvivesRowsAndCursorMoves);
     test.Add("terminal.resize_forces_safe_full", &TerminalResizeForcesSafeFull);
     test.Add("terminal.delta_typical_is_actual_delta", &TerminalDeltaTypicalIsActualDelta);
 }

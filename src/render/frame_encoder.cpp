@@ -1,4 +1,5 @@
 #include "writeover/render/frame_encoder.h"
+#include "utf_append.h"
 
 #include <algorithm>
 #include <cmath>
@@ -7,33 +8,57 @@
 
 namespace writeover {
 
-std::string BuildSgr(const CharCell& prev, const CharCell& cell) {
+namespace {
+
+// RGB channels have at most three decimal digits; write directly into the
+// persistent payload instead of allocating a string for each color run.
+void AppendChannel(std::string& out, uint8_t value) {
+    if (value >= 100) out.push_back(static_cast<char>('0' + value / 100));
+    if (value >= 10) out.push_back(static_cast<char>('0' + (value / 10) % 10));
+    out.push_back(static_cast<char>('0' + value % 10));
+}
+
+// After reset or cursor movement the terminal's current colors are not the
+// CharCell defaults. Force one complete SGR at the beginning of each run.
+CharCell InitialSgrState(const CharCell& first) {
+    CharCell state = first;
+    state.flags ^= 1;
+    return state;
+}
+
+void AppendSgr(std::string& s, const CharCell& prev, const CharCell& cell) {
     if (prev.fg_r == cell.fg_r && prev.fg_g == cell.fg_g &&
         prev.fg_b == cell.fg_b && prev.bg_r == cell.bg_r &&
         prev.bg_g == cell.bg_g && prev.bg_b == cell.bg_b &&
         (prev.flags & 0x01) == (cell.flags & 0x01)) {
-        return {};
+        return;
     }
-    std::string s;
     if (cell.flags & 0x01) {
         s.append("\x1b[1m");
     } else {
         s.append("\x1b[0m");
     }
     s.append("\x1b[38;2;");
-    s.append(std::to_string(cell.fg_r));
+    AppendChannel(s, cell.fg_r);
     s.push_back(';');
-    s.append(std::to_string(cell.fg_g));
+    AppendChannel(s, cell.fg_g);
     s.push_back(';');
-    s.append(std::to_string(cell.fg_b));
+    AppendChannel(s, cell.fg_b);
     s.append("m");
     s.append("\x1b[48;2;");
-    s.append(std::to_string(cell.bg_r));
+    AppendChannel(s, cell.bg_r);
     s.push_back(';');
-    s.append(std::to_string(cell.bg_g));
+    AppendChannel(s, cell.bg_g);
     s.push_back(';');
-    s.append(std::to_string(cell.bg_b));
+    AppendChannel(s, cell.bg_b);
     s.append("m");
+}
+
+} // namespace
+
+std::string BuildSgr(const CharCell& prev, const CharCell& cell) {
+    std::string s;
+    AppendSgr(s, prev, cell);
     return s;
 }
 
@@ -70,16 +95,15 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
 
         // Full encode: home + every cell with color-run compression.
         out.append("\x1b[H");
-        CharCell state{};
+        CharCell state = InitialSgrState(frame[0]);
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 const CharCell& cell = frame[static_cast<size_t>(y) * width + x];
-                out.append(BuildSgr(state, cell));
-                out.append(CharCellToUtf8(cell.code_point));
+                AppendSgr(out, state, cell);
+                detail::AppendUtf8(out, cell.code_point);
                 state = cell;
             }
             out.push_back('\n');
-            state = CharCell{};
         }
         out.append("\x1b[0m");
         result.payload_bytes = out.size();
@@ -121,16 +145,15 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
     if (mode == EncodeMode::ForceFull || ratio > 0.50f) {
         result.full = true;
         out.append("\x1b[H");
-        CharCell state{};
+        CharCell state = InitialSgrState(frame[0]);
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 const CharCell& cell = frame[static_cast<size_t>(y) * width + x];
-                out.append(BuildSgr(state, cell));
-                out.append(CharCellToUtf8(cell.code_point));
+                AppendSgr(out, state, cell);
+                detail::AppendUtf8(out, cell.code_point);
                 state = cell;
             }
             out.push_back('\n');
-            state = CharCell{};
         }
         out.append("\x1b[0m");
         result.payload_bytes = out.size();
@@ -154,11 +177,11 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
                 out.push_back(';');
                 out.append(std::to_string(run_start + 1));
                 out.append("H");
-                CharCell state{};
+                CharCell state = InitialSgrState(frame[static_cast<size_t>(row_start + run_start)]);
                 for (int cx = run_start; cx < x; ++cx) {
                     const CharCell& cell = frame[static_cast<size_t>(row_start + cx)];
-                    out.append(BuildSgr(state, cell));
-                    out.append(CharCellToUtf8(cell.code_point));
+                    AppendSgr(out, state, cell);
+                    detail::AppendUtf8(out, cell.code_point);
                     state = cell;
                 }
                 run_start = -1;
@@ -170,11 +193,11 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
             out.push_back(';');
             out.append(std::to_string(run_start + 1));
             out.append("H");
-            CharCell state{};
+            CharCell state = InitialSgrState(frame[static_cast<size_t>(row_start + run_start)]);
             for (int cx = run_start; cx < width; ++cx) {
                 const CharCell& cell = frame[static_cast<size_t>(row_start + cx)];
-                out.append(BuildSgr(state, cell));
-                out.append(CharCellToUtf8(cell.code_point));
+                AppendSgr(out, state, cell);
+                detail::AppendUtf8(out, cell.code_point);
                 state = cell;
             }
         }

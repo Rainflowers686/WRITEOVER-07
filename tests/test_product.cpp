@@ -1,5 +1,6 @@
 #include "tests/test_harness.h"
 #include "src/app/player_product.h"
+#include "src/app/presentation_pulse.h"
 #include "src/app/player_perception.h"
 #include "src/app/campaign_panel.h"
 #include "src/app/product_save.h"
@@ -127,6 +128,44 @@ bool PanelScrollAndBounds() {
     std::vector<CharCell> small(40 * 12);
     DrawCampaignPanel(small.data(), 40, 12, rows);
     WO_CHECK(small.front().code_point == U'R');
+    PlayerProductRuntime product;
+    const Settings settings = Settings::Defaults();
+    product.Open(ProductPage::Pause);
+    product.selection = 12;
+    const auto menu = product.Rows(settings);
+    WO_CHECK(menu[1] == "  RESUME"); // stable position, not reordered to top
+    std::vector<CharCell> menu_cells(48 * 18);
+    DrawCampaignPanel(menu_cells.data(), 48, 18, menu);
+    std::string menu_text;
+    for (const auto& cell : menu_cells) menu_text += cell.code_point < 128
+        ? static_cast<char>(cell.code_point) : ' ';
+    WO_CHECK(menu_text.find("> QUIT") != std::string::npos);
+    WO_CHECK(menu_text.find("CONFIRM") != std::string::npos);
+    return true;
+}
+
+bool CosmeticTimingAndFrameLimit() {
+    PresentationPulse pulse;
+    pulse.Trigger(100, 12);
+    WO_CHECK(!pulse.Active(99));
+    // Render sampling frequency and repeated paused renders cannot consume it.
+    for (int repeat = 0; repeat < 20; ++repeat) WO_CHECK(pulse.Active(104));
+    WO_CHECK_EQ(pulse.Elapsed(108), 8);
+    WO_CHECK(!pulse.Active(112));
+    pulse.Extend(120, 10);
+    pulse.Extend(123, 1);
+    WO_CHECK(pulse.Active(129));
+    WO_CHECK(!pulse.Active(130));
+    pulse.Reset();
+    WO_CHECK(!pulse.Active(100)); // successful load clears future effects
+    PlayerProductRuntime product;
+    Settings settings = Settings::Defaults();
+    product.Open(ProductPage::Settings);
+    product.selection = 8;
+    for (int expected : {30, 60, 120, 0}) {
+        WO_CHECK(product.Handle(Press(GameAction::Interact), settings) == ProductCommand::SettingsChanged);
+        WO_CHECK_EQ(settings.frame_rate_cap, expected);
+    }
     return true;
 }
 bool PerceptionGeometry() {
@@ -219,6 +258,7 @@ void RegisterProductTests(TestHarness& harness) {
     harness.Add("product.held input release boundary", &HeldInputReleaseBoundary);
     harness.Add("product.bound controls and preferences", &BoundControlsAndPreferences);
     harness.Add("product.panel scroll and bounds", &PanelScrollAndBounds);
+    harness.Add("product.cosmetic timing and frame limit", &CosmeticTimingAndFrameLimit);
     harness.Add("product.perception geometry", &PerceptionGeometry);
     harness.Add("product.save role envelope", &SaveRoleEnvelope);
     harness.Add("character.open distance has no invented ceiling", &OpenDistanceHasNoInventedCeiling);

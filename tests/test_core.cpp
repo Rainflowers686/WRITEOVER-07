@@ -4,6 +4,7 @@
 #include "writeover/core/profile.h"
 #include "writeover/core/save.h"
 #include "writeover/core/settings.h"
+#include "src/core/presentation_cadence.h"
 
 #include <cstdio>
 #include <filesystem>
@@ -218,6 +219,36 @@ bool EngineHonorsPresentationCap() {
     return module.ticks == 8 && render.frames > 0 && render.frames < module.ticks;
 }
 
+bool PresentationDeadlineDoesNotChargeRenderTimeTwice() {
+    // Synthetic 120 Hz arrivals avoid host-speed assertions in CI. Rendering
+    // takes 2 ms, less than a tick. The former end-time gate undershoots each
+    // target even though the renderer easily fits inside the frame budget.
+    for (int cap : {30, 60, 120}) {
+        detail::PresentationCadence cadence;
+        int presented = 0;
+        int old_presented = 0;
+        double old_finish = 0.0;
+        for (int tick = 1; tick <= 240; ++tick) {
+            const double now = tick * (1000.0 / 120.0);
+            if (cadence.Due(now, static_cast<uint8_t>(cap))) ++presented;
+            if (now - old_finish + 0.1 >= 1000.0 / cap) {
+                ++old_presented;
+                old_finish = now + 2.0;
+            }
+        }
+        WO_CHECK_EQ(presented, cap * 2);
+        WO_CHECK(old_presented < presented);
+    }
+    detail::PresentationCadence cadence;
+    WO_CHECK(cadence.Due(0.0, 60));
+    WO_CHECK(!cadence.Due(2.0, 60));
+    WO_CHECK(cadence.Due(1000.0, 60));
+    WO_CHECK(!cadence.Due(1000.0, 60));
+    WO_CHECK(cadence.Due(1001.0, 30)); // changed cap takes effect immediately
+    WO_CHECK(cadence.Due(1002.0, 0));
+    return true;
+}
+
 bool EngineShutsDownRegisteredModules() {
     SimClock clock;
     EngineContext context;
@@ -278,6 +309,7 @@ void RegisterCoreTests(TestHarness& test) {
     test.Add("profile.round_trip", &ProfileRoundTrip);
     test.Add("engine.presents_once_per_fixed_step", &EnginePresentsOncePerFixedStep);
     test.Add("engine.presentation_cap_is_render_only", &EngineHonorsPresentationCap);
+    test.Add("engine.presentation_deadline_phase", &PresentationDeadlineDoesNotChargeRenderTimeTwice);
     test.Add("engine.shutdowns_modules_once", &EngineShutsDownRegisteredModules);
     test.Add("engine.request_stop_terminates_run", &EngineRequestStopTerminatesAndShutsDown);
 }

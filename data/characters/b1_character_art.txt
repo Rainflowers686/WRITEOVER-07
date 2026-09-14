@@ -1679,38 +1679,38 @@ end
 # the panel asset is drawn behind this jamb/header layer, so the result reads
 # as a wall opening with a fitted panel instead of a freestanding rectangle.
 sprite door_frame far prop
-  ╭───────╮
- ╱▒     ▒╲
- ║▒     ▒║
- ║▒     ▒║
- ║▒     ▒║
- ╰══╧═╧══╯
+┌─────────┐
+│▒▒▒▒▒▒▒▒▒│
+│▒       ▓│
+│▒       ▓│
+│▒       ▓│
+└─────────┘
 end
 
 sprite door_frame mid prop
-   ╭─────────╮
-  ╭┴─────────┴╮
- ║▒▒       ▒▒║
- ║▒▒       ▒▒║
- ║▒▒       ▒▒║
- ║▒▒       ▒▒║
- ║▒▒       ▒▒║
- ╚══╧═════╧══╝
+┌─────────────┐
+│▒▒▒▒▒▒▒▒▒▒▒▒▒│
+│▒           ▓│
+│▒           ▓│
+│▒           ▓│
+│▒           ▓│
+│▒           ▓│
+└─────────────┘
 end
 
 sprite door_frame near prop
-    ╭───────────╮
-   ╭┴───────────┴╮
-  ║▒▒         ▒▒║
-  ║▒▒         ▒▒║
-  ║▒▒         ▒▒║
-  ║▒▒         ▒▒║
-  ║▒▒         ▒▒║
-  ║▒▒         ▒▒║
-  ║▒▒         ▒▒║
-  ║▒▒         ▒▒║
-  ║▒▒         ▒▒║
-  ╚══╧═════════╧══╝
+┌─────────────────┐
+│▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│
+│▒               ▓│
+│▒               ▓│
+│▒               ▓│
+│▒               ▓│
+│▒               ▓│
+│▒               ▓│
+│▒               ▓│
+│▒               ▓│
+│▒               ▓│
+└─────────────────┘
 end
 
 sprite door far prop

@@ -38,6 +38,9 @@ The Controls page shows your actual settings.cfg bindings, including remaps.
 Sensitivity, volume, subtitles, contrast, reduced motion/flicker and sensory
 detail can be changed in the existing Settings page. History stays available
 when sensory messages are off. Terminal minimum for menus is 48 x 18 cells.
+Frame Limit cycles Auto / 30 / 60 / 120 in Settings. Auto presents at up to the
+existing 120 Hz simulation cadence; terminal/device speed can lower actual FPS.
+Flashes and narrative effects keep their game-time duration at every frame limit.
 
 Save and settings
 -----------------

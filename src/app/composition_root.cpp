@@ -38,6 +38,7 @@
 #include "src/app/tower_campaign_runtime.h"
 #include "src/app/campaign_panel.h"
 #include "src/app/player_product.h"
+#include "src/app/presentation_pulse.h"
 #include "src/app/product_save.h"
 #include "src/app/player_perception.h"
 #include "src/player/dynamic_collision.h"
@@ -1231,13 +1232,15 @@ public:
         subtitle_.clear();
         last_perceived_subtitle_.clear();
         last_traced_subtitle_.clear();
-        narrator_intrusion_remaining_ = 0;
+        narrator_intrusion_.Reset();
+        shot_flash_.Reset(); hit_flash_.Reset(); explosion_.Reset();
     }
     void TriggerNarratorIntrusion(uint64_t frames) {
-        narrator_intrusion_remaining_ = frames;
-        narrator_intrusion_total_ = frames;
+        narrator_intrusion_.Trigger(game_frame_source_ ? game_frame_source_() : 0, frames);
     }
-    bool NarratorTypographyActive() const { return narrator_intrusion_remaining_ > 0; }
+    bool NarratorTypographyActive() const {
+        return narrator_intrusion_.Active(game_frame_source_ ? game_frame_source_() : 0);
+    }
     void SetTextSource(std::function<std::string(const std::string&)> source) {
         text_source_ = std::move(source);
     }
@@ -1266,14 +1269,13 @@ public:
         locomotion_ = locomotion;
     }
     void TriggerShotFeedback(const ShotFeedback& feedback) {
-        shot_flash_remaining_ = 4;
-        shake_remaining_ = feedback.target_was_npc ? 7 : 4;
-        if (feedback.target_was_npc) hit_flash_remaining_ = 6;
-        if (feedback.target_died) explosion_remaining_ = 10;
+        const uint64_t frame = game_frame_source_ ? game_frame_source_() : 0;
+        shot_flash_.Trigger(frame, 4);
+        if (feedback.target_was_npc) hit_flash_.Trigger(frame, 6);
+        if (feedback.target_died) explosion_.Trigger(frame, 10);
     }
     void TriggerExplosion(uint64_t frames = 10) {
-        explosion_remaining_ = std::max(explosion_remaining_, frames);
-        shake_remaining_ = std::max(shake_remaining_, frames);
+        explosion_.Extend(game_frame_source_ ? game_frame_source_() : 0, frames);
     }
     const std::vector<CharCell>& Cells() const { return body_; }
 
@@ -1288,7 +1290,6 @@ public:
         const uint64_t game_frame = game_frame_source_
                                         ? game_frame_source_()
                                         : frame_index;
-        const bool paused = pause_source_ && pause_source_();
         std::fill(body_.begin(), body_.end(), CharCell{});
         if (!camera_override_ && locomotion_ != nullptr) {
             player_pos_ = locomotion_->position;
@@ -1480,10 +1481,7 @@ public:
                 : (game_frame % 96 < 48 ? PistolFrame::IdleA : PistolFrame::IdleB);
             DrawWeaponViewmodel(body_.data(), width_, height_, character_art_,
                                 active_slot, weapon_frame, recoil, render_options);
-            const bool advance_visual_time =
-                !paused && (!has_rendered_game_frame_ ||
-                            game_frame != last_render_game_frame_);
-            DrawVisualEffects(game_frame, advance_visual_time);
+            DrawVisualEffects(game_frame);
         }
         const uint64_t scene_frame = game_frame >= scene_enter_frame_
                                          ? game_frame - scene_enter_frame_ : 0;
@@ -1627,7 +1625,7 @@ public:
         if (settings_) for (auto& line : campaign_panel) line = ProductControlText(line, *settings_);
         hud.subtitle = campaign_panel.empty() && (settings_ == nullptr || settings_->subtitles)
                            ? subtitle_.c_str() : nullptr;
-        hud_.Draw(body_.data(), width_, height_, hud);
+        if (campaign_panel.empty()) hud_.Draw(body_.data(), width_, height_, hud);
         if (chapter_closure_source_ && chapter_closure_source_() && text_source_ &&
             width_ >= 48 && height_ >= 24) {
             // The durable checkpoint owns this quiet epilogue, including after
@@ -1653,7 +1651,7 @@ public:
                 }
             }
         }
-        if (narrator_intrusion_remaining_ > 0) {
+        if (narrator_intrusion_.Active(game_frame)) {
             const bool reduce_flicker = settings_ != nullptr && settings_->reduce_flicker;
             const bool reduce_shake = settings_ != nullptr && settings_->reduce_camera_shake;
             for (int yy = 0; yy < height_; ++yy) {
@@ -1663,10 +1661,8 @@ public:
                     c.fg_r = 64; c.fg_g = 42; c.fg_b = 66;
                 }
             }
-            const uint64_t elapsed = narrator_intrusion_total_ > narrator_intrusion_remaining_
-                                         ? narrator_intrusion_total_ - narrator_intrusion_remaining_ : 0;
+            const uint64_t elapsed = narrator_intrusion_.Elapsed(game_frame);
             DrawNarratorTypography(elapsed, reduce_flicker, reduce_shake);
-            if (!paused) --narrator_intrusion_remaining_;
         }
         if (product_ != nullptr && campaign_panel.empty() && settings_) {
             const auto feed_rows = product_->feed.Visible(game_frame, settings_->sensory_verbosity, subtitle_, objective_);
@@ -1685,8 +1681,6 @@ public:
         DrawCampaignPanel(body_.data(), width_, height_, campaign_panel,
             product_ && product_->Active() ? product_->scroll : panel_scroll_source_ ? panel_scroll_source_() : 0);
         backend_->Submit(body_.data(), width_, height_);
-        last_render_game_frame_ = game_frame;
-        has_rendered_game_frame_ = true;
     }
 
     const char* Name() const override { return "render"; }
@@ -1765,7 +1759,7 @@ private:
         const uint64_t units = static_cast<uint64_t>(length) * 35;
         const uint64_t shown = std::min(units,
             ((elapsed + 1) * units) /
-                std::max<uint64_t>(1, narrator_intrusion_total_));
+                std::max<uint64_t>(1, narrator_intrusion_.Duration()));
         const int shake = (!reduce_shake && (!reduce_flicker || elapsed % 7 != 0))
                               ? static_cast<int>(elapsed % 3) - 1 : 0;
 
@@ -1802,20 +1796,14 @@ private:
     }
     }
 
-    void DrawVisualEffects(uint64_t frame_index, bool advance_timers) {
+    void DrawVisualEffects(uint64_t frame_index) {
         const bool reduce_flicker = settings_ != nullptr && settings_->reduce_flicker;
         const bool reduce_shake = settings_ != nullptr && settings_->reduce_camera_shake;
         DrawCharacterEffects(body_.data(), width_, height_, frame_index,
-                             shot_flash_remaining_ > 0,
-                             hit_flash_remaining_ > 0,
-                             explosion_remaining_ > 0,
+                             shot_flash_.Active(frame_index),
+                             hit_flash_.Active(frame_index),
+                             explosion_.Active(frame_index),
                              reduce_flicker, reduce_shake);
-        if (advance_timers) {
-            if (shot_flash_remaining_ > 0) --shot_flash_remaining_;
-            if (hit_flash_remaining_ > 0) --hit_flash_remaining_;
-            if (explosion_remaining_ > 0) --explosion_remaining_;
-            if (shake_remaining_ > 0) --shake_remaining_;
-        }
     }
 
     std::unique_ptr<ITerminalBackend> backend_;
@@ -1847,12 +1835,10 @@ private:
     std::string last_perceived_subtitle_;
     uint64_t subtitle_override_until_ = 0;
     uint8_t subtitle_override_priority_ = 0;
-    uint64_t narrator_intrusion_remaining_ = 0;
-    uint64_t narrator_intrusion_total_ = 0;
-    uint64_t shot_flash_remaining_ = 0;
-    uint64_t hit_flash_remaining_ = 0;
-    uint64_t explosion_remaining_ = 0;
-    uint64_t shake_remaining_ = 0;
+    PresentationPulse narrator_intrusion_;
+    PresentationPulse shot_flash_;
+    PresentationPulse hit_flash_;
+    PresentationPulse explosion_;
     const GridCell* grid_cells_ = nullptr;
     int grid_w_ = 0;
     int grid_h_ = 0;
@@ -1873,8 +1859,6 @@ private:
     std::function<size_t()> panel_scroll_source_;
     std::function<std::string()> interaction_prompt_source_;
     std::string objective_presentation_prefix_;
-    uint64_t last_render_game_frame_ = 0;
-    bool has_rendered_game_frame_ = false;
     std::map<uint64_t, CharacterLod> lod_states_;
 };
 

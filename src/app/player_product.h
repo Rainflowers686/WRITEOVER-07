@@ -103,6 +103,7 @@ public:
 
     bool Active() const { return page != ProductPage::None; }
     void Open(ProductPage next) {
+        notice.clear();
         page = next; selection = next == ProductPage::Boot && !continue_available ? 1 : 0; scroll = 0;
         visited_pages |= 1u << static_cast<unsigned>(next);
     }
@@ -127,7 +128,9 @@ public:
                 std::string("REDUCE SHAKE / ") + (s.reduce_camera_shake ? "ON" : "OFF"),
                 std::string("REDUCE FLICKER / ") + (s.reduce_flicker ? "ON" : "OFF"),
                 "MOUSE SENSITIVITY / " + std::to_string(s.mouse_sensitivity),
-                "MASTER VOLUME / " + std::to_string(s.master_volume)};
+                "MASTER VOLUME / " + std::to_string(s.master_volume),
+                "FRAME LIMIT / " + (s.frame_rate_cap == 0 ? std::string("AUTO (UP TO 120)") :
+                    std::to_string(s.frame_rate_cap) + " FPS")};
         }
         return {};
     }
@@ -157,7 +160,10 @@ public:
         if (!pressed(GameAction::Interact)) return ProductCommand::None;
         if (page == ProductPage::Boot) {
             switch (selection) {
-            case 0: return continue_available ? ProductCommand::Continue : ProductCommand::None;
+            case 0:
+                if (continue_available) return ProductCommand::Continue;
+                notice = "No usable recent save. Choose New Game to begin.";
+                break;
             case 1: Open(ProductPage::NewGame); break;
             case 2: Open(ProductPage::Controls); break;
             case 3: Open(ProductPage::Settings); break;
@@ -168,15 +174,24 @@ public:
             case 0: if (!dead) { Close(); return ProductCommand::Resume; } break;
             case 1: return dead ? ProductCommand::None : ProductCommand::Save;
             case 2: return ProductCommand::Load;
-            case 3: return checkpoint_available ? ProductCommand::Checkpoint : ProductCommand::None;
-            case 4: return pre_final_available ? ProductCommand::PreFinal : ProductCommand::None;
+            case 3:
+                if (checkpoint_available) return ProductCommand::Checkpoint;
+                notice = "No checkpoint yet. Use Load Last Save or New Game.";
+                break;
+            case 4:
+                if (pre_final_available) return ProductCommand::PreFinal;
+                notice = "Final-choice recovery becomes available near the campaign ending.";
+                break;
             case 5: Close(); return ProductCommand::CaseFile;
             case 6: Open(ProductPage::History); break;
             case 7: Open(ProductPage::Dialogue); break;
             case 8: Open(ProductPage::Controls); break;
             case 9: Open(ProductPage::Settings); break;
             case 10: Open(ProductPage::NewGame); break;
-            case 11: if (completed) Open(ProductPage::Ending); break;
+            case 11:
+                if (completed) Open(ProductPage::Ending);
+                else notice = "No ending reached in this playthrough.";
+                break;
             default: return ProductCommand::Quit;
             }
         } else if (page == ProductPage::NewGame) {
@@ -192,6 +207,10 @@ public:
             case 5: settings.reduce_flicker = !settings.reduce_flicker; break;
             case 6: settings.mouse_sensitivity = static_cast<uint8_t>((settings.mouse_sensitivity + 10) % 110); break;
             case 7: settings.master_volume = static_cast<uint8_t>((settings.master_volume + 10) % 110); break;
+            case 8:
+                settings.frame_rate_cap = settings.frame_rate_cap == 0 ? 30 :
+                    settings.frame_rate_cap == 30 ? 60 : settings.frame_rate_cap == 60 ? 120 : 0;
+                break;
             default: break;
             }
             ++preference_changes;
@@ -208,8 +227,15 @@ public:
                 page == ProductPage::Settings ? "ACCESSIBILITY / CHANGES SAVE AUTOMATICALLY" :
                 page == ProductPage::NewGame ? "NEW GAME / RESET ALL LIVE PROGRESSION?" :
                 dead ? "YOU DIED / CHOOSE A RECOVERY POINT" : "PAUSED / " + location};
-            rows.push_back("> " + options[selection % options.size()]);
-            for (size_t i = 0; i < options.size(); ++i) if (i != selection) rows.push_back("  " + options[i]);
+            // Keep choices in a stable order; the panel follows the selection
+            // when a small terminal cannot show the whole list.
+            for (size_t i = 0; i < options.size(); ++i)
+                rows.push_back(std::string(i == selection % options.size() ? "> " : "  ") + options[i]);
+            if (page == ProductPage::Boot) {
+                rows.push_back("");
+                rows.push_back("FIRST VISIT? Controls shows your current bindings.");
+                rows.push_back("Explore, talk, and examine before committing to force.");
+            }
         } else if (page == ProductPage::History || page == ProductPage::Dialogue) {
             rows = feed.History(page == ProductPage::Dialogue);
         } else if (page == ProductPage::Inspect) {
