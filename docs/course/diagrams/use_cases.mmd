@@ -1,0 +1,31 @@
+flowchart LR
+    P["玩家"]
+    subgraph GAME["WRITEOVER 07 单机游戏"]
+      Start(["开始新游戏"])
+      Continue(["继续游戏"])
+      Explore(["探索"])
+      Inspect(["检视可见目标"])
+      Interact(["交互"])
+      Credential(["使用通行凭证"])
+      Terminal(["操作终端"])
+      Combat(["战斗"])
+      Case(["查看案件档案"])
+      Lift(["使用电梯目录"])
+      Save(["保存或读取"])
+      Ending(["选择可用结局"])
+      Settings(["调整语言设置与按键"])
+    end
+    P --- Start
+    P --- Continue
+    P --- Explore
+    P --- Inspect
+    P --- Interact
+    P --- Combat
+    P --- Case
+    P --- Save
+    P --- Ending
+    P --- Settings
+    Interact -. "具体交互场景" .-> Credential
+    Interact -. "具体交互场景" .-> Terminal
+    Interact -. "具体交互场景" .-> Lift
+    Continue -. "使用恢复文件" .-> Save

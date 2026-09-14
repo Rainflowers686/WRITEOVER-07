@@ -3,7 +3,8 @@
 PURPOSE = give Rain a compact, source-grounded explanation of the complete
 bounded campaign and the systems a presenter must understand
 
-BASELINE_HEAD = see POST_ULTRA_FINAL_HANDOFF.md for the current implementation.
+BASELINE_HEAD = post-audit closure supersedes POST_ULTRA_FINAL_HANDOFF.md;
+use FINAL_PRODUCT_CLOSURE_REPORT.md and the exact published candidate tag/receipt.
 Historical campaign head was a509e3fa6b9edcb0ff1392d4ae7eaa2de2a913d6;
 the earlier long hash in this field was incorrect.
 
@@ -286,5 +287,113 @@ directory. Do not present automated SVG exports as a human Terminal playtest.
 Demonstration order: show the old/new door exports, explain the color-state
 regression, then compare the identical benchmark workloads. Keep CPU benchmark
 time, a synthetic cadence test and measured human display FPS as three distinct
-claims. Tests are now 233 in each configuration; see POST_OPTIMIZATION_REVIEW.md
-and the current receipt for all route/package/CI evidence.
+claims. The optimization-stage count was 233; post-audit Release now has 245.
+Use the final candidate receipt for current route/package/CI evidence.
+
+## Post audit teaching notes
+
+The following sections supersede earlier product/save/localization descriptions
+where they differ. Production adapters are currently defined in
+`composition_root.cpp`; the similarly named `src/app/modules` files are not a
+substitute for tracing the actual `RunComposition` callbacks. Its registered
+simulation order is Input, Player, World, AI, Narrative, then independent render
+presentation. Core owns scheduling, not the concrete module graph.
+
+### Bilingual presentation and CJK
+
+Problem: translating source literals alone leaves dynamic footers and Chinese
+column widths wrong. Files: `presentation_text.h`, `text_layout.h`,
+`frame_encoder.cpp`, paired `data/text/interface.*.txt`, and recovery banks.
+Flow: validate paired IDs and bounded templates, retain canonical event payloads,
+then project at draw time. More specific templates precede generic suffixes.
+Wide heads and continuation cells share one displayed glyph. Design: language is
+a preference, not a gameplay fact. C++ concept: value containers, bounded arrays,
+transactional replacement and string views. Teacher question: does changing
+language replay the story? No. Thirty-second explanation: “We keep what happened
+separate from how it is written. Switching language redraws existing history;
+Chinese occupies display columns rather than UTF-8 byte counts.”
+
+### Sensory Feed and acquired records
+
+Problem: UI can leak hidden NPC state or future information after loading. Files:
+`perception_feed.h`, `player_perception.h`, `product_records.h`, composition callbacks.
+Flow: actual same-room/FOV/LOS perception produces bounded messages; known damage
+sources yield only rough direction. Records query KnowledgeAsset.known_by and the
+existing authority-review fact. Successful load clears transient history.
+Design: the feed never owns durable facts. C++ concept: deque with a 48-entry bound,
+predicate algorithms and read-only projections. Teacher question: does hiding a
+message erase an alarm? No. Thirty-second explanation: “The world owns the alarm.
+The feed only explains what the player could perceive, while Case File derives
+records from knowledge already acquired.”
+
+### Resize and pause reasons
+
+Problem: a shrinking terminal previously rejected oversized frames. Files:
+`terminal_surface.h`, `runtime_time_gate.h`, `terminal_backend.cpp`, `win_terminal.cpp`.
+Flow: refresh host dimensions, fit the requested canvas, update render and focus
+projection, invalidate delta history. Below 48×18 add a surface pause. On recovery
+remove only that reason. Design: no room or quest mutation on resize. C++ concept:
+interfaces and independent state predicates. Teacher question: will enlarging a
+paused window resume combat? Not while the menu pause remains. Thirty-second
+explanation: “Window size and user pause are separate conditions. We change the
+surface without accidentally changing the player's decision to pause.”
+
+### Save validation and rollback
+
+Problem: optional-tail parsing accepted a truncated Player as a healthy old save.
+Files: `player_save.h`, `combat.cpp`, `core/save.cpp`, load callbacks. Flow: explicit
+PLY2/version1 payload, bounded complete legacy reader, staged world/entity checks,
+commit, rollback on any injected stage failure. Outer schema is still1; current
+production writes seven sections, not all eight enum IDs. Design: reject malformed
+data instead of clamping it into plausibility. C++ concept: Result values, temporary
+objects, move semantics and RAII. Teacher question: why not update live state as
+each field is read? A later failure would leave a half-restored world. Thirty-second
+explanation: “Parsing succeeds into temporary objects first. We commit only a
+validated collection, and retain a snapshot for failure during final commit.”
+
+### Atomic file replacement
+
+Problem: deleting the destination before rename loses the old file if rename
+fails. Files: `common/io.cpp`, Windows `win_file_io.cpp`, `product_save.h`.
+Flow: write temp, invoke installed replace provider, report success/failure.
+POSIX rename replaces existing paths atomically; Windows installs MoveFileExW.
+Design: do not pre-delete the good file. A primary slot and resume remain separate
+writes with truthful partial-failure feedback. C++ concept: provider injection and
+error-code handling. Teacher question: is this a two-file database transaction?
+No. Thirty-second explanation: “Atomic replacement protects one file at a time.
+We explicitly report when only one of the two intended save roles was written.”
+
+### Product preferences and safe rebinding
+
+Problem: hidden inert fields and remaps can promise actions that do not work.
+Files: `player_product.h`, `product_keys.h`, `product_preferences.h`, `settings.cpp`.
+Flow: fresh press, conflict check, pending choice, confirmation, text persistence.
+Fixed menu navigation remains available. FOV, audio categories, inversion and HUD
+emphasis have real consumers; legacy gamepad/aim-assist/tactical-focus stay reserved.
+Design: small existing preference table, no new input framework. C++ concept:
+enumerations, fixed arrays and ownership-wrapping adapters. Teacher question: why
+keep menu arrows reserved? The player must always be able to cancel a bad remap.
+Thirty-second explanation: “We confirm edits and keep a safe route back. A visible
+setting must reach a real consumer, not merely change a number in a file.”
+
+### Validation tiers and release provenance
+
+Problem: repeating equivalent unit/route suites wastes time, while hardcoded old
+package names mislabel releases. Files: `run_qa.ps1`, `TEST_STRATEGY.md`,
+`release_metadata.py`, both workflows and package tools. Flow: focused tests while
+editing, full FAST_REQUIRED at stabilization, retained EXTENDED breadth; derive
+version/tag/names/notes once, verify tag equals source HEAD, validate packages,
+then authorized new Pre-release. Design: remove duplication, not workload or
+assertions. C++ concept to connect: deterministic fixtures make runtime behavior
+testable; build tooling is separate from game runtime. Teacher question: does a
+green cross-link mean a Kunpeng machine was tested? No. Thirty-second explanation:
+“Each receipt says what ran. Exact source, binary manifest and archive hash connect
+the tested program to the download, while real terminal/audio acceptance stays
+with humans.”
+
+## Course presentation material
+
+See `docs/course/COURSE_REPORT.md`, editable Mermaid diagrams, the ten-slide deck,
+`DEMO_5_MINUTES.md` and `HUMAN_PLAYTEST_CHECKLIST.md`. The report is editable Markdown
+as requested; no claim of a Word-rendered report is made. Member names, student
+IDs, attendance and real contributions remain for the members to confirm.

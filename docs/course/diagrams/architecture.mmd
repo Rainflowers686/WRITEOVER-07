@@ -1,0 +1,63 @@
+classDiagram
+    class Engine {
+      RegisterModule(IEngineModule*)
+      SetRenderModule(IRenderModule*)
+      Run(max_frames)
+    }
+    class IEngineModule {
+      <<interface>>
+      Init(context)
+      SimTick(clock)
+      Shutdown()
+    }
+    class IRenderModule {
+      <<interface>>
+      RenderFrame(frame, alpha)
+    }
+    class RunComposition {
+      <<composition root>>
+    }
+    class InputModule
+    class PlayerModule
+    class WorldModule
+    class AiModule
+    class NarrativeModule
+    class RenderModule
+    class AutonomousNpcSystem
+    class SystemicWorld
+    class TowerCampaignRuntime {
+      FactReader fact_reader
+      SelectableDestinations(room)
+      EligibleEndings()
+    }
+    class PlayerProductRuntime
+    class PerceptionFeed
+    class SaveManager {
+      SaveWorld(path, sections)
+      LoadWorld(path)
+    }
+    class ITerminalBackend {
+      <<interface>>
+      GetCaps()
+      Submit(cells, width, height)
+    }
+    RunComposition ..> Engine : wires
+    RunComposition ..> SaveManager : save callbacks
+    RunComposition ..> SystemicWorld : owns
+    RunComposition ..> TowerCampaignRuntime : injects fact reader
+    RunComposition ..> PlayerProductRuntime : owns
+    Engine --> IEngineModule : schedules nonowning
+    Engine --> IRenderModule : presents nonowning
+    IEngineModule <|.. InputModule
+    IEngineModule <|.. PlayerModule
+    IEngineModule <|.. WorldModule
+    IEngineModule <|.. AiModule
+    IEngineModule <|.. NarrativeModule
+    IRenderModule <|.. RenderModule
+    AiModule *-- AutonomousNpcSystem
+    AutonomousNpcSystem --> SystemicWorld : reads and writes
+    NarrativeModule ..> WorldModule : reads facts
+    TowerCampaignRuntime ..> WorldModule : injected query
+    RenderModule --> ITerminalBackend : owns backend
+    RenderModule ..> PlayerProductRuntime : presentation callbacks
+    RunComposition ..> PerceptionFeed : perceived events

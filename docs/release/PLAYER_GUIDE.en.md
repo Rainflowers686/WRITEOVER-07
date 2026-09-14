@@ -97,7 +97,7 @@ interaction emphasis, master and separate audio volumes. Current audio is
 procedural sound, not full voice acting. Device/platform support still applies;
 volume controls do not make Linux/macOS audio equivalent to Windows.
 
-Difficulty changes only damage received: Easy is approximately 75% of Normal,
+In combat, difficulty changes damage received: Easy is approximately 75% of Normal,
 Hard approximately 125%, with integer rounding. It does not change access,
 evidence or endings. Frame Limit offers Auto, 30, 60 and 120. Auto follows at most
 the existing 120 Hz simulation cadence; actual displayed FPS depends on your

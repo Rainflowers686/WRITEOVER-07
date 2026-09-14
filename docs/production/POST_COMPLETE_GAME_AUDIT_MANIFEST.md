@@ -1,5 +1,10 @@
 # WRITEOVER-07 — Frozen product/campaign audit manifest
 
+HISTORICAL_MANIFEST = pre-audit source and evidence, not the current candidate.
+CURRENT_AUTHORITY = FINAL_PRODUCT_CLOSURE_REPORT.md and release/VERSIONING.md.
+The post-audit closure supersedes its implementation/status claims. Original
+failure evidence and source inventory remain preserved below.
+
 MANIFEST_KIND = final-product-campaign-audit-input
 
 START_HEAD = 43083373a03b5583ae207001067cd866bdb9a2cc
@@ -150,9 +155,12 @@ CANDIDATE_PACKAGE_BYTES = 609629
 PACKAGE_GATES = clean positive smoke and three missing-resource negative probes PASS
 PACKAGE_DEV_GARBAGE = 0
 PACKAGE_USER_DATA_SEPARATION = PASS
-PACKAGE_RELEASE_STATUS = local audit candidate only; no tag or GitHub Release
+PACKAGE_RELEASE_STATUS = subsequently published unchanged as the historical
+candidate-0.1.0-complete-campaign-20260915 Pre-release; the former local-only
+statement described the state before that authorized publication.
 
-EXACT_HEAD_CI = final delivery receipt must match DELIVERY_HEAD; pending at authoring
+EXACT_HEAD_CI = historical delivery d5ef249, run 34872278294, all five jobs succeeded;
+the earlier pending-at-authoring text is superseded by that recorded receipt.
 CI_JOBS = Windows; Linux GCC; Linux Clang; macOS arm64; Linux ARM64 link
 COMPARISON_RUN = 34866959456 at 131556e: all five jobs succeeded, no retry.
 COMPARISON_MACOS = PVS_RENDER_TIME_MS=1.120; PVS_TOTAL_FRAME_TIME_MS=2.090.

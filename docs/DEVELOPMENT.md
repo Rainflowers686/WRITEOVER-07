@@ -15,7 +15,7 @@ cmake --build --preset release
 .\out\build\release\Release\writeover_app.exe --data-dir data
 ```
 
-以上是构建说明，本次文档整理没有执行这些命令。调试版本将 preset 改为 debug，程序位于 `out/build/debug/Debug/`。
+调试版本将 preset 改为 debug，程序位于 `out/build/debug/Debug/`。构建成功只说明这一配置可生成程序，不能替代战役、存档和包验证。
 
 Linux 和 macOS 的 preset 与构建目标见 [CMakePresets.json](../CMakePresets.json)。Windows 的原生输入、音频行为不能直接等同于 POSIX 终端实现。
 
@@ -40,6 +40,6 @@ Linux 和 macOS 的 preset 与构建目标见 [CMakePresets.json](../CMakePreset
 
 ## 验证与发布
 
-现有测试与检查入口包括 CTest、内容确定性检查、恢复回放、完整战役结局、场景矩阵、存档故障、包烟测和性能检查。具体覆盖及限制见审计清单；不要在仓库根直接运行会写测试 fixture 的单元程序，优先使用配置好的 CTest 工作目录。
+默认验证入口是 [FAST_REQUIRED](engineering/TEST_STRATEGY.md)，宽覆盖路线用 EXTENDED。它们包括 CTest、确定性内容、战役、存档故障、包烟测和原负载 benchmark，但不会证明真人观感。不要在仓库根直接运行会写测试 fixture 的单元程序，优先使用配置好的 CTest 工作目录。
 
-发布流程和当前旧自动化的限制见 [发布说明文档](release/RELEASE_PIPELINE.md)。不得把一次旧运行的通过结果用于证明后续代码改动已经通过。
+版本元数据、手动打包验证与新预发布流程见 [发布说明文档](release/RELEASE_PIPELINE.md)。不得把一次旧运行的通过结果用于证明后续代码改动已经通过。
