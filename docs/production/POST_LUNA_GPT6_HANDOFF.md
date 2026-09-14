@@ -111,7 +111,8 @@ subjective boundary. This is not a photorealism claim.
   first-time human playthrough and focused Power/Observation/Transit fixtures
   remain.
 - Local package smoke and Release benchmark pass at the current documentation
-  baseline; exact pushed-head CI remains to be refreshed after the normal push.
+  baseline. The pushed head `a1feb5c160eb91ba0980f5d156ee3cac2550f698` also
+  has an exact-head CI PASS (run `34790805997`).
 
 ## REMAINING_OBJECTIVE_WORK
 
