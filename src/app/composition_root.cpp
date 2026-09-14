@@ -40,6 +40,7 @@
 #include "src/app/player_product.h"
 #include "src/app/presentation_pulse.h"
 #include "src/app/product_save.h"
+#include "src/app/player_save.h"
 #include "src/app/player_perception.h"
 #include "src/player/dynamic_collision.h"
 #include "src/app/runtime_paths.h"
@@ -3247,29 +3248,10 @@ int RunComposition(const GameConfig& config) {
     std::function<bool(const SceneTransition&)> transition_allowed;
 
     auto serialize_player = [&]() {
-        std::vector<uint8_t> bytes;
-        Serializer s(bytes);
-        s.WriteString(services.player->CurrentRoom());
-        const LocomotionState& loco = services.player->Locomotion();
-        s.WriteF32(loco.position.x);
-        s.WriteF32(loco.position.y);
-        s.WriteF32(loco.position.z);
-        s.WriteF32(loco.velocity.x);
-        s.WriteF32(loco.velocity.y);
-        s.WriteF32(loco.velocity.z);
-        s.WriteF32(loco.yaw);
-        s.WriteF32(loco.pitch);
-        s.WriteU8(static_cast<uint8_t>(loco.posture));
-        s.WriteU8(static_cast<uint8_t>(loco.traversal));
-        s.WriteU8(static_cast<uint8_t>(loco.lean));
-        s.WriteU8(loco.contact.grounded ? 1 : 0);
-        s.WriteU8(loco.contact.on_ladder ? 1 : 0);
-        s.WriteU8(loco.contact.on_climbable ? 1 : 0);
-        SerializeCombatState(s, services.player->Combat());
-        s.WriteU16(services.player->Health());
-        s.WriteU8(services.player->Dead() ? 1 : 0);
-        s.WriteU16(loco.jump_cooldown_frames);
-        return bytes;
+        return SerializePlayerSave(
+            {services.player->CurrentRoom(), services.player->Locomotion(),
+             services.player->Combat(), services.player->Health(), services.player->Dead()},
+            static_cast<uint32_t>(services.player->CurrentFrame()));
     };
 
     services.player->SetSaveCallback([&] {
@@ -3309,17 +3291,12 @@ int RunComposition(const GameConfig& config) {
             render->SetSubtitleOnce("Save failed: user data unavailable.", 180);
             return;
         }
-        SaveManager save;
-        const auto res = save.SaveWorld((save_dir / ProductSaveName(role)).string(), sections);
-        replay_save_ok = res.IsOk();
-        if (res.IsOk()) {
-            const auto resume = save.SaveWorld((save_dir / "pvs_resume").string(), sections);
-            replay_save_ok = resume.IsOk();
-        }
+        const auto written = WriteProductSaveRoles(save_dir, role, sections);
+        replay_save_ok = written.primary_saved && written.resume_saved;
         product.continue_available = ProductSaveEnvelopeValid(save_dir / ProductResumeName(save_dir));
         product.checkpoint_available = ProductSaveEnvelopeValid(save_dir / "pvs_checkpoint");
         product.pre_final_available = ProductSaveEnvelopeValid(save_dir / "pvs_pre_final");
-        render->SetSubtitleOnce(!replay_save_ok ? (res.IsOk()
+        render->SetSubtitleOnce(!replay_save_ok ? (written.primary_saved
             ? "Recovery slot written; Continue update failed. Check user-data access."
             : "Save failed. Previous recovery files are retained.") :
             role == ProductSaveRole::Manual ? "Manual save recorded." :
@@ -3523,71 +3500,16 @@ int RunComposition(const GameConfig& config) {
             fail_load(text);
         };
         {
-            Deserializer d(player_section->data.data(), player_section->data.size());
-            const uint32_t room_len = d.ReadU32();
-            if (d.HasError() || room_len > 128 || room_len > d.Remaining()) {
-                fail_load("Load failed: invalid player room."); return;
-            }
-            restored_room.resize(room_len);
-            if (room_len > 0) d.ReadBytes(restored_room.data(), room_len);
-            restored_loco.position.x = d.ReadF32();
-            restored_loco.position.y = d.ReadF32();
-            restored_loco.position.z = d.ReadF32();
-            restored_loco.velocity.x = d.ReadF32();
-            restored_loco.velocity.y = d.ReadF32();
-            restored_loco.velocity.z = d.ReadF32();
-            restored_loco.yaw = d.ReadF32();
-            restored_loco.pitch = d.ReadF32();
-            const uint8_t posture = d.ReadU8();
-            const uint8_t traversal = d.ReadU8();
-            const uint8_t lean = d.ReadU8();
-            const uint8_t grounded = d.ReadU8();
-            const uint8_t ladder = d.ReadU8();
-            const uint8_t climbable = d.ReadU8();
-            DeserializeCombatState(d, restored_combat);
-            // Older local saves did not carry player health.  Treat their
-            // absent field as a live full-health checkpoint while validating
-            // the new fields whenever present.
-            if (!d.AtEnd()) {
-                restored_health = d.ReadU16();
-                const uint8_t dead = d.ReadU8();
-                if (dead > 1) {
-                    fail_load("Load failed: invalid player health state."); return;
-                }
-                restored_dead = dead != 0;
-            }
-            // Older local saves have no jump-cooldown tail.  Their restored
-            // cooldown is intentionally reset rather than inherited from
-            // the live player; current saves carry the authoritative value.
-            restored_loco.jump_cooldown_frames = 0;
-            if (!d.AtEnd()) {
-                restored_loco.jump_cooldown_frames = d.ReadU16();
-            }
-            if (grounded > 1 || ladder > 1 || climbable > 1 || d.HasError() || !d.AtEnd() ||
-                posture > static_cast<uint8_t>(Posture::Prone) ||
-                traversal > static_cast<uint8_t>(Traversal::Mantle) ||
-                lean > static_cast<uint8_t>(Lean::Right) ||
-                static_cast<uint8_t>(restored_combat.slot) >= kWeaponSlotCount ||
-                !std::isfinite(restored_loco.position.x) ||
-                !std::isfinite(restored_loco.position.y) ||
-                !std::isfinite(restored_loco.position.z) ||
-                !std::isfinite(restored_loco.velocity.x) ||
-                !std::isfinite(restored_loco.velocity.y) ||
-                !std::isfinite(restored_loco.velocity.z) ||
-                 !std::isfinite(restored_loco.yaw) || !std::isfinite(restored_loco.pitch) ||
-                 !std::isfinite(restored_combat.spread_factor) ||
-                 restored_combat.spread_factor < 0.0f || restored_combat.spread_factor > 1.0f ||
-                 restored_loco.jump_cooldown_frames > kJumpCooldownFrames ||
-                 restored_health > 100 ||
-                 (restored_dead && restored_health != 0)) {
+            PlayerSaveData staged;
+            if (!ParsePlayerSave(player_section->data,
+                    static_cast<uint32_t>(services.player->CurrentFrame()), staged)) {
                 fail_load("Load failed: invalid player state."); return;
             }
-            restored_loco.posture = static_cast<Posture>(posture);
-            restored_loco.traversal = static_cast<Traversal>(traversal);
-            restored_loco.lean = static_cast<Lean>(lean);
-            restored_loco.contact.grounded = grounded != 0;
-            restored_loco.contact.on_ladder = ladder != 0;
-            restored_loco.contact.on_climbable = climbable != 0;
+            restored_room = std::move(staged.room);
+            restored_loco = staged.locomotion;
+            restored_combat = staged.combat;
+            restored_health = staged.health;
+            restored_dead = staged.dead;
         }
         {
             const auto restored = SystemicWorld::Deserialize(

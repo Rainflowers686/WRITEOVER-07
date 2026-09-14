@@ -3,6 +3,7 @@
 #include "writeover/common/math.h"
 
 #include <cmath>
+#include <algorithm>
 
 namespace writeover {
 
@@ -144,18 +145,47 @@ void SerializeCombatState(Serializer& s, const CombatState& c) {
 }
 
 void DeserializeCombatState(Deserializer& d, CombatState& c) {
-    c.slot = static_cast<WeaponSlot>(d.ReadU8());
-    for (auto& ammo : c.ammo_in_mag) {
+    CombatState staged;
+    staged.slot = static_cast<WeaponSlot>(d.ReadU8());
+    for (auto& ammo : staged.ammo_in_mag) {
         ammo = d.ReadU16();
     }
-    for (auto& res : c.reserve) {
+    for (auto& res : staged.reserve) {
         res = d.ReadU16();
     }
-    c.reload_frames_left = d.ReadU32();
-    c.next_fire_frame = d.ReadU32();
-    c.last_shot_frame = d.ReadU32();
-    c.aiming = d.ReadU8() != 0;
-    c.spread_factor = d.ReadF32();
+    staged.reload_frames_left = d.ReadU32();
+    staged.next_fire_frame = d.ReadU32();
+    staged.last_shot_frame = d.ReadU32();
+    const uint8_t aiming = d.ReadU8();
+    staged.aiming = aiming != 0;
+    staged.spread_factor = d.ReadF32();
+    const size_t slot = static_cast<size_t>(staged.slot);
+    if (d.HasError() || slot >= kWeaponSlotCount || aiming > 1 ||
+        !std::isfinite(staged.spread_factor) || staged.spread_factor < 0.0f ||
+        staged.spread_factor > 1.0f) {
+        d.MarkError(); return;
+    }
+    const auto& weapons = DefaultWeapons();
+    uint32_t longest_cooldown = 0;
+    for (size_t i = 0; i < kWeaponSlotCount; ++i) {
+        if (staged.ammo_in_mag[i] > weapons[i].ammo_per_mag ||
+            staged.reserve[i] > weapons[i].reserve_capacity) {
+            d.MarkError(); return;
+        }
+        longest_cooldown = std::max(longest_cooldown, static_cast<uint32_t>(
+            kFramesPerSecond / weapons[i].fire_rate_hz + 0.5f));
+    }
+    const uint32_t max_reload = static_cast<uint32_t>(
+        weapons[slot].reload_seconds * kFramesPerSecond + 0.5f);
+    // A slot change cancels reload in PlayerModule. The selected slot is the
+    // transaction owner; a full magazine or empty reserve cannot be reloading.
+    if (staged.reload_frames_left > max_reload ||
+        (staged.reload_frames_left != 0 &&
+         (staged.ammo_in_mag[slot] == weapons[slot].ammo_per_mag || staged.reserve[slot] == 0)) ||
+        static_cast<uint32_t>(staged.next_fire_frame - staged.last_shot_frame) > longest_cooldown) {
+        d.MarkError(); return;
+    }
+    c = staged;
 }
 
 } // namespace writeover

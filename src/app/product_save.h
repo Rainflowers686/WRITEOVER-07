@@ -17,6 +17,22 @@ inline const char* ProductSaveName(ProductSaveRole role) {
     default: return "pvs_manual";
     }
 }
+
+struct ProductSaveWriteResult {
+    bool primary_saved = false;
+    bool resume_saved = false;
+};
+inline ProductSaveWriteResult WriteProductSaveRoles(
+    const std::filesystem::path& directory, ProductSaveRole role,
+    const std::vector<SaveSection>& sections) {
+    SaveManager save;
+    ProductSaveWriteResult result;
+    result.primary_saved = save.SaveWorld((directory / ProductSaveName(role)).string(), sections).IsOk();
+    if (result.primary_saved) {
+        result.resume_saved = save.SaveWorld((directory / "pvs_resume").string(), sections).IsOk();
+    }
+    return result; // individually atomic; secondary failure never rewinds/deletes the primary
+}
 // This is menu availability, not semantic load authority. Actual Continue uses
 // the existing full staged validation/rollback path and can report a safe error.
 inline bool ProductSaveEnvelopeValid(const std::filesystem::path& base) {

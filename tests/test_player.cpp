@@ -10,11 +10,54 @@
 
 #include <cmath>
 #include <cstdio>
+#include <limits>
 #include <vector>
 
 namespace writeover {
 
 namespace {
+
+bool CombatRejectsInvalidSave() {
+    const auto accepted = [](const CombatState& value, int aiming_byte = -1) {
+        std::vector<uint8_t> bytes;
+        Serializer s(bytes);
+        SerializeCombatState(s, value);
+        constexpr size_t kAimingOffset = 1 + 2 * kWeaponSlotCount * 2 + 3 * 4;
+        if (aiming_byte >= 0) bytes[kAimingOffset] = static_cast<uint8_t>(aiming_byte);
+        CombatState restored;
+        Deserializer d(bytes.data(), bytes.size());
+        DeserializeCombatState(d, restored);
+        return !d.HasError() && d.AtEnd();
+    };
+    CombatState good;
+    WO_CHECK(accepted(good));
+    for (size_t i = 0; i < kWeaponSlotCount; ++i) {
+        CombatState invalid = good;
+        invalid.ammo_in_mag[i] = 65535;
+        WO_CHECK(!accepted(invalid));
+        invalid = good;
+        invalid.reserve[i] = 65535;
+        WO_CHECK(!accepted(invalid));
+    }
+    CombatState invalid = good;
+    invalid.slot = static_cast<WeaponSlot>(255);
+    WO_CHECK(!accepted(invalid));
+    invalid = good; invalid.reload_frames_left = 1; // full magazine cannot reload
+    WO_CHECK(!accepted(invalid));
+    invalid = good; invalid.ammo_in_mag[0] = 0; invalid.reload_frames_left = 100000;
+    WO_CHECK(!accepted(invalid));
+    invalid = good; invalid.next_fire_frame = 100000;
+    WO_CHECK(!accepted(invalid));
+    invalid = good; invalid.spread_factor = std::numeric_limits<float>::quiet_NaN();
+    WO_CHECK(!accepted(invalid));
+    invalid.spread_factor = 1.1f;
+    WO_CHECK(!accepted(invalid));
+    WO_CHECK(!accepted(good, 2));
+    good.ammo_in_mag[0] = 0;
+    StartReload(good, WeaponSlot::Pistol, DefaultWeapons()[0]);
+    WO_CHECK(accepted(good));
+    return true;
+}
 
 Grid MakeOpenGrid(int w = 6, int h = 6) {
     Grid grid(w, h);
@@ -627,6 +670,7 @@ bool SettingsMapperConsistent() {
 } // namespace
 
 void RegisterPlayerTests(TestHarness& test) {
+    test.Add("player.combat_save_rejects_invalid", &CombatRejectsInvalidSave);
     test.Add("player.posture_clearance", &PostureClearance);
     test.Add("player.locomotion_orthogonal", &LocomotionStateOrthogonal);
     test.Add("player.integrate_move_blocked", &IntegrateMoveBlocked);

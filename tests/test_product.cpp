@@ -4,11 +4,96 @@
 #include "src/app/player_perception.h"
 #include "src/app/campaign_panel.h"
 #include "src/app/product_save.h"
+#include "src/app/player_save.h"
 #include "writeover/render/character_renderer.h"
 #include "writeover/world/room.h"
 
 namespace writeover {
 namespace {
+Result<void> FailSelectedSaveReplace(const std::string& tmp, const std::string& dest, void* selected) {
+    if (std::filesystem::path(dest).filename().string() == *static_cast<std::string*>(selected)) {
+        return Result<void>::Err(1, "injected selected role failure");
+    }
+    std::error_code error;
+    std::filesystem::rename(tmp, dest, error);
+    return error ? Result<void>::Err(2, "test replacement failed") : Result<void>::Ok();
+}
+bool SaveRolePartialFailurePreservesFiles() {
+    std::filesystem::path directory;
+    for (int i = 0; i < 100; ++i) {
+        const auto candidate = std::filesystem::temp_directory_path() /
+            ("writeover_roles_regression_" + std::to_string(i));
+        std::error_code ec;
+        if (std::filesystem::create_directory(candidate, ec)) { directory = candidate; break; }
+    }
+    WO_CHECK(!directory.empty());
+    const std::vector<SaveSection> old_sections{{SaveSectionId::Player, {1}}};
+    const std::vector<SaveSection> new_sections{{SaveSectionId::Player, {2}}};
+    SaveManager save;
+    WO_CHECK(WriteProductSaveRoles(directory, ProductSaveRole::PreFinal, old_sections).resume_saved);
+    WO_CHECK(WriteProductSaveRoles(directory, ProductSaveRole::Manual, old_sections).resume_saved);
+    std::string failure = "pvs_resume.wo07";
+    SetAtomicReplaceProvider({&FailSelectedSaveReplace, &failure});
+    const auto partial = WriteProductSaveRoles(directory, ProductSaveRole::Manual, new_sections);
+    const auto primary = save.LoadWorld((directory / "pvs_manual").string());
+    const auto resume = save.LoadWorld((directory / ProductResumeName(directory)).string());
+    const auto prefinal = save.LoadWorld((directory / "pvs_pre_final").string());
+    const bool retained_tmp = std::filesystem::exists(directory / "pvs_resume.wo07.tmp");
+    failure = "pvs_manual.wo07";
+    const auto primary_failure = WriteProductSaveRoles(directory, ProductSaveRole::Manual, old_sections);
+    const auto primary_after = save.LoadWorld((directory / "pvs_manual").string());
+    SetAtomicReplaceProvider({}); // restore before any failing assertion
+    std::error_code ec;
+    for (const auto* name : {"pvs_manual.wo07", "pvs_manual.wo07.tmp", "pvs_resume.wo07",
+                            "pvs_resume.wo07.tmp", "pvs_pre_final.wo07"}) {
+        std::filesystem::remove(directory / name, ec);
+    }
+    std::filesystem::remove(directory, ec);
+    WO_CHECK(partial.primary_saved && !partial.resume_saved && retained_tmp);
+    WO_CHECK(primary.IsOk() && primary.Value()[0].data == std::vector<uint8_t>{2});
+    WO_CHECK(resume.IsOk() && resume.Value()[0].data == std::vector<uint8_t>{1});
+    WO_CHECK(prefinal.IsOk() && prefinal.Value()[0].data == std::vector<uint8_t>{1});
+    WO_CHECK(!primary_failure.primary_saved && !primary_failure.resume_saved);
+    WO_CHECK(primary_after.IsOk() && primary_after.Value()[0].data == std::vector<uint8_t>{2});
+    return true;
+}
+bool PlayerPayloadVersionsAndTruncation() {
+    PlayerSaveData source;
+    source.room = "room_b1_revival";
+    source.health = 63;
+    source.locomotion.position = Vec3{2, 3, 0};
+    source.locomotion.jump_cooldown_frames = 12;
+    source.combat.next_fire_frame = 115;
+    source.combat.last_shot_frame = 100;
+    const auto bytes = SerializePlayerSave(source, 105);
+    PlayerSaveData restored;
+    WO_CHECK(ParsePlayerSave(bytes, 2, restored));
+    WO_CHECK_EQ(restored.health, 63);
+    WO_CHECK_EQ(restored.combat.next_fire_frame, 12);
+    WO_CHECK_EQ(restored.locomotion.jump_cooldown_frames, 12);
+    WO_CHECK(SerializePlayerSave(restored, 2) == bytes);
+    for (size_t length = 0; length < bytes.size(); ++length) {
+        const std::vector<uint8_t> truncated(bytes.begin(), bytes.begin() + length);
+        WO_CHECK(!ParsePlayerSave(truncated, 2, restored));
+        WO_CHECK_EQ(restored.health, 63); // failed parse never commits staged state
+    }
+    auto corrupt = bytes;
+    corrupt[4] = 99; // explicit U16 payload version follows the U32 marker
+    WO_CHECK(!ParsePlayerSave(corrupt, 2, restored));
+    corrupt = bytes; corrupt.push_back(0);
+    WO_CHECK(!ParsePlayerSave(corrupt, 2, restored));
+    const std::vector<uint8_t> legacy(bytes.begin() + kPlayerPayloadHeaderBytes, bytes.end());
+    WO_CHECK(ParsePlayerSave(legacy, 2, restored));
+    WO_CHECK_EQ(restored.health, 63);
+    for (size_t missing = 1; missing <= 5; ++missing) {
+        const std::vector<uint8_t> truncated(legacy.begin(), legacy.end() - missing);
+        const auto envelope = ComposeSaveBuffer({{SaveSectionId::Player, truncated}});
+        const auto valid_crc = ParseSaveBuffer(envelope.data(), envelope.size());
+        WO_CHECK(valid_crc.IsOk()); // envelope integrity cannot prove payload completeness
+        WO_CHECK(!ParsePlayerSave(valid_crc.Value()[0].data, 2, restored));
+    }
+    return true;
+}
 InputState Press(GameAction action) {
     InputState input;
     input.has_focus = true;
@@ -253,6 +338,8 @@ bool KnownEvidenceAndNearestInspect() {
 }
 } // namespace
 void RegisterProductTests(TestHarness& harness) {
+    harness.Add("product.save role partial failure", &SaveRolePartialFailurePreservesFiles);
+    harness.Add("product.player payload versions and truncation", &PlayerPayloadVersionsAndTruncation);
     harness.Add("product.feed boundaries", &FeedBoundaries);
     harness.Add("product.menu ownership", &MenuOwnership);
     harness.Add("product.held input release boundary", &HeldInputReleaseBoundary);
