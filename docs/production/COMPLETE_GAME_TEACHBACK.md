@@ -397,3 +397,18 @@ See `docs/course/COURSE_REPORT.md`, editable Mermaid diagrams, the ten-slide dec
 `DEMO_5_MINUTES.md` and `HUMAN_PLAYTEST_CHECKLIST.md`. The report is editable Markdown
 as requested; no claim of a Word-rendered report is made. Member names, student
 IDs, attendance and real contributions remain for the members to confirm.
+
+## Unchanged-frame encoding fast path
+
+IMPORTANT_FILES = `src/render/frame_encoder.cpp`, `tests/test_render.cpp`.
+IMPORTANT_CLASSES = `AnsiFrameEncoder`, `CharCell`.
+IMPORTANT_FUNCTIONS = `Encode`, `TerminalUnchangedFrameNoPayload`.
+WHY_THIS_DESIGN = identical frames need no allocation, wide-cell expansion or
+snapshot copy. Byte equality is sufficient, but byte inequality is not proof of
+changed fields because C++ structs may contain padding. Keep semantic fallback.
+HOW_TO_EXPLAIN_IT_IN_CLASS = “First check whether anything needs sending. Equal
+memory means equal cells here; different padding alone is ignored by the ordinary
+field comparison. We preserve zero-output behavior and still detect color changes.”
+The public API and Character-Art format do not change. The original benchmark
+contract stays fixed; local render 59/59 and unchanged-byte tests verify semantics,
+while exact-head platform CI checks the actual performance gate.

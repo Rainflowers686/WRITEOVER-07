@@ -112,6 +112,14 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
         return result;
     }
 
+    // Byte equality is sufficient (not necessary) for identical cells. Padding
+    // differences merely fall through to the semantic comparison below. Avoid
+    // allocating a mask, scanning wide pairs and copying an unchanged frame.
+    if (std::memcmp(prev_.data(), frame, cell_count * sizeof(CharCell)) == 0) {
+        result.unchanged = true;
+        return result;
+    }
+
     // Compare with previous frame.
     size_t changed = 0;
     std::vector<bool> changed_mask(cell_count, false);
@@ -126,6 +134,13 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
             changed_mask[i] = true;
             ++changed;
         }
+    }
+
+    // Equal fields with different padding are also unchanged. No snapshot
+    // update is necessary: padding has no terminal meaning.
+    if (changed == 0) {
+        result.unchanged = true;
+        return result;
     }
 
     // A delta must include both halves of either the old or new wide glyph.
@@ -149,13 +164,6 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
     prev_height_ = height;
 
     result.changed_cells = changed;
-
-    // UNCHANGED: no cells differ.
-    if (changed == 0) {
-        result.unchanged = true;
-        result.payload_bytes = 0;
-        return result;
-    }
 
     // If forced full or >50% cells changed, emit FULL.
     const float ratio = static_cast<float>(changed) / static_cast<float>(cell_count);

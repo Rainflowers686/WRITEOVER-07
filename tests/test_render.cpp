@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 #include <filesystem>
 #include <limits>
@@ -646,6 +647,24 @@ bool TerminalUnchangedFrameNoPayload() {
     const EncodeResult r2 = enc.Encode(frame.data(), w, h, out2);
     WO_CHECK(r2.unchanged);                 // no payload
     WO_CHECK_EQ(static_cast<int64_t>(out2.size()), 0);
+    WO_CHECK_EQ(r2.changed_cells, size_t{0});
+    WO_CHECK_EQ(r2.payload_bytes, size_t{0});
+    // Padding is not terminal state. Exercise equal fields in a separate
+    // allocation, including a different trailing object representation.
+    auto equivalent = frame;
+    for (auto& cell : equivalent) {
+        auto* bytes = reinterpret_cast<unsigned char*>(&cell);
+        for (size_t i = offsetof(CharCell, flags) + sizeof(cell.flags); i < sizeof(CharCell); ++i) {
+            bytes[i] ^= 0xff;
+        }
+    }
+    WO_CHECK(enc.Encode(equivalent.data(), w, h, out2, EncodeMode::ForceFull).unchanged);
+    WO_CHECK(out2.empty());
+    equivalent[0].fg_r = 199;
+    WO_CHECK(!enc.Encode(equivalent.data(), w, h, out2).unchanged);
+    WO_CHECK(!out2.empty());
+    out2.clear();
+    WO_CHECK(enc.Encode(equivalent.data(), w, h, out2).unchanged);
     return true;
 }
 

@@ -11,7 +11,7 @@ in this tracked report. Until it exists and is verified, publication is unconfir
 
 ```text
 START_HEAD = ec0a8a92765918a6e6fd0da952aa588b069c342b
-FINAL_IMPLEMENTATION_HEAD = d0c67db (runtime); 73f826f (version and validation tooling)
+FINAL_IMPLEMENTATION_HEAD = release tag's resolved commit (includes terminal unchanged-frame optimization); earlier runtime milestone d0c67db
 FINAL_HEAD = resolved commit of refs/tags/v0.2.0-candidate.1; recorded in release RELEASE_VERIFICATION.json
 VERSION = 0.2.0-candidate.1
 LANGUAGES = zh-CN / en
@@ -118,6 +118,17 @@ redirected Python stdout used cp1252 and could not encode Chinese fragments.
 The checker now emits ASCII-escaped JSON without changing coverage or assertions.
 A forced-cp1252 local run verifies the receipt remains valid. That failed run and
 its downloaded log are retained; publication requires the successor exact-head CI.
+
+The successor 34895171162 exposed a macOS unchanged-frame timing failure:
+TERMINAL_UNCHANGED_TIME_MS=0.369. The encoder was allocating a mask, expanding
+wide-cell checks and copying a snapshot even for identical frames. An early
+byte-equality check now skips that work, with a field-wise fallback when padding
+differs. No threshold, sample count or scene was changed. Extended existing
+render assertions cover separate allocations, padding-only differences, a real
+color change and repeated unchanged output; render 59/59 passed. The first local
+post-fix benchmark measured unchanged=0.010 ms with zero bytes and overall PASS.
+Exact-head CI must verify the fix on macOS; host noise alone is not called a bug
+in gameplay and a single timing comparison is not a general FPS claim.
 
 That run measured PVS_RENDER_TIME_MS=0.711, PVS_TOTAL_FRAME_TIME_MS=0.984 and
 SYSTEMIC_UPDATE_TIME_MS=0.128, with OVERALL_BUDGET=PASS. These are the benchmark's
