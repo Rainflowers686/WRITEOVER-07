@@ -2,9 +2,9 @@
 
 STATUS = READY_FOR_GPT6_COMPLETE_GAME_DIRECTOR_PASS
 
-BASELINE_HEAD = 6054c7258f39cd375ea5f499e1b6650c39e3c508
+BASELINE_HEAD = ff12db15d584ed6aefa6c4561b1089c97440b5c2
 
-BASELINE_COMMIT = feat: complete bounded tower campaign path
+BASELINE_COMMIT = feat: polish authored combat and campaign endings
 
 This handoff supersedes the older Chapter One, Astra/Luna, and pre-complete
 game handoff notes for the current source baseline. It does not mean final
@@ -72,17 +72,19 @@ investigation. The upper route starts at Arrival Lobby after Act II-A Transit
 checkpoint. The lift directory progressively exposes Records Core, Operations
 Control, Network Node, Security Transfer, Executive Archive, Authority Core,
 and Roof. The player can return to Arrival between upper rooms. Authority Core
-writes a pre-final checkpoint and presents eligible endings. Amend and Disclose
-were replayed to Roof in Release; Breach is mechanically policy-covered but
-still needs a dedicated manual/route acceptance pass.
+writes a pre-final checkpoint and presents eligible endings. Amend, Disclose,
+and Breach now each have a dedicated Release route probe and ending-specific
+assertion; manual foreground presentation remains open.
 
 Automated route observations:
 
 - Amend replay: all eight new rooms, save/load, campaign completion, force and
-  alert facts, roof reached, no transition denial, player alive.
+  alert facts, `amend=YES`, roof reached, no transition denial, player alive.
 - Disclose replay: all eight new rooms, save/load, campaign completion,
-  cooperative Operations, network discovery, no facility alert, roof reached,
-  no transition denial, player alive.
+  cooperative Operations, network discovery, no facility alert,
+  `disclose=YES`, roof reached, no transition denial, player alive.
+- Breach replay: all eight new rooms, save/load, campaign completion, force and
+  alert facts, `breach=YES`, roof reached, no transition denial, player alive.
 - Current replay output distinguishes legacy CHAPTER_CHECKPOINT_REACHED from
   CAMPAIGN_COMPLETION_REACHED; a complete campaign should use the latter.
 
@@ -102,6 +104,9 @@ CURRENT_MAJOR_SYSTEMS =
 - Existing save/load codec and runtime checkpoint save/load.
 - New private TowerCampaignRuntime for destination unlocks, single objective,
   case-file lead/discoveries, and ending eligibility only.
+- Visual pass 07 first-lookup authored weapon states and Full Human/Maintenance
+  Front Far/Mid/Near states in `data/characters/b1_character_art.txt`; the
+  existing four-way bank remains intact and no raster path was added.
 - 19 room authoring records, 32 scene transitions, 69 facts, 27 storylets,
   17 NPC profiles, 16 NPC instances in the full replay probe.
 
@@ -114,12 +119,15 @@ OPEN_P0 = none known from automated/runtime evidence.
 OPEN_P1 =
 
 - Foreground Windows terminal acceptance remains human-open.
-- Full integrated visual pass remains open for face restraint, major NPC
-  proportions, four-way facing, Pistol/Stunner first-person composition, room
-  focal structure, door multi-angle depth, and HUD typography.
+- Integrated visual acceptance remains open for human confirmation of face
+  restraint, major NPC proportions, four-way in-game inspection, Pistol/Stunner
+  first-person placement, room focal structure, door multi-angle depth, and HUD
+  typography. The checked-in pass materially improves these areas but does not
+  promote them to subjective visual PASS.
 - Audio listening and narrator/dialogue timing remain human-open.
 - First-time classmate playtest and measured playtime remain open.
-- Dedicated Breach end-to-end route/manual acceptance remains open.
+- Manual Breach presentation and durable reload acceptance remain open; the
+  dedicated automated route is now covered.
 - Final package smoke and exact-head CI for the pushed commit remain open.
 
 REMAINING_OBJECTIVE_WORK = manually validate objective readability,
@@ -128,18 +136,17 @@ ending objective/closure text in the foreground terminal.
 
 REMAINING_GAMEPLAY_WORK = add or repair only player-critical defects found by
 the integrated campaign/manual run; do not grow systems speculatively. Confirm
-Breach route and any death/restart/reload edge case that appears in manual
-play.
+the manual Breach presentation and any death/restart/reload edge case that
+appears in manual play.
 
 REMAINING_CONTENT_WORK = targeted text/room/NPC refinement after visual and
 first-time-play review. Preserve the bounded eight-destination scope unless a
 new player-critical gap is proven.
 
 REMAINING_TEST_WORK = add narrowly targeted regression for discovered defects;
-keep the existing 217-test suite, content checks, schema checks, replay probes,
-save-fault coverage, static audit, contract check, and benchmark contracts
-green. Add a Breach replay only if manual acceptance exposes a gap that cannot
-be covered by the current policy tests.
+keep the existing 217-test suite, content checks, schema checks, the three
+campaign ending probes, save-fault coverage, static audit, contract check, and
+benchmark contracts green.
 
 REMAINING_PACKAGE_WORK = package the final pushed Windows binary using the
 existing release scripts, run package smoke, and record archive/hash without
@@ -182,9 +189,11 @@ LIKELY_COMPLETION_SEQUENCE =
    to the audio.
 2. Capture only player-critical findings; fix small defects in the correct
    layer and add focused tests.
-3. Perform the integrated visual pass on B1, Security, Elevator, Arrival,
-   Authority, Roof, major NPCs, four-way facing, Pistol, and Stunner.
-4. Run all three ending paths, including Breach, with save/load and backtrack.
+3. Inspect the checked-in visual pass in the foreground terminal, then capture
+   only player-critical revisions for B1, Security, Elevator, major NPCs,
+   four-way facing, Pistol, and Stunner.
+4. Run all three ending paths, including Breach, with save/load and backtrack;
+   the automated three-ending gate is already present.
 5. Run Debug/Release build, tests, content/schema/static/contract checks,
    replay suite, scenario/save matrix, benchmark, and package smoke.
 6. Commit documentation/evidence separately from source/content where practical.
@@ -258,7 +267,9 @@ data/facts/facts.json,
 data/storylets/storylets.json,
 data/npcs/npcs.json,
 tools/replay/campaign_probe_amend.txt,
-tools/replay/campaign_probe_disclose.txt
+tools/replay/campaign_probe_disclose.txt,
+tools/replay/campaign_probe_breach.txt,
+scripts/complete_game_campaign_gate.ps1
 
 IMPORTANT_CLASSES = SliceRuntime, PlayerModule, RenderModule,
 TowerCampaignRuntime, SceneRuntime, InteractionRuntime, ProductionRenderer,

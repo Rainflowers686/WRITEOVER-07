@@ -3,7 +3,7 @@
 PURPOSE = give Rain a compact, source-grounded explanation of the complete
 bounded campaign and the systems a presenter must understand
 
-BASELINE_HEAD = 6054c7258f39cd375ea5f499e1b6650c39e3c508
+BASELINE_HEAD = ff12db15d584ed6aefa6c4561b1089c97440b5c2
 
 ## One-minute explanation
 
@@ -86,7 +86,8 @@ are authored assets projected into those cells.
 ### Character-Art and weapon identity
 
 IMPORTANT_FILES = src/render/character_renderer.cpp,
-src/player/combat.cpp, existing art-polish evidence under
+src/player/combat.cpp, data/characters/b1_character_art.txt,
+existing art-polish evidence under
 docs/production/evidence/chapter01_creative_polish/
 
 IMPORTANT_CLASSES = CharacterRenderer, Combat/weapon state, authored character
@@ -97,8 +98,9 @@ selection, hitscan/fire, stun/nonlethal application
 
 WHY_THIS_DESIGN = important NPCs and Pistol/Stunner remain authored
 Character-Art with silhouette, pose, facing, negative space, and semantic
-color. The project may borrow dense low-resolution FPS composition while
-remaining character-based.
+color. Visual pass 07 adds a larger held-object mass and a restrained human
+front face while preserving the existing four-way bank and character-based
+renderer.
 
 HOW_TO_EXPLAIN_IT_IN_CLASS = color is a material/depth aid; removing color
 must not erase the core body, weapon, door, or room silhouette.
@@ -207,6 +209,7 @@ binary.
 ### Testing and cross-platform
 
 IMPORTANT_FILES = tests/*.cpp, tools/replay/*.txt,
+scripts/complete_game_campaign_gate.ps1,
 tools/release/package_smoke.py, scripts/contract_check.ps1,
 .github/workflows/*
 
@@ -235,6 +238,8 @@ acceptance proves the actual player experience.
   and Roof.
 - Amend is the baseline ending; Disclose requires network discovery plus
   cooperative Operations; Breach requires the upper security/force trace.
+  The three campaign probes and `complete_game_campaign_gate.ps1` assert the
+  selected ending fact, not just Roof reachability.
 - Act II-A remains a named existing route. The upper sequence is bounded
   application policy, not a generic Act system.
 - No claim about 41 floors, B4, a public GitHub release, or visual gold should

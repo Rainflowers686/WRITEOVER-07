@@ -5,11 +5,13 @@
 PROTECTED_CREATIVE_BASELINE = POST_ASTRA_CREATIVE_BASELINE /
 CHAPTER01_AUTHORED_FPS_20260913.
 CURRENT_PRODUCTION_LAYER = ACT2_AUTHORED_SPACES_23EADDB +
-AUTHORED_FACE_PLANES_B221E37 + CHAPTER01_VISUAL_RETOUCH_FACE33.
+AUTHORED_FACE_PLANES_B221E37 + CHAPTER01_VISUAL_RETOUCH_FACE33 +
+VISUAL_PASS07_AUTHORED_WEAPON_MASS_AND_FACE_EYELINE.
 The source/content baseline is the creative freeze commit recorded below;
 the later documentation commit may become the delivery HEAD, but it must
 not change this contract.
-CREATIVE_FREEZE_HEAD = `0123a4c` (`feat: finalize chapter one visual baseline`).
+CREATIVE_FREEZE_HEAD = `ff12db1` (`feat: polish authored combat and campaign
+endings`).
 This is a stylized character-built FPS, not photorealism, VISUAL_GOLD or a
 claim of Rain's subjective foreground-terminal acceptance. Production frames,
 route gates and exact-head CI remain separate acceptance questions.
@@ -74,6 +76,15 @@ CharCell path, so they do not add a public renderer type or a raster layer.
 These remain authored low-resolution faces, not photorealistic models. The
 accepted target is a credible stylized pixel-FPS read at play distance while
 remaining visibly character-built up close.
+
+Visual pass 07 adds first-lookup authored Pistol and Stunner states with a
+separate body/slide-or-emitter, grip, trigger housing, glove, wrist and
+forearm mass, plus new Front Far/Mid/Near entries for Full Human and
+Maintenance Worker. Existing Back/SideLeft/SideRight drawings remain in the
+bank and the exact facing review still reports 36/36 mappings. Real production
+captures show the new foreground and face treatment in B1, while the visual
+contract remains a manual acceptance boundary rather than a photorealism
+claim.
 
 The opening interaction contract is also explicit: Technician, Doctor and
 Cleaner resolve their own authored lines; a missing line is silence; Security

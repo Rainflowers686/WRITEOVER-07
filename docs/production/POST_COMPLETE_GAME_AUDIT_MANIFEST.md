@@ -4,14 +4,13 @@ MANIFEST_KIND = post-complete-game-baseline
 
 STATUS = READY_FOR_GPT6_COMPLETE_GAME_DIRECTOR_PASS
 
-BASELINE_HEAD = 6054c7258f39cd375ea5f499e1b6650c39e3c508
+BASELINE_HEAD = ff12db15d584ed6aefa6c4561b1089c97440b5c2
 
-BASELINE_COMMIT = feat: complete bounded tower campaign path
+BASELINE_COMMIT = feat: polish authored combat and campaign endings
 
 REMOTE_HEAD_AT_SOURCE_COMMIT = 6b0d44cedc34df4ef62c1ec03cbf26d530c6a746
 
-EXACT_HEAD_CI = PASS (run 34819800645, head
-5f8893130d2b2a40638ef61f54348b9c4054ac82)
+EXACT_HEAD_CI = PENDING (visual-pass07 source head has not yet been pushed)
 
 EXACT_HEAD_CI_JOBS = build 103902064569 PASS, linux 103902064089 PASS,
 linux-clang 103902064264 PASS, linux-arm64-link 103902064556 PASS,
@@ -31,7 +30,9 @@ rerun without source or threshold changes and passed.
 IMPLEMENTED = bounded complete campaign from B1 to Roof with three ending
 policies, eight upper destinations, progressive unlock facts, return
 transitions, case-file lead/discovery presentation, existing save/load use, and
-two full route probes.
+three full route probes with ending-specific assertions. Visual pass 07 adds
+authored weapon mass and restrained front human/maintenance states without
+changing the renderer contract.
 
 NOT_IMPLEMENTED = generic 41-floor tower, generic Campaign/Act/Region engine,
 new save schema section, unrestricted fast travel, product release, visual
@@ -94,8 +95,11 @@ src/app/tower_campaign_runtime.h
 
 INTEGRATION_ROOT = src/app/composition_root.cpp
 
-REPLAY_PROBES = tools/replay/campaign_probe_amend.txt and
-tools/replay/campaign_probe_disclose.txt
+REPLAY_PROBES = tools/replay/campaign_probe_amend.txt,
+tools/replay/campaign_probe_disclose.txt, and
+tools/replay/campaign_probe_breach.txt
+
+CAMPAIGN_REPLAY_GATE = scripts/complete_game_campaign_gate.ps1
 
 ## Verification receipts
 
@@ -128,6 +132,10 @@ CAMPAIGN_AMEND_REPLAY = PASS
 
 CAMPAIGN_DISCLOSE_REPLAY = PASS
 
+CAMPAIGN_BREACH_REPLAY = PASS
+
+COMPLETE_GAME_CAMPAIGN_GATE = PASS (3/3; ending-specific facts asserted)
+
 CAMPAIGN_REPLAY_SHARED_ASSERTIONS = all eight upper rooms visited, Roof
 reached, CAMPAIGN_COMPLETION_REACHED=YES, SAVE_OK=YES, LOAD_OK=YES,
 TRANSITION_DENIED=NO, PLAYER_DEAD=NO
@@ -151,11 +159,13 @@ SCENARIO_MATRIX = PASS (36 classified rows, 35 executed, 20 expected success,
 LOCAL_EVIDENCE_DIRECTORIES =
 docs/production/evidence/complete_game_act2_gate_20260914,
 docs/production/evidence/complete_game_recovery_gate_20260914,
-docs/production/evidence/complete_game_scenario_matrix_20260914
+docs/production/evidence/complete_game_scenario_matrix_20260914,
+docs/production/evidence/complete_game_campaign_gate_20260914
 
 ## Required post-push gates
 
-COMPLETE = normal push of main from this baseline plus exact-head CI.
+COMPLETE = normal push of main from this baseline plus exact-head CI for the
+final documentation head.
 
 PENDING = final package generation and package smoke from the pushed binary.
 
@@ -163,7 +173,7 @@ PENDING = manual foreground Windows terminal run.
 
 PENDING = audio listening.
 
-PENDING = Breach dedicated end-to-end route/manual acceptance.
+PENDING = manual Breach presentation and durable reload acceptance.
 
 PENDING = first-time classmate playtest and measured playtime.
 
@@ -194,7 +204,7 @@ COURSE_DELIVERY_CLAIM = NO
 NEXT_OWNER = GPT-6 complete-game director/audit pass
 
 SAFE_NEXT_SCOPE = manual visual/audio/first-time play review, targeted
-player-critical corrections, Breach verification, final package/CI/course
+player-critical corrections, manual Breach presentation, final package/CI/course
 gates
 
 FROZEN_SCOPE = renderer contract, authored Character-Art basis, existing

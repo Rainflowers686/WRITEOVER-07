@@ -1,15 +1,15 @@
 # WRITEOVER-07 — Complete Game Campaign Report
 
-STATUS = LOCAL_COMPLETE_GAME_CAMPAIGN_BASELINE_VERIFIED_NOT_PRODUCT_GOLD
+STATUS = LOCAL_COMPLETE_GAME_CAMPAIGN_BASELINE_VERIFIED_VISUAL_PASS07_NOT_PRODUCT_GOLD
 
-BASELINE_HEAD = 6054c7258f39cd375ea5f499e1b6650c39e3c508
+BASELINE_HEAD = ff12db15d584ed6aefa6c4561b1089c97440b5c2
 
-BASELINE_COMMIT = feat: complete bounded tower campaign path
+BASELINE_COMMIT = feat: polish authored combat and campaign endings
 
-This report records the first complete, bounded Chapter One plus Act II-A plus
-upper-tower campaign baseline. It is a source-and-runtime report, not a claim
-of visual gold, manual acceptance, public-alpha readiness, or course-delivery
-completion.
+This report records the complete, bounded Chapter One plus Act II-A plus
+upper-tower campaign baseline and the subsequent visual pass 07. It is a
+source-and-runtime report, not a claim of visual gold, manual acceptance,
+public-alpha readiness, or course-delivery completion.
 
 ## Scope and product boundary
 
@@ -300,11 +300,14 @@ Combat remains the existing bounded implementation:
 - No new animation architecture or renderer architecture was introduced.
 
 The protected visual contract remains authored Character-Art rendered as
-CharCell/Unicode glyphs with semantic color. The current production renders
-show structured room/prop groupings, door frames, and authored terminal/room
-composition. They are not a claim that faces, weapons, foreground terminal
-placement, audio, or every NPC has reached manual visual acceptance. Those
-items remain explicit GPT-6 art/audio debt.
+CharCell/Unicode glyphs with semantic color. Visual pass 07 adds first-lookup
+authored Pistol/Stunner mass and restrained Full Human/Maintenance front faces;
+the old assets remain available in the bank, and the directional review still
+reports 36/36 exact mappings. Real production captures cover B1 human/guard,
+Security desk, and Elevator door structure. These are meaningful production
+improvements, not a claim of photorealism or manual visual acceptance; the
+foreground terminal, audio, first-time play, and integrated all-NPC review
+remain open.
 
 ## Verification at this baseline
 
@@ -326,16 +329,17 @@ The following were run locally against this source baseline:
   TERMINAL_WORSTCASE_SAFETY=PASS, SYSTEMIC_LOOKUP_BUDGET=PASS,
   SYSTEMIC_UPDATE_BUDGET=PASS, PVS_RENDER_BUDGET=PASS,
   PVS_TOTAL_FRAME_BUDGET=PASS, RAYCAST_BUDGET=PASS, OVERALL_BUDGET=PASS.
-- Release full replay: Amend PASS and Disclose PASS. Both reached all eight
-  new rooms, roof, save/load, and CAMPAIGN_COMPLETION_REACHED=YES.
+- Release full replay: Amend, Disclose, and Breach PASS. All three reached all
+  eight new rooms, roof, save/load, CAMPAIGN_COMPLETION_REACHED=YES, and their
+  required ending fact.
+- Complete campaign ending gate: PASS, 3/3; each fixture independently asserts
+  its expected ending fact rather than treating Roof alone as completion.
 - Act II expansion gate: PASS.
 - Recovery replay gate: PASS, 21/21 legacy replay cases.
 - Scenario matrix: PASS; 36 classified rows, 35 executed, 1
   INVALID_BY_GAME_RULES, 0 VALID_STATE_NOT_COVERED.
-- Exact-head GitHub Actions run 34819800645: PASS on head
-  5f8893130d2b2a40638ef61f54348b9c4054ac82 after the failed macOS benchmark
-  job was rerun; build, Linux, Linux Clang, Linux ARM64 link, and macOS ARM64
-  all finished successfully.
+- Exact-head GitHub Actions for this visual-pass head: pending until the
+  normal push and final documentation head are verified.
 
 The exact remote CI result for this new head is intentionally not recorded here
 until the normal push and a fresh exact-head run have completed.
@@ -347,9 +351,9 @@ OPEN_FATAL = none known from automated/runtime verification.
 OPEN_P0 = none known from automated/runtime verification.
 
 OPEN_P1 = foreground Windows terminal placement, human visual acceptance of
-faces/NPC silhouettes/weapons/rooms, audio listening, first-time classmate
-playtest, final third-ending manual replay, package smoke from the final
-published head, and exact-head CI.
+faces/NPC silhouettes/weapons/rooms, four-way in-game inspection, audio
+listening, first-time classmate playtest, manual Breach presentation, package
+smoke from the final published head, and exact-head CI.
 
 This is a complete playable campaign baseline. It is not PRODUCT_GOLD,
 VISUAL_GOLD, FINAL_RELEASE, or COURSE_REPORT_READY.
