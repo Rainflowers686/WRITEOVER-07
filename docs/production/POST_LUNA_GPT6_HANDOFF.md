@@ -134,7 +134,7 @@ baseline. This is a bounded stylized acceptance, not a photorealism claim.
   of platform variance, not a source change or a silently relabeled PASS.
 - The later documentation delivery head
   `6ddbf2678cc1d602a9b24749a135a7247c6f5ff1` is not green in CI run
-  `34805619450`: three macOS attempts failed different timing gates
+  `34805619450`: two macOS attempts failed different timing gates
   (`DELTA=1.657 ms` plus `UNCHANGED=0.270 ms`; then `FULL=2.018 ms` and
   `PVS_RENDER=12.963 ms`). Linux, clang, ARM64 link, the main build,
   recovery replay, package smoke, and all non-platform gates passed. This is
