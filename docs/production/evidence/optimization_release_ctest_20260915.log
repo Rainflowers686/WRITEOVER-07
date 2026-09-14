@@ -1,0 +1,10 @@
+Internal ctest changing into directory: D:/AAAbiancheng/00_Projects/40_Coursework/2026_CPP_Immersive_ASCII_FPS/out/build/release
+Test project D:/AAAbiancheng/00_Projects/40_Coursework/2026_CPP_Immersive_ASCII_FPS/out/build/release
+    Start 1: unit
+1/2 Test #1: unit .............................   Passed    0.19 sec
+    Start 2: public_header_standalone
+2/2 Test #2: public_header_standalone .........   Passed    0.01 sec
+
+100% tests passed, 0 tests failed out of 2
+
+Total Test time (real) =   0.20 sec

@@ -1,0 +1,53 @@
+PVS_CHARACTER_ART=AUTHORED
+scenario,count,avg_ms,worst_1pct_avg_ms,min_ms,max_ms
+raycast_column_sweep,240,0.037,0.045,0.033,0.046
+scenario,count,avg_ms,worst_1pct_avg_ms,min_ms,max_ms
+terminal_encode_full_representative,120,0.118,0.216,0.072,0.216
+TERMINAL_FULL_MAX_BYTES=36132
+scenario,count,avg_ms,worst_1pct_avg_ms,min_ms,max_ms
+terminal_encode_delta_typical,119,0.040,0.073,0.036,0.073
+TERMINAL_DELTA_TYPICAL_MAX_BYTES=2418
+scenario,count,avg_ms,worst_1pct_avg_ms,min_ms,max_ms
+terminal_encode_unchanged,120,0.026,0.029,0.024,0.029
+TERMINAL_UNCHANGED_MAX_BYTES=0
+scenario,count,avg_ms,worst_1pct_avg_ms,min_ms,max_ms
+terminal_encode_worstcase,120,0.119,0.131,0.029,0.131
+TERMINAL_WORSTCASE_MAX_BYTES=48349
+TERMINAL_FULL_BUDGET=PASS
+TERMINAL_FULL_TIME_MS=0.145 TERMINAL_FULL_BYTES=36132
+TERMINAL_DELTA_BUDGET=PASS
+TERMINAL_DELTA_TIME_MS=0.046 TERMINAL_DELTA_BYTES=2375
+TERMINAL_UNCHANGED_BUDGET=PASS
+TERMINAL_UNCHANGED_TIME_MS=0.032 TERMINAL_UNCHANGED_BYTES=0
+TERMINAL_WORSTCASE_SAFETY=PASS
+TERMINAL_WORSTCASE_TIME_MS=0.136 TERMINAL_WORSTCASE_BYTES=48349
+scenario,count,avg_ms,worst_1pct_avg_ms,min_ms,max_ms
+systemic_kernel_lookup,1200,0.009,0.013,0.006,0.014
+SYSTEMIC_LOOKUP_BUDGET=PASS
+SYSTEMIC_LOOKUP_TIME_MS=0.013 (worst1_avg)
+scenario,count,avg_ms,worst_1pct_avg_ms,min_ms,max_ms
+systemic_update_workload,1200,0.021,0.133,0.002,0.314
+SYSTEMIC_UPDATE_BUDGET=PASS
+SYSTEMIC_UPDATE_TIME_MS=0.133 (worst1_avg)
+scenario,count,avg_ms,worst_1pct_avg_ms,min_ms,max_ms
+character_render_workload_240x67,240,0.662,0.944,0.542,0.948
+PVS_RENDER_BUDGET=PASS
+PVS_RENDER_TIME_MS=0.944 (worst1_avg)
+scenario,count,avg_ms,worst_1pct_avg_ms,min_ms,max_ms
+character_total_runtime_frame_240x67,1200,0.662,0.985,0.487,1.044
+PVS_SLOW_FRAME frame=0 wall_ms=1.044 std_clock_ms=1.000 ai_ms=0.009 render_ms=0.448 sprites_ms=0.260 encode_ms=0.327
+PVS_SLOW_FRAME frame=3 wall_ms=1.000 std_clock_ms=1.000 ai_ms=0.000 render_ms=0.483 sprites_ms=0.249 encode_ms=0.268
+PVS_SLOW_FRAME frame=7 wall_ms=0.992 std_clock_ms=1.000 ai_ms=0.000 render_ms=0.487 sprites_ms=0.219 encode_ms=0.285
+PVS_SLOW_FRAME frame=120 wall_ms=0.992 std_clock_ms=1.000 ai_ms=0.006 render_ms=0.467 sprites_ms=0.194 encode_ms=0.325
+PVS_SLOW_FRAME frame=33 wall_ms=0.988 std_clock_ms=1.000 ai_ms=0.000 render_ms=0.473 sprites_ms=0.179 encode_ms=0.336
+PVS_SLOW_FRAME frame=51 wall_ms=0.983 std_clock_ms=1.000 ai_ms=0.000 render_ms=0.483 sprites_ms=0.236 encode_ms=0.264
+PVS_SLOW_FRAME frame=193 wall_ms=0.976 std_clock_ms=1.000 ai_ms=0.000 render_ms=0.439 sprites_ms=0.191 encode_ms=0.346
+PVS_SLOW_FRAME frame=48 wall_ms=0.973 std_clock_ms=1.000 ai_ms=0.003 render_ms=0.487 sprites_ms=0.198 encode_ms=0.286
+PVS_SLOW_FRAME frame=6 wall_ms=0.973 std_clock_ms=1.000 ai_ms=0.000 render_ms=0.479 sprites_ms=0.224 encode_ms=0.270
+PVS_SLOW_FRAME frame=168 wall_ms=0.971 std_clock_ms=1.000 ai_ms=0.006 render_ms=0.461 sprites_ms=0.224 encode_ms=0.280
+PVS_SLOW_FRAME frame=27 wall_ms=0.964 std_clock_ms=1.000 ai_ms=0.000 render_ms=0.470 sprites_ms=0.234 encode_ms=0.259
+PVS_SLOW_FRAME frame=63 wall_ms=0.962 std_clock_ms=1.000 ai_ms=0.000 render_ms=0.485 sprites_ms=0.208 encode_ms=0.268
+PVS_TOTAL_FRAME_BUDGET=PASS
+PVS_TOTAL_FRAME_TIME_MS=0.985 (worst1_avg; platform writes excluded)
+RAYCAST_BUDGET=PASS
+OVERALL_BUDGET=PASS

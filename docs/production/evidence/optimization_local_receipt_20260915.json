@@ -1,0 +1,192 @@
+{
+  "kind": "post-director-broad-optimization-local-regression",
+  "date": "2026-09-15",
+  "startHead": "43083373a03b5583ae207001067cd866bdb9a2cc",
+  "comparisonHead": "131556e4de534f51ae119b3d9ced88c493ce5ca2",
+  "implementationHead": "d2654f8974922a1e8db9d23e1ef99819cb5f5524",
+  "sourceContentFrozen": true,
+  "comparisonCI": {
+    "run": 34866959456,
+    "conclusion": "success",
+    "jobs": 5,
+    "reruns": 0,
+    "macos": {
+      "PVS_RENDER_TIME_MS": 1.12,
+      "PVS_TOTAL_FRAME_TIME_MS": 2.09
+    }
+  },
+  "unitTests": {
+    "Debug": {
+      "passed": 233,
+      "failed": 0
+    },
+    "Release": {
+      "passed": 233,
+      "failed": 0
+    }
+  },
+  "ctest": {
+    "Debug": "2/2 PASS",
+    "Release": "2/2 PASS"
+  },
+  "content": {
+    "deterministic": "PASS",
+    "rooms": 19,
+    "facts": 69,
+    "storylets": 27,
+    "npcProfiles": 17,
+    "compilerTests": "13/13 PASS",
+    "schemaTests": "10/10 PASS",
+    "invalidSeed": "PASS"
+  },
+  "staticAuditCount": 0,
+  "contractCheck": "PASS",
+  "additionalPublicContractChanges": false,
+  "additionalSaveSchemaChanges": false,
+  "recovery": {
+    "cases": 21,
+    "status": "PASS",
+    "evidence": "optimization_recovery_20260915"
+  },
+  "scenarios": {
+    "classified": 36,
+    "executed": 35,
+    "ruleInvalid": 1,
+    "validGaps": 0,
+    "success": 20,
+    "denial": 11,
+    "recoverableFailure": 1,
+    "deathRestart": 3,
+    "status": "PASS",
+    "evidence": "optimization_scenarios_20260915"
+  },
+  "act2": {
+    "cases": 3,
+    "status": "PASS",
+    "evidence": "optimization_act2_20260915"
+  },
+  "campaign": {
+    "routes": 4,
+    "independentEndingReloads": 4,
+    "status": "PASS",
+    "evidence": "optimization_campaign_20260915"
+  },
+  "product": {
+    "configuration": "Debug",
+    "status": "PASS",
+    "newGame": "completed world -> B1 health100 evidence0; saved hashes preserved",
+    "rollbackStages": 8,
+    "evidence": "optimization_product_20260915"
+  },
+  "lowCapRoutes": {
+    "cap30": "chapter01_systemic PASS",
+    "cap60": "chapter01_aggressive PASS",
+    "humanDisplayFpsMeasured": false
+  },
+  "visual": {
+    "sceneViewsPerIteration": 17,
+    "iterations": 2,
+    "facingMappings": 36,
+    "exactAssets": 36,
+    "evidence": "chapter01_creative_polish/optimization_v2_20260915",
+    "finalPanels": [
+      "boot_final",
+      "controls_final",
+      "settings_final",
+      "ending_final"
+    ],
+    "kind": "production CharCell SVG exports and PNG previews",
+    "nativeForeground": false
+  },
+  "benchmark": {
+    "metric": "worst_1pct_avg_ms, not p99",
+    "platformWritesExcluded": true,
+    "workloadChanged": false,
+    "gateChanged": false,
+    "samples": 1200,
+    "npcs": 25,
+    "dimensions": "240x67",
+    "totalGateMs": 6,
+    "baseline": [
+      {
+        "PVS_RENDER_TIME_MS": 0.761,
+        "PVS_TOTAL_FRAME_TIME_MS": 1.459,
+        "avg_ms": 0.819,
+        "TERMINAL_FULL_TIME_MS": 0.346,
+        "TERMINAL_DELTA_TIME_MS": 0.14,
+        "TERMINAL_UNCHANGED_TIME_MS": 0.064,
+        "TERMINAL_WORSTCASE_TIME_MS": 0.347
+      },
+      {
+        "PVS_RENDER_TIME_MS": 0.793,
+        "PVS_TOTAL_FRAME_TIME_MS": 1.492,
+        "avg_ms": 0.826,
+        "TERMINAL_FULL_TIME_MS": 0.334,
+        "TERMINAL_DELTA_TIME_MS": 0.134,
+        "TERMINAL_UNCHANGED_TIME_MS": 0.113,
+        "TERMINAL_WORSTCASE_TIME_MS": 0.333
+      }
+    ],
+    "final": [
+      {
+        "PVS_RENDER_TIME_MS": 0.751,
+        "PVS_TOTAL_FRAME_TIME_MS": 1.223,
+        "avg_ms": 0.682,
+        "TERMINAL_FULL_TIME_MS": 0.143,
+        "TERMINAL_DELTA_TIME_MS": 0.048,
+        "TERMINAL_UNCHANGED_TIME_MS": 0.1,
+        "TERMINAL_WORSTCASE_TIME_MS": 0.149
+      },
+      {
+        "PVS_RENDER_TIME_MS": 0.944,
+        "PVS_TOTAL_FRAME_TIME_MS": 0.985,
+        "avg_ms": 0.662,
+        "TERMINAL_FULL_TIME_MS": 0.145,
+        "TERMINAL_DELTA_TIME_MS": 0.046,
+        "TERMINAL_UNCHANGED_TIME_MS": 0.032,
+        "TERMINAL_WORSTCASE_TIME_MS": 0.136
+      }
+    ],
+    "OVERALL_BUDGET": "PASS in both final runs",
+    "terminalFullBytes": {
+      "before": 38448,
+      "after": 36132
+    },
+    "terminalWorstcaseBytes": {
+      "before": 50659,
+      "after": 48349
+    },
+    "sourceEvidence": "optimization_protocol_final_20260915_{1,2}.log"
+  },
+  "package": {
+    "path": "out/optimized-package-20260915/WRITEOVER-07-audit-candidate.zip",
+    "sourceHead": "d2654f8974922a1e8db9d23e1ef99819cb5f5524",
+    "bytes": 609629,
+    "sha256": "1901D0FE2889C90818B83935CE40797C5D5914115AC2CD00A3BB9A4891B27799",
+    "positiveSmoke": "PASS",
+    "negativeProbes": "3/3 PASS",
+    "devGarbage": 0,
+    "secretPatternScan": "PASS",
+    "releasePublished": false
+  },
+  "hashes": {
+    "releaseApp": "196B84716747230E46F842EBF9124D1CFEC4919357B9B316969F627BF5D88F65",
+    "debugTests": "11C6E57F072993275D357F2212C7A9D22891CF79BFF21B8F54AF1CCF9CCC9407",
+    "releaseTests": "D8B7B6708E5756F4028A6BC37C84AE65FF57AE02E91EF7212AE347747F7E3780",
+    "characterArt": "B678D2ADA090E11BBBC85A58F7CE1DDE0721F36777E7111926D81BAFFAEBF116"
+  },
+  "preservation": {
+    "trackedUserChange": "tests/test_harness.cpp EOF newline excluded",
+    "rootFixtureCaveat": "Earlier original-pass root unit run rewrote settings_test.cfg/settings_ctx.cfg/settings_legacy.cfg; prior hashes unavailable. Subsequent tests use CTest build cwd.",
+    "broadCleanup": false,
+    "destructiveGit": false
+  },
+  "manual": {
+    "foregroundWindowsTerminal": "NOT_PERFORMED",
+    "rainVisual": "NOT_CLAIMED",
+    "audioListening": "NOT_CLAIMED",
+    "firstTimeClassmate": "NOT_PERFORMED",
+    "measuredHumanPlaytime": "NOT_AVAILABLE"
+  },
+  "exactHeadCI": "PENDING FINAL PUSH; use optimization_delivery_receipt_20260915.json and GitHub headSha"
+}

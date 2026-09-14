@@ -1,0 +1,281 @@
+Internal ctest changing into directory: D:/AAAbiancheng/00_Projects/40_Coursework/2026_CPP_Immersive_ASCII_FPS/out/build/release
+Test project D:/AAAbiancheng/00_Projects/40_Coursework/2026_CPP_Immersive_ASCII_FPS/out/build/release
+    Start 1: unit
+1/2 Test #1: unit .............................***Failed    0.19 sec
+[PASS] rng.repeatable
+[PASS] rng.state_round_trip
+[PASS] serialize.round_trip
+[PASS] event.payload_round_trip
+  ASSERT FAILED D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\tests\test_common.cpp:77: intentional
+[PASS] test_harness.check_detects_failure
+  ASSERT FAILED D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\tests\test_common.cpp:84: false
+[PASS] test_harness.failfast_macro_proves_failure
+[PASS] test_harness.check_pass_keeps_going
+[PASS] save.compose_parse_round_trip
+[PASS] save.corrupt_rejected
+[PASS] save.truncated_rejected
+[PASS] save.oversized_rejected_before_write
+[PASS] settings.encode_decode
+[PASS] settings.key_value_disk
+[PASS] settings.unbound_key_round_trip
+[PASS] settings.context_bindings_round_trip
+[PASS] settings.legacy_binding_migrates_to_gameplay
+[PASS] profile.round_trip
+[PASS] engine.presents_once_per_fixed_step
+[PASS] engine.presentation_cap_is_render_only
+[PASS] engine.presentation_deadline_phase
+[PASS] engine.shutdowns_modules_once
+[PASS] engine.request_stop_terminates_run
+[PASS] hud.subtitle_layout_bounded
+[PASS] character.prop_facing_preserves_text
+[PASS] character.door_world_plane_and_occlusion
+[PASS] ray.flat_hits_wall
+[PASS] ray.low_wall_floor_rise
+[PASS] ray.full_occlusion
+[PASS] ray.projection_up_down
+[PASS] utf.ascii_single_width
+[PASS] utf.cjk_blocked_in_3d
+[PASS] bench.p99_is_one_percent_low
+[PASS] g01_flat_corridor
+[PASS] g02_floor_rise
+[PASS] g03_floor_drop
+[PASS] g04_ceiling_drop
+[PASS] g05_ceiling_rise
+[PASS] g06_floor_ceiling_narrow
+[PASS] g07_full_closure
+[PASS] g08_alternating_heights
+[PASS] g09_diagonal_corner
+[PASS] g10_exact_corner_tie
+[PASS] g11_out_of_bounds
+[PASS] g12_near_zero_direction
+[PASS] g13_pitch_plus_30
+[PASS] g14_pitch_minus_30
+[PASS] g15_crouch_behind_low_wall
+[PASS] g16_stand_sees_over_wall
+[PASS] g17_player_below_target
+[PASS] g18_player_above_target
+[PASS] reference_renderer_visible
+[PASS] reference_renderer_deterministic
+[PASS] production.half_block_frame
+[PASS] character.semantic_cells
+[PASS] character.assets_and_lod
+[PASS] character.art_polish_authored_resolution
+[PASS] character.directional_assets_and_lod_hysteresis
+[PASS] character.weapon_slots_have_distinct_art
+PISTOL_VIEWMODEL_BOUNDS x=170..196 y=40..65
+[PASS] character.pistol_scene_grip_anchor
+CHARACTER_CAP_STUDY distance_m=0.50 cap=40 raw_scale=116.047 effective_scale=22.222 projected_rows=40 screen_pct=59.7
+CHARACTER_CAP_STUDY distance_m=0.50 cap=44 raw_scale=116.047 effective_scale=24.444 projected_rows=44 screen_pct=65.7
+CHARACTER_CAP_STUDY distance_m=0.50 cap=48 raw_scale=116.047 effective_scale=26.667 projected_rows=48 screen_pct=71.6
+CHARACTER_CAP_STUDY distance_m=0.50 cap=52 raw_scale=116.047 effective_scale=28.889 projected_rows=52 screen_pct=77.6
+CHARACTER_CAP_STUDY distance_m=1.00 cap=40 raw_scale=58.024 effective_scale=22.222 projected_rows=40 screen_pct=59.7
+CHARACTER_CAP_STUDY distance_m=1.00 cap=44 raw_scale=58.024 effective_scale=24.444 projected_rows=44 screen_pct=65.7
+CHARACTER_CAP_STUDY distance_m=1.00 cap=48 raw_scale=58.024 effective_scale=26.667 projected_rows=48 screen_pct=71.6
+CHARACTER_CAP_STUDY distance_m=1.00 cap=52 raw_scale=58.024 effective_scale=28.889 projected_rows=52 screen_pct=77.6
+CHARACTER_SPRITE_PROJECTION distance_m=0.40 lod=2 raw_scale=145.059 effective_scale=24.444 projected_rows=44 visible_rows=39 top=28.61 bottom=72.61 bounds=28..66 cap=44 screen_pct=65.7
+CHARACTER_SPRITE_PROJECTION distance_m=0.50 lod=2 raw_scale=116.047 effective_scale=24.444 projected_rows=44 visible_rows=39 top=28.61 bottom=72.61 bounds=28..66 cap=44 screen_pct=65.7
+CHARACTER_SPRITE_PROJECTION distance_m=0.75 lod=2 raw_scale=77.365 effective_scale=24.444 projected_rows=44 visible_rows=39 top=28.61 bottom=72.61 bounds=28..66 cap=44 screen_pct=65.7
+CHARACTER_SPRITE_PROJECTION distance_m=1.00 lod=2 raw_scale=58.024 effective_scale=24.444 projected_rows=44 visible_rows=39 top=28.61 bottom=72.61 bounds=28..66 cap=44 screen_pct=65.7
+CHARACTER_SPRITE_PROJECTION distance_m=1.50 lod=2 raw_scale=38.682 effective_scale=24.444 projected_rows=44 visible_rows=39 top=28.61 bottom=72.61 bounds=28..66 cap=44 screen_pct=65.7
+CHARACTER_SPRITE_PROJECTION distance_m=2.00 lod=2 raw_scale=29.012 effective_scale=24.444 projected_rows=44 visible_rows=39 top=28.61 bottom=72.61 bounds=28..66 cap=44 screen_pct=65.7
+CHARACTER_SPRITE_PROJECTION distance_m=3.00 lod=2 raw_scale=19.341 effective_scale=19.341 projected_rows=35 visible_rows=36 top=29.63 bottom=64.45 bounds=29..64 cap=44 screen_pct=52.0
+CHARACTER_SPRITE_PROJECTION distance_m=4.00 lod=1 raw_scale=14.506 effective_scale=14.506 projected_rows=26 visible_rows=27 top=30.60 bottom=56.71 bounds=30..56 cap=48 screen_pct=39.0
+CHARACTER_SPRITE_PROJECTION distance_m=8.00 lod=1 raw_scale=7.253 effective_scale=7.253 projected_rows=13 visible_rows=13 top=32.05 bottom=45.10 bounds=32..44 cap=48 screen_pct=19.5
+CHARACTER_SPRITE_PROJECTION distance_m=12.00 lod=0 raw_scale=4.835 effective_scale=4.835 projected_rows=9 visible_rows=9 top=32.53 bottom=41.24 bounds=32..40 cap=24 screen_pct=13.0
+CHARACTER_SPRITE_PROJECTION distance_m=3.90 lod=2 raw_scale=14.878 effective_scale=14.878 projected_rows=27 visible_rows=28 top=30.52 bottom=57.30 bounds=30..57 cap=44 screen_pct=40.0
+CHARACTER_SPRITE_PROJECTION distance_m=4.00 lod=1 raw_scale=14.506 effective_scale=14.506 projected_rows=26 visible_rows=27 top=30.60 bottom=56.71 bounds=30..56 cap=48 screen_pct=39.0
+CHARACTER_SPRITE_PROJECTION distance_m=4.10 lod=1 raw_scale=14.152 effective_scale=14.152 projected_rows=25 visible_rows=26 top=30.67 bottom=56.14 bounds=30..55 cap=48 screen_pct=38.0
+CHARACTER_SPRITE_LOD_BOUNDARY d=3.9/4.0/4.1 rows=27/26/25 top=30.52/30.60/30.67 bottom=57.30/56.71/56.14
+[PASS] character.sprite_projection_review_distances
+CHARACTER_WALL_ANCHOR surface_u=3.96/4.18 glyph=U+2551/U+2591
+[PASS] character.wall_pattern_world_anchor
+CHARACTER_FINITE_DESK_TOP glyph=U+0020
+[PASS] character.raised_surface_finite_extent
+CHARACTER_SERVICE_DUCT glyph=U+2591 ink_contrast=20.65
+[PASS] character.low_service_duct_legible
+[PASS] character.pistol_transparency
+[PASS] character.portrait_bounded_char_art
+[PASS] spatial.camera_projection_contract
+CHARACTER_FACING_HEADING yaw=-1.5708 screen_delta=-8.00
+CHARACTER_FACING_HEADING yaw=1.5708 screen_delta=8.00
+[PASS] spatial.actor_facing_orbit
+[PASS] spatial.low_wall_partial_occlusion
+[PASS] spatial.pillar_partial_occlusion
+[PASS] spatial.character_opacity
+[PASS] spatial.interaction_ray_pitch_and_wall
+[PASS] spatial.body_world_presentation
+[PASS] render.marker_hidden_behind_full_wall
+[PASS] render.marker_visible_above_low_wall
+[PASS] terminal.unchanged_frame_emits_no_payload
+[PASS] terminal.delta_smaller_than_full_for_small_change
+[PASS] terminal.encoder_deterministic
+[PASS] terminal.optimized_byte_equivalence
+  ASSERT FAILED D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\tests\test_render.cpp:764: output == expected
+[FAIL] terminal.color_state_across_rows_and_runs
+[PASS] terminal.resize_forces_safe_full
+[PASS] terminal.delta_typical_is_actual_delta
+[PASS] player.posture_clearance
+[PASS] player.locomotion_orthogonal
+[PASS] player.integrate_move_blocked
+PLAYER_NPC_SEPARATION stop_x=2.228 actor_x=3.000 minimum_center_distance=0.772
+[PASS] player.dynamic_actor_separation
+[PASS] player.jump_then_land
+[PASS] player.input_mapper_rebind
+[PASS] input.context_same_key_different_actions
+[PASS] input.context_replace_within_context
+[PASS] player.combat_fire_ammo
+[PASS] player.combat_reload
+[PASS] player.hitscan_open_grid
+[PASS] controller.grounded_idle_stable
+[PASS] controller.step_up_20cm
+[PASS] controller.step_up_50cm_rejected
+[PASS] controller.lean_clamp_against_wall
+[PASS] controller.lean_respects_yaw_90
+[PASS] controller.lean_yaw_regression_discriminating
+[PASS] player.mouse_delta_changes_yaw
+[PASS] player.pitch_clamped_plus_30
+[PASS] player.pitch_clamped_minus_30
+[PASS] player.forward_respects_yaw_0
+[PASS] player.forward_respects_yaw_90
+[PASS] input.settings_mapper_consistent
+[PASS] controller.head_collision_stops_jump
+[PASS] controller.falling_not_grounded_in_air
+[PASS] controller.no_nan_inf
+[PASS] controller.save_load_round_trip
+[PASS] input.runtime_uses_raw_pointer_delta
+[PASS] input.mouse_backend_delta_reaches_input_state
+[PASS] input.mouse_backend_delta_reaches_player_look
+[PASS] input.mouse_left_down_up
+[PASS] input.mouse_right_down_up
+[PASS] input.mixed_keyboard_mouse_batch_preserved
+[PASS] input.focus_record_updates_has_focus
+[PASS] input.raw_relative_delta_translation
+[PASS] input.raw_left_down_up
+[PASS] input.raw_right_down_up
+[PASS] input.raw_button_no_duplicate_transition
+[PASS] input.runtime_context_gameplay_num1_weapon
+[PASS] input.runtime_context_dialogue_num1_dialog
+[PASS] input.context_switch_clears_stale_actions
+[PASS] input.focus_regain_discards_pointer_backlog
+[PASS] input.focus_regain_no_huge_first_delta
+[PASS] grid.collision_blocked
+[PASS] grid.floor_ceiling_query
+[PASS] fact.belief_fact_round_trip
+[PASS] fact.belief_set_ordering
+[PASS] infrastructure.apply_door
+[PASS] room.codec_round_trip
+[PASS] map_validator.spawn_fits
+[PASS] room.excessive_npc_refs_rejected
+[PASS] room.excessive_storylet_refs_rejected
+[PASS] room.non_finite_geometry_rejected
+[PASS] room.trailing_bytes_rejected
+[PASS] fact.predicate_sentinel_rejected
+[PASS] infrastructure.locked_open_rejected
+[PASS] ai.perception_sees_open
+[PASS] ai.perception_blocked_wall
+[PASS] ai.perception_hears_noise
+[PASS] ai.perception_wall_muffles_noise
+[PASS] ai.perception_future_noise_timestamp_rejected
+[PASS] ai.goap_plans_chain
+[PASS] ai.goap_no_plan_impossible
+[PASS] ai.memory_recall_order
+[PASS] ai.autonomous_runtime_five_phase_loop
+[PASS] ai.full_npc_speaks_on_sight_transition_only
+[PASS] ai.autonomous_runtime_refreshes_continuous_observation
+[PASS] ai.cleaner_must_arrive_before_discovery
+[PASS] ai.cleaner_blocked_cannot_discover_on_due_frame
+[PASS] ai.cleaner_history_changes_discovery_response
+[PASS] ai.repeated_gunshots_refresh_one_memory
+[PASS] ai.incapacitated_cleaner_cannot_witness
+[PASS] ai.patrol_grid_route_motor
+[PASS] ai.motor_keeps_player_personal_space
+[PASS] ai.guard_combat_los_and_cadence
+[PASS] ai.guard_replans_moving_target
+[PASS] ai.visibility_counterfactual
+[PASS] ai.investigate_routes_noise_without_teleporting
+[PASS] ai.investigate_resumes_patrol_after_inspection
+[PASS] ai.load_unknown_npc_is_atomic
+[PASS] storylet.selects_highest_priority
+[PASS] storylet.once_fired_skipped
+[PASS] storylet.condition_false
+[PASS] narrator.capability_gates_command
+[PASS] narrator.cannot_mutate_facts
+[PASS] causality.ledger_ring
+[PASS] dialog.queue_expiry
+[PASS] dialog.queue_bounded
+[PASS] judge.checkpoint_basics
+[PASS] storylet.world_command_round_trip
+[PASS] storylet.load_rejects_duplicate_and_invalid_records
+[PASS] ending.quadrants_and_hidden_loop
+[PASS] replay.same_seed_identical_bytes
+[PASS] replay.save_load_resume
+[PASS] save.deterministic_round_trip
+[PASS] save.all_7_sections_legal
+[PASS] save.duplicate_section_rejected
+[PASS] save.unknown_section_rejected
+[PASS] save.rejects_bit_flip
+[PASS] save.rejects_garbage
+[PASS] save.truncated_before_footer_rejected
+[PASS] save.huge_section_data_size_rejected
+[PASS] event.fanout_all_consumers_see_all
+[PASS] event.same_tick_next_tick_semantics
+[PASS] event.reaction_exactly_once
+[PASS] systemic.body_concealment_chain
+[PASS] systemic.stolen_identity_chain
+[PASS] systemic.credential_possession_counterfactuals
+[PASS] systemic.memory_refresh_no_duplicate
+[PASS] systemic.promise_chain
+[PASS] systemic.body_drag_lifecycle
+[PASS] systemic.body_hide_rejects_alive
+[PASS] systemic.body_container_capacity
+[PASS] systemic.discovery_observation_only
+[PASS] systemic.discovery_medical_does_not_escalate_security
+[PASS] systemic.directed_relationship
+[PASS] systemic.promise_transition_matrix
+[PASS] systemic.event_bridge_exactly_once
+[PASS] systemic.runtime_world_event_reaches_ledger
+[PASS] systemic.runtime_bridge_no_duplicate
+[PASS] systemic.quest_transition_matrix
+[PASS] systemic.item_theft_not_reported_until_discovered
+[PASS] systemic.item_report_stolen_does_not_revoke_reader
+[PASS] systemic.item_revoke_blocks_reader
+[PASS] systemic.item_loan_preserves_legal_holder
+[PASS] systemic.item_authorized_transfer_changes_legal_holder
+[PASS] systemic.item_return_uses_current_legal_holder
+[PASS] systemic.terminal_session_audit
+[PASS] systemic.narrator_observability_per_source
+[PASS] systemic.narrator_authority_vs_observability
+[PASS] systemic.save_corruption_rejected
+[PASS] systemic.save_rejects_invalid_live_state
+[PASS] systemic.save_section_round_trip
+[PASS] systemic.runtime_save_load_roundtrip
+[PASS] systemic.discovery_report_escalates_alert
+[PASS] systemic.runtime_seed_loads_invalid_rejected
+[PASS] systemic.runtime_seed_loads_file
+[PASS] tower destination policy
+[PASS] tower ending policy
+[PASS] campaign controls survive clipping
+[PASS] campaign lead progression
+[PASS] product.feed boundaries
+[PASS] product.menu ownership
+[PASS] product.held input release boundary
+[PASS] product.bound controls and preferences
+[PASS] product.panel scroll and bounds
+[PASS] product.cosmetic timing and frame limit
+[PASS] product.perception geometry
+[PASS] product.save role envelope
+[PASS] character.open distance has no invented ceiling
+[PASS] product.authored roof parapet contains jump
+[PASS] product.known evidence and nearest inspect
+233 tests, 1 failed
+
+    Start 2: public_header_standalone
+2/2 Test #2: public_header_standalone .........   Passed    0.01 sec
+
+50% tests passed, 1 tests failed out of 2
+
+Total Test time (real) =   0.21 sec
+
+The following tests FAILED:
+	  1 - unit (Failed)
+Errors while running CTest

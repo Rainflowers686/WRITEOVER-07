@@ -271,3 +271,20 @@ Presentation demo: show Boot, enter B1, Examine a visible object, open Recent
 Events, show current bindings, then show an earned ending summary and separate
 Replay Final Choice. Explain the 19 playable rooms versus the fictional 41-level
 directory. Do not present automated SVG exports as a human Terminal playtest.
+
+## Optimization and output-correctness addendum
+
+| IMPORTANT_FILES | IMPORTANT_CLASSES | IMPORTANT_FUNCTIONS | WHY_THIS_DESIGN | HOW_TO_EXPLAIN_IT_IN_CLASS |
+|---|---|---|---|---|
+| src/render/frame_encoder.cpp; utf.cpp; utf_append.h | AnsiFrameEncoder; CharCell | AppendChannel, AppendSgr, AppendUtf8, InitialSgrState, Encode | Append into one payload; explicitly initialize terminal color state and carry it across rows | The terminal is stateful. A newline moves the cursor but does not reset ink. We remove temporary strings without confusing this protocol with the game renderer. |
+| src/core/engine.cpp; presentation_cadence.h | Engine; PresentationCadence | Run, Due | Stable presentation deadlines, missed deadlines skipped, unchanged fixed simulation | If rendering takes 2 ms, starting the next interval only after it finishes charges that work twice. Schedule presentation separately from game simulation. |
+| src/app/presentation_pulse.h; composition_root.cpp | PresentationPulse; RenderModule | Trigger, Extend, Active, ResetTransientPresentation, DrawVisualEffects | Cosmetic intervals use the paused game clock; successful loads clear old pulses | A flash lasts the same game time at 30 and 120 FPS. Rendering less often must not slow time or bring a future effect back through a save. |
+| src/render/character_renderer.cpp | CharacterArtAsset; CameraProjection | DrawOneSprite, DrawDoorPlane, SpriteBackground, WallCell | Cache dimensions locally, preserve projection, keep steel leaves/jambs as joined authored masses | An asset width is unchanged within a draw. Compute it once. A door is still a world plane, and its frame/windows are glyph structures, not a bitmap. |
+| data/characters/b1_character_art.txt | CharacterArtBank | existing far/mid/near door-frame load | Same dimensions and collision; single structural frame instead of stacked curved lines | Silhouette and negative space establish architecture before color adds steel and depth. |
+| src/app/player_product.h; campaign_panel.h | PlayerProductRuntime | Open, Handle, Rows, DrawCampaignPanel | Stable ordering, focused scrolling, modal contrast, clear unavailable states, existing frame-cap preference | A menu is a small view/controller over existing actions. It does not own objectives or invent new gameplay state. |
+
+Demonstration order: show the old/new door exports, explain the color-state
+regression, then compare the identical benchmark workloads. Keep CPU benchmark
+time, a synthetic cadence test and measured human display FPS as three distinct
+claims. Tests are now 233 in each configuration; see POST_OPTIMIZATION_REVIEW.md
+and the current receipt for all route/package/CI evidence.

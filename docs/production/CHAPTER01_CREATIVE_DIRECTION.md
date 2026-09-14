@@ -1,8 +1,14 @@
 # WRITEOVER-07 — creative direction and authored FPS contract
 
-## Current acceptance boundary — 2026-09-14
+## Current acceptance boundary — 2026-09-15
 
-FINAL_PRODUCT_FREEZE = f0e30afe9c330899c4e9fdf105c6c71b3001ca6c.
+FINAL_PRODUCT_FREEZE = d2654f8974922a1e8db9d23e1ef99819cb5f5524.
+This includes Rain's additional broad optimization request: quiet wall texture
+(service-duct readability protected), steel door leaves and single joined
+far/mid/near frames, stable readable modal pages, clock-correct cosmetic effects
+and terminal color-state correction. POST_OPTIMIZATION_REVIEW.md records two
+production-render iterations and measured CPU gains. These are bounded refinements
+of the same character-art direction; native visual acceptance remains open.
 POST_ULTRA_FINAL_HANDOFF.md now owns current audit readiness and supersedes
 older open Roof implementation / pre-audit human-gate statements. The Roof
 is an authored open-distance platform with contained parapets and a distant

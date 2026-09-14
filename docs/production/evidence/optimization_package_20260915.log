@@ -1,0 +1,7 @@
+PACKAGE_PLATFORM=windows-x64
+PACKAGE_VERSION=0.1.0-complete-campaign-candidate
+PACKAGE_COMMIT=d2654f8974922a1e8db9d23e1ef99819cb5f5524
+PACKAGE_STAGE=D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\optimized-package-20260915\stage\windows-x64
+PACKAGE_ARCHIVE=D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\optimized-package-20260915\WRITEOVER-07-audit-candidate.zip
+PACKAGE_ARCHIVE_SIZE=609629
+PACKAGE_FILESET_DETERMINISTIC=YES

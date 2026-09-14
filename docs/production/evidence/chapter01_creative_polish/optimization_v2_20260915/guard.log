@@ -1,0 +1,6 @@
+WRITEOVER-07 v0.1.0-complete-campaign-candidate
+[INFO][audio] winmm-procedural
+TERMINAL_BACKEND=win32-writeconsole TERMINAL_DIMENSIONS=240x67 TERMINAL_QUALITY_PRESET=COMPATIBILITY TERMINAL_COLOR_CAPABILITY=ANSI16 TERMINAL_PROBE=legacy-conhost
+TERMINAL_CAPABILITY_REASON=VT negotiation failed; using Win32 WriteConsole fallback VT_PROBE=FAILED_OR_UNAVAILABLE
+SUBTITLE_TRACE frame=1 room=room_b1_revival text=Dr. Vale: Look at me, not the number. Steady? Find the service reader.
+writeover_game exit=0 (smoke)

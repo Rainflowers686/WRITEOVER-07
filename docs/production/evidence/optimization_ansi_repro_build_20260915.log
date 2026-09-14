@@ -1,0 +1,19 @@
+适用于 .NET Framework MSBuild 版本 17.14.40+3e7442088
+
+  writeover_common.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\writeover_common.lib
+  writeover_world.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\writeover_world.lib
+  mapc.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\mapc.exe
+  writeover_player.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\writeover_player.lib
+  writeover_systemic.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\writeover_systemic.lib
+  writeover_ai.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\writeover_ai.lib
+  writeover_core.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\writeover_core.lib
+  writeover_narrative.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\writeover_narrative.lib
+  writeover_render.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\writeover_render.lib
+  writeover_platform.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\writeover_platform.lib
+  writeover_app.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\writeover_app.exe
+  writeover_art_review.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\writeover_art_review.exe
+  writeover_bench.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\writeover_bench.exe
+  writeover_input_probe.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\writeover_input_probe.exe
+  writeover_public_header_check.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\writeover_public_header_check.exe
+  test_render.cpp
+  writeover_tests.vcxproj -> D:\AAAbiancheng\00_Projects\40_Coursework\2026_CPP_Immersive_ASCII_FPS\out\build\release\Release\writeover_tests.exe

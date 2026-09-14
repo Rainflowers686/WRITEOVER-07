@@ -1,0 +1,5 @@
+WRITEOVER-07 v0.1.0-complete-campaign-candidate
+[INFO][audio] winmm-procedural
+TERMINAL_BACKEND=win32-writeconsole TERMINAL_DIMENSIONS=80x24 TERMINAL_QUALITY_PRESET=COMPATIBILITY TERMINAL_COLOR_CAPABILITY=ANSI16 TERMINAL_PROBE=legacy-conhost
+TERMINAL_CAPABILITY_REASON=VT negotiation failed; using Win32 WriteConsole fallback VT_PROBE=FAILED_OR_UNAVAILABLE
+writeover_game exit=0

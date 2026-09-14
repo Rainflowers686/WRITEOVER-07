@@ -2,7 +2,7 @@
 
 START_HEAD = 43083373a03b5583ae207001067cd866bdb9a2cc
 
-FINAL_IMPLEMENTATION_HEAD = f0e30afe9c330899c4e9fdf105c6c71b3001ca6c
+FINAL_IMPLEMENTATION_HEAD = d2654f8974922a1e8db9d23e1ef99819cb5f5524
 
 FINAL_HEAD = the delivery documentation commit containing this file. Resolve
 `git rev-parse HEAD`; the exact pushed SHA and matching CI run are in the delivery
@@ -13,6 +13,9 @@ STATUS = SOURCE_CONTENT_FROZEN_FOR_AUDIT_PENDING_PUSH_AND_EXACT_HEAD_CI_RECEIPT
 AUTHORITY = this report supersedes the previous director report's Roof gap and
 its requirement to complete human acceptance before mechanical audit. Historical
 reports and failed evidence remain preserved. Nothing here claims Product Gold.
+The later broad optimization instruction is included, not substituted for the
+original pass. POST_OPTIMIZATION_REVIEW.md records its measured comparison with
+131556e, terminal/cadence fixes, cosmetic timing, menu usability and door polish.
 
 ## Product ownership and behavior
 
@@ -58,12 +61,15 @@ PAUSE_MENU = Resume, Manual Save, Load Last, Restart Checkpoint, Replay Final
 Choice, Case File, Recent Events, Dialogue, Controls, Settings, New Game, Ending
 Summary, Quit. Dead players cannot Resume or save. Lost focus pauses explicitly.
 Held menu actions are fenced until release; backend raw state is not mutated.
+Options retain their order, selected items scroll into view at small sizes, stale
+notices clear on page changes, and unavailable actions explain the restriction.
 
 CONTROLS_HELP = actual existing binding table; introductory and interaction hints
 are translated to those bindings. No new remapping framework.
 
 ACCESSIBILITY = working sensory Off/Important/Detailed; Short/Normal/Long text;
-subtitles, high contrast, reduced shake/flicker, sensitivity and master volume.
+subtitles, high contrast, reduced shake/flicker, sensitivity, master volume and
+existing Auto/30/60/120 frame limit. Cosmetic timing uses the paused game clock.
 All use existing settings.cfg; two bounded fields are authorized by ADR-0010.
 World-save and legacy binary Settings layouts are unchanged.
 
@@ -92,7 +98,7 @@ consequences, and explicit recovery/New Game controls. Replay Final Choice loads
 the separate pre-final state; a later newly committed ending can replace completion.
 
 PERCEPTUAL_CONSISTENCY = successful load clears recent history, observer caches,
-ending-summary cache and temporary subtitle/intrusion overrides before presenting
+ending-summary cache, shot/hit/explosion pulses and subtitle/intrusion overrides before presenting
 Loaded. Failed load retains live authority and reports failure. No future menu
 text survives as an indefinite subtitle. World F9 stays non-modal so existing
 movement replays do not lose a held movement segment.
@@ -119,7 +125,9 @@ space and hand mass. Eight production held-pose renders reviewed; no new animati
 
 SIGNATURE_ROOMS = B1, Security, Elevator, Arrival, Records, Operations, Network,
 Transfer, Executive, Authority, Roof production frames reviewed. Existing interior
-zoning/material composition is frozen. Some distant people/equipment remain sparse
+zoning/geometry remains frozen. Wall texture is quieter, service-duct contrast is
+protected, and steel doors have authored joined jamb/header frames checked from
+multiple angles. Some distant people/equipment remain sparse
 or abstract; this is not a photorealism or foreground-appearance acceptance claim.
 
 NARRATIVE = existing records-supervisor voice and distinct working NPCs retained;
@@ -138,25 +146,35 @@ of conduct, disputed record, and quiet open Roof after committing a resolution.
 
 ## Validation and delivery
 
-LOCAL_REGRESSION = Debug/Release builds; 229/229 unit tests and CTest 2/2 in both;
+LOCAL_REGRESSION = Debug/Release builds; 233/233 unit tests and CTest 2/2 in both;
 13 content tests, 10 schema tests, deterministic content, invalid-seed startup,
 21 recovery replays, 36 classified scenarios / 35 executed / one rule-invalid,
 three Act II routes, four final full-campaign routes plus four independent ending
 reloads, integrated product/New Game/eight rollback stages, 36 facing selections,
-package positive/negative probes, static COUNT=0 and contract check: PASS.
-Final Release PVS render=1.175ms; total frame=2.262ms (worst_1pct_avg_ms).
-See evidence/ultra_local_receipt_20260915.json for source/stage distinctions.
+package positive/negative probes, static COUNT=0 and contract check: see the final
+evidence/optimization_local_receipt_20260915.json for each current gate and result.
+The final scenario matrix passed: 36 classified / 35 executed / one rule-invalid /
+zero valid-state gaps. All listed local gates passed at d2654f8.
+Final Release PVS render=0.751-0.944ms; total frame=0.985-1.223ms in two sequential
+runs (worst_1pct_avg_ms); total avg_ms=0.662-0.682. Terminal full encoding
+0.143-0.145ms, delta 0.046-0.048ms; platform writes excluded. No measured display
+FPS claim. Full workload, 1200 samples and 6ms gate are unchanged.
 
-PACKAGE = out/ultra-package-20260915/WRITEOVER-07-audit-candidate.zip;
-608293 bytes, Windows x64, version 0.1.0-complete-campaign-candidate,
-source f0e30afe9c330899c4e9fdf105c6c71b3001ca6c. Local candidate, no Release.
+PACKAGE = out/optimized-package-20260915/WRITEOVER-07-audit-candidate.zip;
+609629 bytes, Windows x64, version 0.1.0-complete-campaign-candidate,
+source d2654f8974922a1e8db9d23e1ef99819cb5f5524. Local candidate, no Release.
 
-PACKAGE_SHA256 = 33690097B77ED32CAEF19BF504EBA2A36C45E8E83DEBBDC687443D5AB0FF0D20
+PACKAGE_SHA256 = 1901D0FE2889C90818B83935CE40797C5D5914115AC2CD00A3BB9A4891B27799
 
 EXACT_HEAD_CI_RUN = resolve the post-push run whose headSha equals FINAL_HEAD;
-the delivery receipt records the exact run ID, jobs, conclusion and benchmark.
+the local evidence/optimization_delivery_receipt_20260915.json and final chat
+record the exact run ID, jobs, conclusion and benchmark.
 
 EXACT_HEAD_CI = NOT_YET_OBSERVED_AT_DOCUMENT_AUTHORING; do not inherit a green run.
+
+COMPARISON_CI = 131556e/run 34866959456 succeeded in Windows, Linux GCC, Linux
+Clang, macOS ARM64 and Linux ARM64 link without retry. Comparison macOS render
+1.120ms; total 2.090ms. This is not the final optimization head's CI.
 
 MACOS_BENCHMARK = predecessor 4308337/run 34849065030 failed only macOS Release
 benchmark: character_total_runtime_frame_240x67 had worst_1pct_avg_ms=8.895,
@@ -176,6 +194,8 @@ FLASH_AUDIT_ITEMS = staged save rollback and partial two-file save failure;
 pre-final versus completion ownership; transient presentation anti-leak; modal
 held-action/focus/resize combinations; nearest-focus depth ties; bounded message
 classification; Roof collision at all older save poses; platform benchmark stages.
+Also audit explicit SGR state across rows/runs, frame-limit changes/stalls and
+cosmetic-clock/reset ownership. New private helpers do not change public APIs.
 Composition root remains a large integration file, not a new refactor assignment.
 
 LUNA_FINAL_CLOSURE_ITEMS = fix audit-confirmed bounded defects, final packaging
@@ -210,4 +230,4 @@ FIRST_TIME_CLASSMATE_PLAYTEST = NOT_PERFORMED
 
 MEASURED_HUMAN_PLAYTIME = NOT_AVAILABLE
 
-TEACHING_HANDOFF = COMPLETE_GAME_TEACHBACK.md, final product-pass addendum.
+TEACHING_HANDOFF = COMPLETE_GAME_TEACHBACK.md, product and optimization addenda.

@@ -1,0 +1,11 @@
+WRITEOVER-07 v0.1.0-complete-campaign-candidate
+[INFO][audio] winmm-procedural
+TERMINAL_BACKEND=win32-writeconsole TERMINAL_DIMENSIONS=240x67 TERMINAL_QUALITY_PRESET=COMPATIBILITY TERMINAL_COLOR_CAPABILITY=ANSI16 TERMINAL_PROBE=legacy-conhost
+TERMINAL_CAPABILITY_REASON=VT negotiation failed; using Win32 WriteConsole fallback VT_PROBE=FAILED_OR_UNAVAILABLE
+SUBTITLE_TRACE frame=1 room=room_roof_exit text=Loaded.
+PRODUCT_NEW_GAME_REQUEST previous_completed=YES previous_health=12 previous_evidence=6
+[INFO][audio] winmm-procedural
+TERMINAL_BACKEND=win32-writeconsole TERMINAL_DIMENSIONS=240x67 TERMINAL_QUALITY_PRESET=COMPATIBILITY TERMINAL_COLOR_CAPABILITY=ANSI16 TERMINAL_PROBE=legacy-conhost
+TERMINAL_CAPABILITY_REASON=VT negotiation failed; using Win32 WriteConsole fallback VT_PROBE=FAILED_OR_UNAVAILABLE
+PRODUCT_NEW_GAME_INITIAL_STATE=PASS ROOM=room_b1_revival HEALTH=100 EVIDENCE=0
+writeover_game exit=0
