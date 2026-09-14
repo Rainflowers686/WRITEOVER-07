@@ -1631,9 +1631,14 @@ public:
         hud.developer_overlay = debug_overlay_;
         auto campaign_panel = campaign_panel_source_
             ? campaign_panel_source_() : std::vector<std::string>{};
-        if (product_ != nullptr && product_->Active() && settings_) campaign_panel = product_->Rows(*settings_,
-            [this](const std::string& value) { return Present(value); });
-        if (settings_) for (auto& line : campaign_panel) line = ProductControlText(line, *settings_);
+        if (product_ != nullptr && product_->Active() && settings_) {
+            // Product rows already contain current bindings. Rebinding's safe
+            // F/ESC confirmation keys must not be rewritten as gameplay keys.
+            campaign_panel = product_->Rows(*settings_,
+                [this](const std::string& value) { return Present(value); });
+        } else if (settings_) {
+            for (auto& line : campaign_panel) line = ProductControlText(line, *settings_);
+        }
         for (auto& line : campaign_panel) line = Present(line);
         const std::string visible_objective = Present(objective_);
         const std::string visible_prompt = Present(interaction_prompt_);

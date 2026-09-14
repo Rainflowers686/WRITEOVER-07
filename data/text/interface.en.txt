@@ -1,4 +1,4 @@
-# Stable id<TAB>English display text. Dynamic patterns follow in later coverage pass.
+# Stable id<TAB>English display text. {0}..{3} preserve dynamic keys, counts and labels.
 ui_continue	CONTINUE
 ui_continue_none	CONTINUE / unavailable
 ui_new_game	NEW GAME
@@ -105,3 +105,422 @@ ui_easy	EASY
 ui_hard	HARD
 ui_emphasis	INTERACTION EMPHASIS
 ui_invert_y	INVERT MOUSE Y
+ui_arrival	Arrival / Public Lobby
+ui_records	Records Core
+ui_ops	Operations Control
+ui_network	Network Node
+ui_transfer	Security Transfer
+ui_archive	Executive Archive
+ui_authority	Authority Core
+ui_roof	Roof / Exit
+ui_current	CURRENT
+ui_available	AVAILABLE
+ui_restricted	RESTRICTED
+ui_sealed	SEALED
+ui_locked	LOCKED
+ui_directory	TOWER DIRECTORY / 41 LEVELS
+ui_no_stops	LIFT DIRECTORY / NO VALID STOPS
+ui_selected	SELECTED: {0}
+ui_stop	{0}  {1}  [{2}]
+ui_directory_hint	Only available stops can be selected. Access follows your filed route.
+ui_sealed_levels	Other levels: B4 sealed / B3 no stop / B2 restricted / B1 clinical.
+ui_travel_keys	{0} SELECT   {1} TRAVEL   {2} CLOSE
+ui_obj_arrival_end	Arrival: revisit a floor or return to Roof
+ui_obj_36	Lift: select 36F Authority Core
+ui_obj_30	Lift: select 30F Executive Archive
+ui_obj_24	Lift: select 24F Security Transfer
+ui_obj_18	Lift: select 18F Network Node
+ui_obj_12	Lift: select 12F Operations Control
+ui_obj_08	Lift: select 08F Records Core; find your file
+ui_obj_clerk	Arrival: ask the clerk to open Records access
+ui_obj_records_return	Records: return to Arrival; select 12F Operations
+ui_obj_records	Records: query the Subject 07 file
+ui_obj_ops_return	Operations: return to Arrival; check unlocked floors
+ui_obj_ops	Operations: reconcile the facility response
+ui_obj_network_return	Network: return to the lift
+ui_obj_network	Network: find the unlisted observation route
+ui_obj_transfer_return	Transfer: return to Arrival; select 30F Archive
+ui_obj_transfer	Transfer: cross the upper security gate
+ui_obj_archive_return	Archive: return to Arrival; select 36F Authority
+ui_obj_archive	Archive: open the sealed executive record
+ui_obj_decided	Decision recorded. Return to Arrival or Roof.
+ui_obj_choice	Authority: choose what the record becomes
+ui_obj_authority	Authority: reach the decision terminal
+ui_obj_complete	Campaign complete. You may stay, return or quit.
+ui_obj_epilogue	Epilogue: read the last status
+ui_obj_security	Reach the security checkpoint
+ui_obj_elevator	Reach the elevator checkpoint
+ui_obj_checkpoint	CHECKPOINT REACHED: {0}
+ui_obj_update	Objective: {0}
+ui_case_subject	CASE FILE / SUBJECT 07
+ui_case_resolved	RESOLVED: {0}. The decision is on record.
+ui_case_lead1	LEAD: follow the service route to the Subject 07 records.
+ui_case_lead2	LEAD: Operations can reconcile the events missing from your file.
+ui_case_lead3	LEAD: a filed route or force gets you through upper Security.
+ui_case_lead4	LEAD: the Executive Archive holds the authority behind your number.
+ui_case_lead5	LEAD: take that authority to 36F. The record can be changed there.
+ui_case_lead6	LEAD: review the available resolutions at the decision terminal.
+ui_case_evidence	EVIDENCE: the unlisted feed preserves what the official record omits.
+ui_case_route	ROUTE: Operations filed your transfer; Security can accept it.
+ui_case_trace	TRACE: forced access remains on record; Breach is a possible resolution.
+ui_case_count	FILED EVIDENCE: {0}
+ui_close_keys	{0} / {1} CLOSE
+ui_amend	AMEND
+ui_disclose	DISCLOSE
+ui_breach	BREACH
+ui_amend_desc	File your account as the official record. The facility retains custody.
+ui_disclose_desc	Publish the record and the surviving feed beyond the facility's control.
+ui_breach_desc	Use forced access to leave. Refuse to certify the institution's account.
+ui_guard	Security guard
+ui_cleaner	Cleaner
+ui_medical	Medical staff
+ui_technician	Technician
+ui_research	Research staff
+ui_staff	Facility staff
+ui_npc_turn	{0} turns sharply toward a disturbance.
+ui_npc_check	{0} moves to check a disturbance.
+ui_npc_weapon	{0} raises a weapon.
+ui_npc_stun	{0} collapses under the discharge.
+ui_npc_dead	{0} falls motionless.
+ui_npc_escape	{0} breaks away.
+ui_npc_resume	{0} resumes the patrol.
+ui_npc_body	{0} stops to examine the body.
+ui_camera_on	The camera indicator comes on.
+ui_camera_off	The camera indicator goes dark.
+ui_examine_title	EXAMINE
+ui_body_title	BODY
+ui_body_dead	Motionless. No visible breathing.
+ui_body_stun	Shallow breathing. The person is unconscious.
+ui_body_search	Possessions are not visible. Use Search to find out more.
+ui_guard_look	Helmet, dark visor, broad protective vest and duty equipment.
+ui_cleaner_look	Work cap, heavy overalls and practical cleaning equipment.
+ui_tech_look	Work clothes, tool pockets and a distracted stance beside the equipment.
+ui_med_look	Clinical coat and medical insignia. Hands kept clear of the equipment.
+ui_staff_look	Facility clothing, a visible identification patch and a reserved stance.
+ui_knowledge_boundary	This tells you what you can see, not what this person knows or carries.
+ui_camera_title	CAMERA
+ui_camera_look	A wall-mounted lens housing and status indicator.
+ui_indicator_dark	The indicator is dark.
+ui_indicator_lit	The indicator is lit. Its field of view is not marked.
+ui_reader_title	ACCESS READER
+ui_reader_look	Credential slot and a small response lamp.
+ui_reader_hint	Present a credential to learn whether this reader accepts it.
+ui_door_title	DOOR
+ui_door_look	A framed threshold, recessed panel and access mechanism.
+ui_door_hint	The adjacent interaction prompt describes your available action.
+ui_terminal_title	TERMINAL
+ui_terminal_look	An institutional workstation for this room's department.
+ui_terminal_hint	Its screen is the direct source for records and access responses. Interact to read it.
+ui_cart_title	SERVICE CART
+ui_cart_look	A wheeled industrial container. Its enclosed compartment obscures the contents.
+ui_equipment_title	EQUIPMENT
+ui_equipment_look	A fixed equipment housing. Its shape marks work space rather than a passage.
+ui_examine_none	No clear target in reach. Aim at a person, body, camera, reader, door or workstation.
+ui_history_dialogue	DIALOGUE / RECENTLY HEARD
+ui_history_events	RECENT EVENTS / WHAT YOU PERCEIVED
+ui_history_empty	No recent entries. Loading a save clears this history.
+ui_heard	HEARD
+ui_nearby	NEARBY
+ui_prompt	[{0}] {1}
+ui_audit_001	ORDER 07: hold subject unresolved until they certify their own account. Review authority transfers to Subject 07.
+ui_audit_002	RECORDS / SUBJECT 07: release denied before revival. Review owner: Authority, 36F.
+ui_audit_003	UNBOUND
+ui_audit_004	UNKNOWN
+ui_audit_005	{0} SCROLL
+ui_audit_006	{0} CLOSE
+ui_audit_007	{0} INTERACT
+ui_audit_008	{0} TRAVEL
+ui_audit_009	{0} commits
+ui_audit_010	{0} records
+ui_audit_011	{0} CASE FILE
+ui_audit_012	{0} LOAD
+ui_audit_013	{0} FIRE
+ui_audit_014	{0} MOVE
+ui_recovery_001	B1 / Revival
+ui_recovery_002	Calibration
+ui_recovery_003	Security Checkpoint
+ui_recovery_004	Medical
+ui_recovery_005	Staff Quarters
+ui_recovery_006	Service Lift
+ui_recovery_007	Service Concourse
+ui_recovery_008	Records Annex
+ui_recovery_009	Utility Relay
+ui_recovery_010	Observation
+ui_recovery_011	Transit Checkpoint
+ui_recovery_012	Recovery slot written; Continue update failed. Check user-data access.
+ui_recovery_013	Save failed. Previous recovery files are retained.
+ui_recovery_014	Pre-final checkpoint secured. The ending will not overwrite it.
+ui_recovery_015	Ending saved. Pause offers Replay Final Choice.
+ui_recovery_016	Checkpoint saved.
+ui_recovery_017	No save found. Recovered at the room entrance; world progression is retained.
+ui_recovery_018	ACCESS DENIED. The held badge is revoked; reload before the checkpoint.
+ui_recovery_019	ACCESS DENIED. The reader needs your held badge.
+ui_recovery_020	TERMINAL: badge revoked; the active session no longer authorizes access.
+ui_recovery_021	PAUSED - ESC resumes; Q quits
+ui_recovery_022	RESUMED
+ui_recovery_023	CALIBRATION: route verified. Service access is open.
+ui_recovery_024	MEDICAL: intake recorded. Choose a service route.
+ui_recovery_025	OPERATIONS: response map reconciled. A quiet route is available.
+ui_recovery_026	NETWORK: unlisted observation feed opened. The record can leave the tower.
+ui_recovery_027	TRANSFER: upper security gate cleared.
+ui_recovery_028	Arrival is unavailable.
+ui_recovery_029	Calibration route unavailable.
+ui_recovery_030	Elevator access remains locked.
+ui_recovery_031	Elevator route unavailable.
+ui_recovery_032	Medical route unavailable.
+ui_recovery_033	Records access is unavailable.
+ui_recovery_034	Records access requires a reviewed dispatch route.
+ui_recovery_035	Security route unavailable.
+ui_recovery_036	Service route unavailable.
+ui_recovery_037	Staff route unavailable.
+ui_recovery_038	The deep transfer remains unverified.
+ui_recovery_039	The maintenance bypass is not carrying current.
+ui_recovery_040	The observation gallery is not listed on the manifest.
+ui_recovery_041	The return lift is unavailable.
+ui_recovery_042	The roof door is not a lift.
+ui_recovery_043	The transfer lift has not been cleared.
+ui_recovery_044	The transfer zone is unavailable.
+ui_recovery_045	The utility bypass is unavailable.
+ui_recovery_046	Transfer access is not yet recorded.
+ui_recovery_047	Transit control has no filed route.
+ui_recovery_048	Utility access requires a reviewed dispatch route.
+ui_recovery_049	Load failed: invalid player state.
+ui_recovery_050	Load failed: systemic state rejected.
+ui_recovery_051	Load failed: world state rejected.
+ui_recovery_052	Load failed: event state rejected.
+ui_recovery_053	Load failed: RNG state rejected.
+ui_recovery_054	Load failed: narrative state rejected.
+ui_recovery_055	Load failed: AI runtime setup rejected.
+ui_recovery_056	Load failed: AI state rejected.
+ui_recovery_057	Load failed: incomplete player room.
+ui_recovery_058	Load failed: saved room unavailable.
+ui_recovery_059	Load failed: injected final-commit fault.
+ui_recovery_060	Load failed: world state commit rejected.
+ui_recovery_061	Load failed: event state commit rejected.
+ui_recovery_062	Load failed: RNG state commit rejected.
+ui_recovery_063	Load failed: narrative state commit rejected.
+ui_recovery_064	Load failed: runtime state commit rejected.
+ui_message_001	CONTROLS / CURRENT BINDINGS
+ui_message_002	Mouse: look. Keyboard movement is camera-relative.
+ui_message_003	Bindings use the existing settings.cfg table; no hidden fixed gameplay keys.
+ui_message_004	LOCATION
+ui_message_005	Facility
+ui_message_006	CREDENTIAL / held badge REVOKED
+ui_message_007	CREDENTIAL / held badge VALID; readers still check access
+ui_message_008	{0} SCROLL  {1} CLOSE
+ui_message_009	FINAL DECISION / SUBJECT 07
+ui_message_010	{0} records this choice and takes you to Roof.
+ui_message_011	These resolutions reflect your filed route and evidence.
+ui_message_012	{0} commits this resolution and takes you to Roof.
+ui_message_013	{0} SELECT   {1} CONFIRM   {2} CLOSE
+ui_message_014	CAMPAIGN COMPLETE
+ui_message_015	EVIDENCE KNOWN
+ui_message_016	The record leaves the building. Authority no longer owns the only copy.
+ui_message_017	You forced an exit. The institution retains the account you refused to sign.
+ui_message_018	Your correction is filed. The institution accepts a different version of Subject 07.
+ui_message_019	You recovered the unlisted network feed.
+ui_message_020	No unlisted network feed was recovered.
+ui_message_021	Operations supplied a cooperative route.
+ui_message_022	Operations did not supply a cooperative route.
+ui_message_023	You may explore the roof or return to the Case File.
+ui_message_024	Pause > Replay Final Choice loads the separate pre-final save; it does not rewrite this completion.
+ui_message_025	New Game rebuilds all live state. Existing recovery files remain until their next save.
+ui_message_026	YOU ARE DOWN. Pause offers recovery points or a fresh game.
+ui_message_027	UNDER FIRE / Break sight. Find cover.
+ui_message_028	Target down. Search the body before moving on.
+ui_message_029	Target dead. The scene is now evidence.
+ui_message_030	CAMERA ALERT: your badge was revoked. Reload before the checkpoint.
+ui_message_031	The active camera caught the disturbance.
+ui_message_032	Cannot save while dead. Load or start a new game from Pause.
+ui_message_033	Save failed: systemic state invalid.
+ui_message_034	Save failed: user data unavailable.
+ui_message_035	Load failed.
+ui_message_036	Load failed: incomplete save.
+ui_message_037	Loaded.
+ui_message_038	Lift destination unavailable.
+ui_message_039	Lift arrival recorded. {0}
+ui_message_040	Roof unavailable. No decision was recorded.
+ui_message_041	Decision recorded: {0}. You are outside the authorization chain.
+ui_message_042	ACCESS GRANTED. B1 service door unlocked.
+ui_message_043	Calibration room unavailable.
+ui_message_044	B1 service door is open. Move through the reader.
+ui_message_045	Search complete. Badge taken.
+ui_message_046	Search complete. Nothing useful found.
+ui_message_047	Body secured. Drag to the cleaning cart.
+ui_message_048	Cart latched. The corridor is quiet again.
+ui_message_049	Cleaning cart: empty and unlocked.
+ui_message_050	Camera offline. The blind spot is temporary.
+ui_message_051	Camera: offline.
+ui_message_052	TERMINAL: calibration route unlocked.
+ui_message_053	TERMINAL: session active. Route copied.
+ui_message_054	TERMINAL: credential required.
+ui_message_055	B1: maintenance, camera loop, terminal, or checkpoint.
+ui_message_056	CALIBRATION: route already verified. Proceed to Medical.
+ui_message_057	CALIBRATION: held credential required.
+ui_message_058	SECURITY: the checkpoint is open while the guard is down.
+ui_message_059	ACCESS DENIED. No valid credential.
+ui_message_060	STAFF ROUTE: maintenance shift change at 02:10.
+ui_message_061	1F: checkpoint, staff route, or maintenance access.
+ui_message_062	MEDICAL: intake already recorded. Choose a service route.
+ui_message_063	MEDICAL: held credential required for intake.
+ui_message_064	DISPATCH: route board already reviewed. Choose Records or Power.
+ui_message_065	DISPATCH: control board unavailable.
+ui_message_066	ARCHIVE: credentialed query rejected.
+ui_message_067	RECORDS: ask the operator or query the manifest.
+ui_message_068	UTILITY: relay handshake rejected.
+ui_message_069	UTILITY: the relay needs a human decision.
+ui_message_070	Analyst: the loop is still holding. That is the interesting part.
+ui_message_071	OBSERVATION: control port unavailable.
+ui_message_072	OBSERVATION: ask the analyst or use the control port.
+ui_message_073	TRANSIT: control terminal unavailable.
+ui_message_074	ELEVATOR: the checkpoint record is incomplete.
+ui_message_075	ELEVATOR: the restricted door awaits verification.
+ui_message_076	Clerk: Records is the first stop. Operations will open after you bring back a route.
+ui_message_077	ARRIVAL: use the directory or speak with the clerk.
+ui_message_078	RECORDS: the subject terminal is offline.
+ui_message_079	Archivist: Your release was denied before you woke. Not by Medical. The order came from 36F.
+ui_message_080	RECORDS: the terminal has the useful version of the file.
+ui_message_081	OPERATIONS: route reconciled under alert. The next guard will know.
+ui_message_082	OPERATIONS: control handshake unavailable.
+ui_message_083	Operator: I can route you upward. I cannot make the cameras forget.
+ui_message_084	Operator: I've filed your transfer. Network has the feed they left out of your record.
+ui_message_085	OPERATIONS: reconcile the map before leaving.
+ui_message_086	NETWORK: the observation feed is not responding.
+ui_message_087	Analyst: That feed was omitted, not lost. Decide who gets to see it.
+ui_message_088	NETWORK: the unlisted feed is the useful discovery.
+ui_message_089	TRANSFER: clearance denied. The guard still owns this gate.
+ui_message_090	Transfer Guard: I have your route. You can still force the next door.
+ui_message_091	Transfer Guard: Your route is filed. Do not make me revise it.
+ui_message_092	TRANSFER: clear the guard or make the route loud.
+ui_message_093	ARCHIVE: the executive record rejects this route.
+ui_message_094	Liaison: They need your signature to close the file. The order gives you authority to write it. Read it carefully.
+ui_message_095	Liaison: The archive is not open to an unfiled route.
+ui_message_096	ARCHIVE: the sealed record is the focal point.
+ui_message_097	AUTHORITY: the executive record is not yet reconciled.
+ui_message_098	PRE-FINAL CHECKPOINT / The decision will be durable after you confirm it.
+ui_message_099	Authority: I can certify an account. I cannot make it what happened. The signature is yours.
+ui_message_100	AUTHORITY: use the decision terminal when ready.
+ui_message_101	ROOF: the campaign is complete.
+ui_message_102	Stunner: empty or cooling down.
+ui_message_103	Stunner: target out of range or line of fire.
+ui_message_104	QUIT REQUESTED - restoring terminal
+ui_message_105	Load rejected. No live state or recovery file was replaced.
+ui_message_106	Manual save recorded.
+ui_message_107	Save failed; check user-data access.
+ui_route_001	HIDE BODY IN CART
+ui_route_002	DRAG BODY
+ui_route_003	SEARCH BODY
+ui_route_004	INSPECT CLEANING CART
+ui_route_005	DISABLE CAMERA
+ui_route_006	USE TERMINAL (BADGE REVOKED)
+ui_route_007	USE TERMINAL
+ui_route_008	USE TERMINAL (BADGE REQUIRED)
+ui_route_009	USE SERVICE READER
+ui_route_010	TALK TO CLEANER
+ui_route_011	TALK
+ui_route_012	REVIEW CALIBRATION ROUTE
+ui_route_013	USE CALIBRATION TERMINAL
+ui_route_014	ENTER MEDICAL SERVICE
+ui_route_015	ADDRESS SECURITY
+ui_route_016	ENTER ELEVATOR ACCESS
+ui_route_017	RETURN TO MEDICAL
+ui_route_018	REVIEW MEDICAL INTAKE
+ui_route_019	USE MEDICAL TERMINAL
+ui_route_020	RETURN TO CALIBRATION
+ui_route_021	ENTER SECURITY
+ui_route_022	ENTER STAFF PASSAGE
+ui_route_023	ENTER ELEVATOR LOBBY
+ui_route_024	VERIFY ELEVATOR CHECKPOINT
+ui_route_025	ENTER ACT II-A TRANSFER
+ui_route_026	REVIEW DISPATCH BOARD
+ui_route_027	ENTER RECORDS ARCHIVE
+ui_route_028	ENTER POWER UTILITY
+ui_route_029	ENTER TRANSIT CONTROL
+ui_route_030	RETURN TO ELEVATOR
+ui_route_031	REVIEW ARCHIVE MANIFEST
+ui_route_032	QUERY ARCHIVE MANIFEST
+ui_route_033	SPEAK WITH RECORDS OPERATOR
+ui_route_034	RETURN TO TRANSFER ZONE
+ui_route_035	ENTER OBSERVATION GALLERY
+ui_route_036	REVIEW RELAY BYPASS
+ui_route_037	REROUTE RESERVE FEED
+ui_route_038	REVIEW BACKUP FEED
+ui_route_039	FORCE BACKUP FEED
+ui_route_040	SPEAK WITH TECHNICIAN
+ui_route_041	TAKE MAINTENANCE BYPASS
+ui_route_042	REVIEW CAMERA LOOP
+ui_route_043	LOOP TRANSIT CAMERA
+ui_route_044	SPEAK WITH ANALYST
+ui_route_045	RETURN TO RECORDS ARCHIVE
+ui_route_046	ADDRESS TRANSIT SECURITY
+ui_route_047	REVIEW TRANSIT CONTROL
+ui_route_048	USE CONTROL TERMINAL
+ui_route_049	ENTER DEEP TRANSFER
+ui_route_050	RETURN TO POWER UTILITY
+ui_route_051	OPEN LIFT DIRECTORY
+ui_route_052	SPEAK WITH ARRIVAL CLERK
+ui_route_053	RETURN TO DEEP TRANSFER
+ui_route_054	REVIEW SUBJECT RECORD
+ui_route_055	QUERY SUBJECT RECORD
+ui_route_056	SPEAK WITH ARCHIVIST
+ui_route_057	RETURN TO ARRIVAL
+ui_route_058	REVIEW OPERATIONS ROUTE
+ui_route_059	RECONCILE OPERATIONS
+ui_route_060	SPEAK WITH OPERATOR
+ui_route_061	REVIEW UNLISTED FEED
+ui_route_062	OPEN UNLISTED FEED
+ui_route_063	REVIEW TRANSFER CLEARANCE
+ui_route_064	PRESENT TRANSFER CLEARANCE
+ui_route_065	ADDRESS TRANSFER GUARD
+ui_route_066	REVIEW EXECUTIVE RECORD
+ui_route_067	OPEN EXECUTIVE RECORD
+ui_route_068	SPEAK WITH LIAISON
+ui_route_069	REVIEW RECORDED DECISION
+ui_route_070	OPEN FINAL DECISION
+ui_route_071	ESTABLISH FINAL CHECKPOINT
+ui_route_072	ADDRESS AUTHORITY
+ui_route_073	READ FINAL STATUS
+ui_route_074	B1: Badge revoked; reload before the checkpoint
+ui_route_075	B1: Search the downed guard
+ui_route_076	B1: Take the access badge
+ui_route_077	B1: Find a way through the service route
+ui_route_078	B1: Use the calibration terminal
+ui_route_079	B1: Use the service reader
+ui_route_080	B1: Cross the open service door
+ui_route_081	B1 complete: continue to calibration
+ui_route_082	Calibration: enter Medical service
+ui_route_083	Calibration: use the route terminal
+ui_route_084	Medical: access the intake terminal
+ui_route_085	Security: use the elevator checkpoint
+ui_route_086	Medical: take the quiet staff passage
+ui_route_087	Medical: report to the Security checkpoint
+ui_route_088	Security: response elevated; reach the checkpoint
+ui_route_089	Security: use the elevator access door
+ui_route_090	Security: pass the checkpoint
+ui_route_091	Elevator: verify the chapter checkpoint
+ui_route_092	Act II-A: return to the transfer zone
+ui_route_093	Act II-A: use the transfer control
+ui_route_094	Act II-A: review the dispatch board
+ui_route_095	Act II-A: choose a Records or Power route
+ui_route_096	Act II-A: reach Transit Control
+ui_route_097	Act II-A: use the deep transfer door
+ui_route_098	Records: secure a route into Transit Control
+ui_route_099	Records: optional observation gallery or return
+ui_route_100	Power: take the maintenance bypass to Transit Control
+ui_route_101	Power: restore a maintenance bypass
+ui_route_102	Observation: return to Records
+ui_route_103	Observation: loop the transit camera
+ui_route_104	Transit: clear the checkpoint and use control
+ui_route_105	Transit: use the deep transfer door
+ui_route_106	Staff route: use the elevator service door
+ui_route_107	Explore the marked service route
+ui_route_108	WRITEOVER-07 / CAMPAIGN COMPLETE
+ui_route_109	ENDING / DISCLOSE - THE RECORD LEFT THE FACILITY
+ui_route_110	ENDING / BREACH - THE EXIT WAS FORCED
+ui_route_111	ENDING / AMEND - THE RECORD WAS RECONCILED
+ui_route_112	{0} PAUSE / ENDING SUMMARY / REPLAY FINAL CHOICE / QUIT
+ui_route_113	{0} CASE FILE | LIFT DOOR: RETURN
+ui_route_114	This decision is already recorded. Your case file retains the outcome.
+ui_route_115	AUTHORITY / No eligible resolution. Records, operations and transfer remain incomplete.
+ui_route_116	{0} MOVE | MOUSE LOOK | {1} INTERACT | {2} FIRE
+ui_route_117	{0} MOVE | MOUSE LOOK | {1} INTERACT

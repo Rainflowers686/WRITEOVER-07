@@ -17,6 +17,51 @@
 
 namespace writeover {
 namespace {
+bool TranslationTemplateValidation() {
+    const auto root = std::filesystem::path(__FILE__).parent_path().parent_path();
+    PresentationText translations;
+    WO_CHECK(translations.Load(root / "data/text"));
+    std::filesystem::path directory;
+    for (int i = 0; i < 100; ++i) {
+        const auto candidate = std::filesystem::temp_directory_path() /
+            ("writeover_translation_regression_" + std::to_string(i));
+        std::error_code ec;
+        if (std::filesystem::create_directory(candidate, ec)) { directory = candidate; break; }
+    }
+    WO_CHECK(!directory.empty());
+    struct FixtureCleanup {
+        std::filesystem::path directory;
+        ~FixtureCleanup() {
+            std::error_code ec;
+            for (const char* name : {"recovery_text.txt", "recovery_text.zh-CN.txt",
+                                     "interface.en.txt", "interface.zh-CN.txt"})
+                std::filesystem::remove(directory / name, ec);
+            std::filesystem::remove(directory, ec);
+        }
+    } cleanup{directory};
+    for (const char* name : {"recovery_text.txt", "recovery_text.zh-CN.txt"}) {
+        std::ofstream file(directory / name); file << "one\tunchanged\n";
+    }
+    const auto write_pair = [&](const char* english, const char* chinese) {
+        std::ofstream en(directory / "interface.en.txt"), zh(directory / "interface.zh-CN.txt");
+        en << "pattern\t" << english << '\n'; zh << "pattern\t" << chinese << '\n';
+    };
+    for (const auto& entry : std::vector<std::pair<const char*, const char*>>{
+        {"{0}", "{0}"}, {"A {0}{1}", "{0} {1}"}, {"A {0} / {2}", "{0} / {2}"},
+        {"A {0}", "遗漏"}, {"A {0}", "{1}"}, {"A {0}", "{0}{0}"},
+        {"A {0} / {0}", "{0}"}, {"A {0}", "{0} {broken}"},
+        {"A {1}", "{1}"}, {"A", "{0}"}, {"A {broken}", "{0}"}}) {
+        write_pair(entry.first, entry.second);
+        WO_CHECK(!translations.Load(directory));
+        WO_CHECK(translations.Present("CONTINUE", "zh-CN") == "继续游戏");
+    }
+    write_pair("A {0} / {1}", "{1} 对应 {0}");
+    WO_CHECK(translations.Load(directory));
+    WO_CHECK(translations.Present("A 8 / 17", "zh-CN") == "17 对应 8");
+    WO_CHECK(translations.Present("A 8 / 17", "en") == "A 8 / 17");
+    WO_CHECK(translations.Present("A {1} / 17", "zh-CN") == "17 对应 {1}");
+    return true;
+}
 bool ChineseDisplayColumns() {
     WO_CHECK_EQ(text::Columns("中文 FPS，门 A1"), 15);
     WO_CHECK(text::Clip("A中文B", 4) == "A中");
@@ -276,6 +321,14 @@ bool BoundControlsAndPreferences() {
     WO_CHECK(translations.Count() > 100);
     WO_CHECK(translations.Present("CONTINUE", "zh-CN") == "继续游戏");
     WO_CHECK(translations.Present("CONTINUE", "en") == "CONTINUE");
+    WO_CHECK(translations.Present("[MOUSE4] USE TERMINAL", "zh-CN") == "[MOUSE4] 使用终端");
+    WO_CHECK(translations.Present("FILED EVIDENCE: 17", "zh-CN") == "已归档证据：17");
+    WO_CHECK(translations.Present("> 08  Records Core  [AVAILABLE]", "zh-CN") == "> 08  档案中心  [可前往]");
+    WO_CHECK(translations.Present("Security guard raises a weapon.", "zh-CN") == "安保人员举起武器。");
+    WO_CHECK(translations.Present("RESOLVED: DISCLOSE. The decision is on record.", "zh-CN") == "已定案：公开。决定已写入记录。");
+    WO_CHECK(translations.Present("N/S SELECT   E TRAVEL   ESC CLOSE", "zh-CN") == "N/S 选择   E 前往   ESC 关闭");
+    WO_CHECK(translations.Present("N/A/S/D MOVE | MOUSE LOOK | E INTERACT | MOUSE1 FIRE", "zh-CN") == "N/A/S/D 移动 | 鼠标环视 | E 交互 | MOUSE1 开火");
+    WO_CHECK(translations.Present("Unknown source stays visible", "zh-CN") == "Unknown source stays visible");
     WO_CHECK(translations.Present("A weapon was issued. The record is less certain about you.", "zh-CN") == "武器已经发放。至于你，记录还没核实。");
     PlayerProductRuntime first_run;
     first_run.Open(ProductPage::Language);
@@ -529,6 +582,7 @@ bool KnownEvidenceAndNearestInspect() {
 }
 } // namespace
 void RegisterProductTests(TestHarness& harness) {
+    harness.Add("product.translation template validation", &TranslationTemplateValidation);
     harness.Add("product.functional preference consumers", &FunctionalPreferenceConsumers);
     harness.Add("product.rebinding confirmation and conflict", &RebindingConfirmationAndConflict);
     harness.Add("product.chinese display columns", &ChineseDisplayColumns);

@@ -23,3 +23,20 @@ HudFrame adds a presentation-only health-label pointer with the existing English
 default. It is consumed synchronously by the compositor and never retained or
 serialized. Boot asks for language when the preference is absent; Settings can
 switch it without restarting the campaign.
+
+Bounded display templates use sequential source captures {0} through {3}.
+Literal separators make each capture smaller than its containing message;
+targets may reorder but must retain each capture exactly once. Loading validates
+both catalogs and templates before replacing the live bank. Expansion walks the
+authored target once, so braces inside a captured value cannot become another
+substitution. Keys and numbers remain intact; captured labels use the same bank.
+Specific templates (more authored literal text) precede generic suffix templates,
+so a complete control footer is not consumed by a shorter "CLOSE" pattern.
+
+The concrete inventory script checks selected application display sinks and
+scene-transition failures. It deliberately reports dynamic fragments separately,
+not as proof that every composition is translated. Product tests cover composed
+directory rows, custom bindings, evidence counts, outcomes and NPC reactions.
+Real production B1 and Case File dumps provide layout evidence, not foreground
+terminal or human-language acceptance. Product menu rows already resolve their
+keys; only campaign rows need the legacy control-text replacement step.

@@ -104,3 +104,422 @@ ui_easy	简单
 ui_hard	困难
 ui_emphasis	突出交互提示
 ui_invert_y	反转鼠标纵轴
+ui_arrival	接待处 / 公共大厅
+ui_records	档案中心
+ui_ops	运行控制室
+ui_network	网络节点
+ui_transfer	安保转运区
+ui_archive	管理档案室
+ui_authority	授权中心
+ui_roof	屋顶 / 出口
+ui_current	当前位置
+ui_available	可前往
+ui_restricted	受限
+ui_sealed	封锁
+ui_locked	未解锁
+ui_directory	大楼目录 / 41 层
+ui_no_stops	电梯目录 / 暂无可用站点
+ui_selected	已选择：{0}
+ui_stop	{0}  {1}  [{2}]
+ui_directory_hint	只能选择已开放的站点。通行权限取决于已登记的路线。
+ui_sealed_levels	其他楼层：B4 封锁 / B3 不停靠 / B2 受限 / B1 医疗区。
+ui_travel_keys	{0} 选择   {1} 前往   {2} 关闭
+ui_obj_arrival_end	接待处：重访楼层，或返回屋顶
+ui_obj_36	电梯：选择 36F 授权中心
+ui_obj_30	电梯：选择 30F 管理档案室
+ui_obj_24	电梯：选择 24F 安保转运区
+ui_obj_18	电梯：选择 18F 网络节点
+ui_obj_12	电梯：选择 12F 运行控制室
+ui_obj_08	电梯：选择 08F 档案中心，查找你的档案
+ui_obj_clerk	接待处：请接待员开通档案中心权限
+ui_obj_records_return	档案中心：返回接待处，选择 12F 运行控制室
+ui_obj_records	档案中心：查询 07 号受试者档案
+ui_obj_ops_return	运行控制室：返回接待处，查看已开放的楼层
+ui_obj_ops	运行控制室：核对设施的处置记录
+ui_obj_network_return	网络节点：返回电梯
+ui_obj_network	网络节点：寻找未登记的观察通路
+ui_obj_transfer_return	安保转运区：返回接待处，选择 30F 管理档案室
+ui_obj_transfer	安保转运区：通过上层安保闸门
+ui_obj_archive_return	管理档案室：返回接待处，选择 36F 授权中心
+ui_obj_archive	管理档案室：打开封存的管理记录
+ui_obj_decided	决定已记录。返回接待处或屋顶。
+ui_obj_choice	授权中心：决定这份记录的归宿
+ui_obj_authority	授权中心：找到决策终端
+ui_obj_complete	流程已完成。你可以停留、返回或退出。
+ui_obj_epilogue	尾声：查看最终状态
+ui_obj_security	抵达安保检查点
+ui_obj_elevator	抵达电梯检查点
+ui_obj_checkpoint	已抵达检查点：{0}
+ui_obj_update	目标：{0}
+ui_case_subject	个人档案 / 07 号受试者
+ui_case_resolved	已定案：{0}。决定已写入记录。
+ui_case_lead1	线索：沿服务通道寻找 07 号受试者档案。
+ui_case_lead2	线索：运行控制室能核对档案中缺失的事件。
+ui_case_lead3	线索：登记通行路线，或强行通过上层安保。
+ui_case_lead4	线索：管理档案室保存着赋予你这个编号的授权记录。
+ui_case_lead5	线索：带着授权前往 36F。那里可以修改记录。
+ui_case_lead6	线索：在决策终端查看可选的处理方式。
+ui_case_evidence	证据：未登记的监控留存了正式记录遗漏的内容。
+ui_case_route	路线：运行控制室已登记转运，安保可以据此放行。
+ui_case_trace	痕迹：强行通行已留档；你可以选择突围。
+ui_case_count	已归档证据：{0}
+ui_close_keys	{0} / {1} 关闭
+ui_amend	修订
+ui_disclose	公开
+ui_breach	突围
+ui_amend_desc	将你的陈述写入正式记录。档案仍由设施保管。
+ui_disclose_desc	公开记录与留存的监控，让它们脱离设施的控制。
+ui_breach_desc	强行离开，不为机构的说法背书。
+ui_guard	安保人员
+ui_cleaner	清洁工
+ui_medical	医务人员
+ui_technician	技术员
+ui_research	研究人员
+ui_staff	设施工作人员
+ui_npc_turn	{0}猛地转向异响。
+ui_npc_check	{0}前去查看异响。
+ui_npc_weapon	{0}举起武器。
+ui_npc_stun	{0}被电击击倒。
+ui_npc_dead	{0}倒地，不再动弹。
+ui_npc_escape	{0}抽身离开。
+ui_npc_resume	{0}恢复巡逻。
+ui_npc_body	{0}停下来检查倒地的人。
+ui_camera_on	摄像头指示灯亮了。
+ui_camera_off	摄像头指示灯熄灭了。
+ui_examine_title	观察
+ui_body_title	倒地的人
+ui_body_dead	一动不动，看不出呼吸。
+ui_body_stun	呼吸微弱，处于昏迷状态。
+ui_body_search	看不清随身物品。搜查后才能确认。
+ui_guard_look	头盔、深色面罩、宽厚的防护背心和执勤装备。
+ui_cleaner_look	工作帽、厚实的工装，还有日常清洁用的工具。
+ui_tech_look	穿着带工具袋的工装，站在设备旁，似乎有些走神。
+ui_med_look	医用外套和医疗标识。双手没有碰设备。
+ui_staff_look	设施制服上有身份标识，站姿拘谨。
+ui_knowledge_boundary	这些只是你看得到的。对方知道什么、带着什么，还不能确定。
+ui_camera_title	摄像头
+ui_camera_look	墙上的镜头外壳和状态指示灯。
+ui_indicator_dark	指示灯没亮。
+ui_indicator_lit	指示灯亮着。监控范围没有标出来。
+ui_reader_title	门禁读卡器
+ui_reader_look	证件插槽和一盏小提示灯。
+ui_reader_hint	出示证件，才能知道这里是否认可。
+ui_door_title	门
+ui_door_look	门框围住门洞，门板嵌在其中，旁边装有门禁装置。
+ui_door_hint	附近的交互提示会说明当前能做什么。
+ui_terminal_title	终端
+ui_terminal_look	供这个部门使用的工作终端。
+ui_terminal_hint	记录和通行结果会显示在屏幕上。交互以查看。
+ui_cart_title	服务推车
+ui_cart_look	带轮子的工业容器。封闭箱体挡住了里面的东西。
+ui_equipment_title	设备
+ui_equipment_look	固定设备的外壳。这里是工作区，不是通道。
+ui_examine_none	附近没有明确目标。对准人物、倒地者、摄像头、读卡器、门或工作台再观察。
+ui_history_dialogue	对话 / 最近听到的内容
+ui_history_events	近期事件 / 你察觉到的变化
+ui_history_empty	暂无近期记录。读取存档会清空这段历史。
+ui_heard	听到
+ui_nearby	附近
+ui_prompt	[{0}] {1}
+ui_audit_001	命令 07：在受试者认证自己的陈述前，保持其状态未定。复核权限移交给 07 号受试者。
+ui_audit_002	档案 / 07 号受试者：苏醒前，放行已被否决。复核方：36F 授权中心。
+ui_audit_003	未绑定
+ui_audit_004	未知
+ui_audit_005	{0} 翻阅
+ui_audit_006	{0} 关闭
+ui_audit_007	{0} 交互
+ui_audit_008	{0} 前往
+ui_audit_009	{0} 确认
+ui_audit_010	{0} 记录
+ui_audit_011	{0} 个人档案
+ui_audit_012	{0} 读取
+ui_audit_013	{0} 开火
+ui_audit_014	{0} 移动
+ui_recovery_001	B1 / 苏醒室
+ui_recovery_002	校准区
+ui_recovery_003	安保检查点
+ui_recovery_004	医疗区
+ui_recovery_005	员工区
+ui_recovery_006	服务电梯
+ui_recovery_007	服务大厅
+ui_recovery_008	档案附室
+ui_recovery_009	供电继电区
+ui_recovery_010	观察廊
+ui_recovery_011	转运检查点
+ui_recovery_012	恢复存档已写入，但“继续游戏”存档更新失败。请检查用户数据访问权限。
+ui_recovery_013	保存失败。之前的恢复存档已保留。
+ui_recovery_014	最终决策前检查点已保存。结局存档不会覆盖它。
+ui_recovery_015	结局已保存。暂停菜单可选择“重选最终决定”。
+ui_recovery_016	检查点已保存。
+ui_recovery_017	未找到存档。已在房间入口恢复，世界进度仍保留。
+ui_recovery_018	拒绝通行。所持证件已撤销；请读取检查点之前的存档。
+ui_recovery_019	拒绝通行。读卡器需要你随身携带证件。
+ui_recovery_020	终端：证件已撤销；当前会话不再提供访问权限。
+ui_recovery_021	已暂停——ESC 继续；Q 退出
+ui_recovery_022	已继续
+ui_recovery_023	校准区：路线已核验。服务入口已开放。
+ui_recovery_024	医疗区：接收已登记。请选择服务路线。
+ui_recovery_025	运行控制室：处置路线图已核对。可选择安静通行路线。
+ui_recovery_026	网络节点：未登记的观察监控已打开。这份记录可以带出大楼。
+ui_recovery_027	转运区：上层安保闸门已放行。
+ui_recovery_028	接待处不可用。
+ui_recovery_029	校准区路线不可用。
+ui_recovery_030	电梯入口仍未解锁。
+ui_recovery_031	电梯路线不可用。
+ui_recovery_032	医疗路线不可用。
+ui_recovery_033	档案入口不可用。
+ui_recovery_034	进入档案区前，需要先查看调度路线。
+ui_recovery_035	安保路线不可用。
+ui_recovery_036	服务路线不可用。
+ui_recovery_037	员工路线不可用。
+ui_recovery_038	深层转运仍未核验。
+ui_recovery_039	维护旁路尚未通电。
+ui_recovery_040	清单中没有列出观察廊。
+ui_recovery_041	返程电梯不可用。
+ui_recovery_042	屋顶这扇门不是电梯。
+ui_recovery_043	转运电梯尚未获准通行。
+ui_recovery_044	转运区不可用。
+ui_recovery_045	供电旁路不可用。
+ui_recovery_046	转运权限尚未登记。
+ui_recovery_047	转运控制室没有已登记的路线。
+ui_recovery_048	进入供电区前，需要先查看调度路线。
+ui_recovery_049	读取失败：玩家状态无效。
+ui_recovery_050	读取失败：系统状态未通过校验。
+ui_recovery_051	读取失败：世界状态未通过校验。
+ui_recovery_052	读取失败：事件状态未通过校验。
+ui_recovery_053	读取失败：随机数状态未通过校验。
+ui_recovery_054	读取失败：叙事状态未通过校验。
+ui_recovery_055	读取失败：AI 运行环境初始化被拒绝。
+ui_recovery_056	读取失败：AI 状态未通过校验。
+ui_recovery_057	读取失败：玩家所在房间信息不完整。
+ui_recovery_058	读取失败：存档中的房间不可用。
+ui_recovery_059	读取失败：最终提交阶段发生注入故障。
+ui_recovery_060	读取失败：世界状态提交被拒绝。
+ui_recovery_061	读取失败：事件状态提交被拒绝。
+ui_recovery_062	读取失败：随机数状态提交被拒绝。
+ui_recovery_063	读取失败：叙事状态提交被拒绝。
+ui_recovery_064	读取失败：运行状态提交被拒绝。
+ui_message_001	操作 / 当前按键
+ui_message_002	鼠标控制视角；键盘移动方向随视角变化。
+ui_message_003	按键保存在 settings.cfg 中。暂停菜单的“重新绑定按键”可以修改操作。
+ui_message_004	位置
+ui_message_005	设施
+ui_message_006	证件 / 所持证件已撤销
+ui_message_007	证件 / 所持证件有效；各处读卡器仍会核验权限
+ui_message_008	{0} 翻阅  {1} 关闭
+ui_message_009	最终决定 / 07 号受试者
+ui_message_010	按 {0} 记录选择并前往屋顶。
+ui_message_011	可选方案取决于已登记的路线和已取得的证据。
+ui_message_012	按 {0} 确认方案并前往屋顶。
+ui_message_013	{0} 选择   {1} 确认   {2} 关闭
+ui_message_014	流程完成
+ui_message_015	已知证据
+ui_message_016	记录离开了大楼。授权方不再掌握唯一的副本。
+ui_message_017	你强行打开了出口。机构保留着那份你拒绝签署的陈述。
+ui_message_018	更正已归档。机构接受了另一份关于 07 号受试者的记录。
+ui_message_019	你找回了未登记的网络监控。
+ui_message_020	你没有找回未登记的网络监控。
+ui_message_021	运行控制室提供了协作通行路线。
+ui_message_022	运行控制室没有提供协作通行路线。
+ui_message_023	你可以探索屋顶，或返回个人档案。
+ui_message_024	“暂停 > 重选最终决定”会读取独立的决策前存档，不会立即改写本次完成记录。
+ui_message_025	新游戏会重置当前世界。已有恢复存档会保留，直到下次保存时更新。
+ui_message_026	你已倒下。暂停菜单可读取恢复点或开始新游戏。
+ui_message_027	遭到射击 / 脱离视线，寻找掩体。
+ui_message_028	目标倒下了。离开前可以搜查。
+ui_message_029	目标已死亡。现场留下了证据。
+ui_message_030	监控警报：你的证件已撤销。读取检查点之前的存档。
+ui_message_031	运行中的摄像头拍到了这次动静。
+ui_message_032	死亡状态不能保存。请在暂停菜单读档或开始新游戏。
+ui_message_033	保存失败：系统状态无效。
+ui_message_034	保存失败：无法访问用户数据。
+ui_message_035	读取失败。
+ui_message_036	读取失败：存档不完整。
+ui_message_037	读取完成。
+ui_message_038	电梯目的地不可用。
+ui_message_039	已记录电梯抵达：{0}
+ui_message_040	无法前往屋顶。决定尚未记录。
+ui_message_041	决定已记录：{0}。你已离开授权链。
+ui_message_042	允许通行。B1 服务区门已解锁。
+ui_message_043	校准区不可用。
+ui_message_044	B1 服务区门已打开。穿过读卡器旁的门。
+ui_message_045	搜查完成。已取得证件。
+ui_message_046	搜查完成。没有找到有用的东西。
+ui_message_047	已抓住倒地者。可以拖到清洁推车旁。
+ui_message_048	推车扣上了。走廊又安静下来。
+ui_message_049	清洁推车：空着，没有上锁。
+ui_message_050	摄像头已离线。这处盲区只是暂时的。
+ui_message_051	摄像头：离线。
+ui_message_052	终端：校准区路线已解锁。
+ui_message_053	终端：会话仍有效。路线已复制。
+ui_message_054	终端：需要证件。
+ui_message_055	B1：可以考虑维护通道、监控循环、终端或检查点。
+ui_message_056	校准区：路线已核验。继续前往医疗区。
+ui_message_057	校准区：需要随身携带有效证件。
+ui_message_058	安保区：守卫倒下后，检查点已开放。
+ui_message_059	拒绝通行。没有有效证件。
+ui_message_060	员工通道：维护人员于 02:10 换班。
+ui_message_061	1F：可以选择检查点、员工通道或维护入口。
+ui_message_062	医疗区：接收记录已登记。请选择服务路线。
+ui_message_063	医疗区：接收登记需要随身证件。
+ui_message_064	调度：已查看路线板。请选择档案路线或供电路线。
+ui_message_065	调度：控制板不可用。
+ui_message_066	档案室：证件查询被拒绝。
+ui_message_067	档案室：询问操作员，或查询清单。
+ui_message_068	供电区：继电器连接请求被拒绝。
+ui_message_069	供电区：继电器需要人为决定。
+ui_message_070	分析员：循环还在运行。有意思的是这一点。
+ui_message_071	观察廊：控制接口不可用。
+ui_message_072	观察廊：询问分析员，或使用控制接口。
+ui_message_073	转运区：控制终端不可用。
+ui_message_074	电梯厅：检查点记录不完整。
+ui_message_075	电梯厅：受限门还在等待核验。
+ui_message_076	接待员：先去档案中心。带回路线后，运行控制室才会开放。
+ui_message_077	接待处：使用目录，或与接待员交谈。
+ui_message_078	档案中心：受试者终端已离线。
+ui_message_079	档案员：你醒来之前，放行申请就被否决了。不是医疗部下的令，是 36F。
+ui_message_080	档案中心：终端里有你需要的那份档案。
+ui_message_081	运行控制室：路线已在警戒状态下核对。下一处守卫会知道。
+ui_message_082	运行控制室：无法建立控制连接。
+ui_message_083	操作员：我能安排你上去。摄像头拍到的，我抹不掉。
+ui_message_084	操作员：转运已经登记。网络节点有他们没放进你档案的监控。
+ui_message_085	运行控制室：离开前先核对路线图。
+ui_message_086	网络节点：观察监控没有响应。
+ui_message_087	分析员：那段监控是被删去的，不是丢失的。由你决定谁能看到。
+ui_message_088	网络节点：未登记的监控是这里值得查找的内容。
+ui_message_089	转运区：许可被拒绝。闸门仍由守卫控制。
+ui_message_090	转运守卫：你的路线我收到了。下一道门，你仍可以选择强行通过。
+ui_message_091	转运守卫：路线已登记。别让我修改。
+ui_message_092	转运区：通过守卫检查，或强行通行。
+ui_message_093	管理档案室：管理记录不接受这条路线。
+ui_message_094	联络员：结案需要你的签名。这份命令授予你写入记录的权限。仔细读。
+ui_message_095	联络员：没有登记的路线，档案室不会开放。
+ui_message_096	管理档案室：重点是那份封存记录。
+ui_message_097	授权中心：管理记录尚未核对。
+ui_message_098	最终决策前检查点 / 确认后，决定将写入持久记录。
+ui_message_099	授权代表：我能认证一份陈述，却不能让它成为发生过的事实。由你签名。
+ui_message_100	授权中心：准备好后，使用决策终端。
+ui_message_101	屋顶：流程已完成。
+ui_message_102	电击器：电量耗尽或正在冷却。
+ui_message_103	电击器：目标超出射程，或射线被遮挡。
+ui_message_104	正在退出——恢复终端
+ui_message_105	读取被拒绝。当前状态和恢复存档均未替换。
+ui_message_106	手动存档已保存。
+ui_message_107	保存失败；请检查用户数据目录的访问权限。
+ui_route_001	将倒地者藏进推车
+ui_route_002	拖动倒地者
+ui_route_003	搜查倒地者
+ui_route_004	查看清洁推车
+ui_route_005	关闭摄像头
+ui_route_006	使用终端（证件已撤销）
+ui_route_007	使用终端
+ui_route_008	使用终端（需要证件）
+ui_route_009	使用服务区读卡器
+ui_route_010	与清洁工交谈
+ui_route_011	交谈
+ui_route_012	复查校准区路线
+ui_route_013	使用校准终端
+ui_route_014	进入医疗服务区
+ui_route_015	向安保人员说明来意
+ui_route_016	进入电梯通道
+ui_route_017	返回医疗区
+ui_route_018	复查医疗接收记录
+ui_route_019	使用医疗终端
+ui_route_020	返回校准区
+ui_route_021	进入安保区
+ui_route_022	进入员工通道
+ui_route_023	进入电梯厅
+ui_route_024	确认电梯检查点
+ui_route_025	进入第二幕转运区
+ui_route_026	查看调度板
+ui_route_027	进入记录档案室
+ui_route_028	进入供电区
+ui_route_029	进入转运控制室
+ui_route_030	返回电梯
+ui_route_031	复查档案清单
+ui_route_032	查询档案清单
+ui_route_033	与档案操作员交谈
+ui_route_034	返回转运区
+ui_route_035	进入观察廊
+ui_route_036	复查继电器旁路
+ui_route_037	改接备用供电
+ui_route_038	复查备用供电
+ui_route_039	强制启用备用供电
+ui_route_040	与技术员交谈
+ui_route_041	进入维护旁路
+ui_route_042	复查监控循环
+ui_route_043	循环播放转运监控
+ui_route_044	与分析员交谈
+ui_route_045	返回记录档案室
+ui_route_046	与转运区安保交涉
+ui_route_047	复查转运控制
+ui_route_048	使用控制终端
+ui_route_049	进入深层转运通道
+ui_route_050	返回供电区
+ui_route_051	打开电梯目录
+ui_route_052	与接待员交谈
+ui_route_053	返回深层转运通道
+ui_route_054	复查受试者记录
+ui_route_055	查询受试者记录
+ui_route_056	与档案员交谈
+ui_route_057	返回接待处
+ui_route_058	复查运行路线
+ui_route_059	核对运行记录
+ui_route_060	与操作员交谈
+ui_route_061	复查未登记监控
+ui_route_062	打开未登记监控
+ui_route_063	复查转运许可
+ui_route_064	出示转运许可
+ui_route_065	与转运区守卫交涉
+ui_route_066	复查管理记录
+ui_route_067	打开管理记录
+ui_route_068	与联络员交谈
+ui_route_069	复查已记录的决定
+ui_route_070	打开最终决策
+ui_route_071	建立最终检查点
+ui_route_072	与授权代表交涉
+ui_route_073	查看最终状态
+ui_route_074	B1：证件已撤销；读取检查点之前的存档
+ui_route_075	B1：搜查倒地的安保人员
+ui_route_076	B1：拿取通行证件
+ui_route_077	B1：寻找通过服务通道的方法
+ui_route_078	B1：使用校准终端
+ui_route_079	B1：使用服务区读卡器
+ui_route_080	B1：穿过已打开的服务区门
+ui_route_081	B1 已完成：继续前往校准区
+ui_route_082	校准区：进入医疗服务区
+ui_route_083	校准区：使用路线终端
+ui_route_084	医疗区：访问接收终端
+ui_route_085	安保区：使用电梯检查点
+ui_route_086	医疗区：从安静的员工通道通行
+ui_route_087	医疗区：前往安保检查点报到
+ui_route_088	安保区：警戒已升级；抵达检查点
+ui_route_089	安保区：使用电梯通道门
+ui_route_090	安保区：通过检查点
+ui_route_091	电梯厅：确认本章检查点
+ui_route_092	第二幕：返回转运区
+ui_route_093	第二幕：使用转运控制装置
+ui_route_094	第二幕：查看调度板
+ui_route_095	第二幕：选择档案路线或供电路线
+ui_route_096	第二幕：抵达转运控制室
+ui_route_097	第二幕：使用深层转运通道门
+ui_route_098	档案室：取得通往转运控制室的路线
+ui_route_099	档案室：可探索观察廊，也可返回
+ui_route_100	供电区：沿维护旁路前往转运控制室
+ui_route_101	供电区：恢复维护旁路
+ui_route_102	观察廊：返回档案室
+ui_route_103	观察廊：循环播放转运监控
+ui_route_104	转运区：通过检查点，使用控制终端
+ui_route_105	转运区：使用深层转运通道门
+ui_route_106	员工通道：使用电梯服务门
+ui_route_107	探索标出的服务路线
+ui_route_108	WRITEOVER-07 / 流程完成
+ui_route_109	结局 / 公开——记录已离开设施
+ui_route_110	结局 / 突围——出口被强行打开
+ui_route_111	结局 / 修订——记录已核对更正
+ui_route_112	{0} 暂停 / 结局摘要 / 重选最终决定 / 退出
+ui_route_113	{0} 个人档案 | 电梯门：返回
+ui_route_114	决定已经记录。结果保存在你的个人档案中。
+ui_route_115	授权中心 / 暂无可选方案。档案、运行或转运流程尚未完成。
+ui_route_116	{0} 移动 | 鼠标环视 | {1} 交互 | {2} 开火
+ui_route_117	{0} 移动 | 鼠标环视 | {1} 交互
