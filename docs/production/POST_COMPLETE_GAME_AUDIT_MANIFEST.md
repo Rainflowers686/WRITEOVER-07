@@ -1,267 +1,163 @@
-# WRITEOVER-07 — Post Complete-Game Audit Manifest
+# WRITEOVER-07 — Frozen product/campaign audit manifest
 
-MANIFEST_KIND = post-complete-game-baseline
+MANIFEST_KIND = final-product-campaign-audit-input
 
-STATUS = DIRECTOR_CANDIDATE_WITH_OPEN_VISUAL_AND_MANUAL_ACCEPTANCE
+START_HEAD = 43083373a03b5583ae207001067cd866bdb9a2cc
 
-BASELINE_HEAD = 4153275550248ce28b42d95ce136959e9e2b1450
+BASELINE_HEAD = f0e30afe9c330899c4e9fdf105c6c71b3001ca6c
 
-AUTHORITATIVE_REVIEW = COMPLETE_GAME_DIRECTOR_REPORT.md and
-COMPLETE_GAME_CREATIVE_REVIEW_CHECKLIST.md supersede earlier creative handoff
-status for this pass. They do not claim foreground or human acceptance.
+DELIVERY_HEAD = the documentation/evidence descendant containing this manifest;
+resolve git rev-parse HEAD and match its exact GitHub Actions headSha.
 
-HISTORICAL_SHA_CORRECTION = the actual a509e3f commit is
-a509e3fa6b9edcb0ff1392d4ae7eaa2de2a913d6, not the previously recorded full SHA.
+AUTHORITATIVE_HANDOFF = POST_ULTRA_FINAL_HANDOFF.md
 
-DELIVERY_HEAD = final pushed HEAD; verify live because documentation may be a
-descendant of BASELINE_HEAD
+STATUS = SOURCE_CONTENT_FROZEN_PENDING_DELIVERY_RECEIPT
 
-BASELINE_COMMIT = fix: persist completed endings after the roof transition
+SUPERSESSION = this manifest and POST_ULTRA_FINAL_HANDOFF supersede the older
+director report's open Roof implementation decision and pre-audit human gate.
+Human review remains open; Rain explicitly permits a mechanical audit first.
+The previous report and all earlier failed/successful evidence remain historical.
 
-CANDIDATE_PACKAGE = out/director-package-20260914/WRITEOVER-07-director-candidate.zip
-
-CANDIDATE_PACKAGE_COMMIT = 4153275550248ce28b42d95ce136959e9e2b1450
-
-CANDIDATE_PACKAGE_SHA256 = 84AB89FCA28D84378971367AC0A40121685D30FCE6D99E82264F92281482EA18
-
-CANDIDATE_PACKAGE_GATES = positive smoke PASS; missing content, character-art,
-and recovery-text negative probes PASS; candidate only, no Release claim
-
-ORIGIN_HEAD_AT_DOC_AUTHORING = a7c6d5bf8bafcf28cd24edf91ff3f1ef207bbf54
-
-EXACT_HEAD_CI = MUST_MATCH_DELIVERY_HEAD (the older b734e706... run is not
-authoritative for this source head)
-
-EXACT_HEAD_CI_JOBS = verify the post-push run by headSha, status, and
-conclusion in the final delivery receipt
-
-HISTORICAL_CI_MACOS_RELEASE_BENCHMARK_NOT_THIS_HEAD = TERMINAL_FULL_TIME_MS=0.287,
-TERMINAL_DELTA_TIME_MS=0.105, TERMINAL_UNCHANGED_TIME_MS=0.047,
-TERMINAL_WORSTCASE_TIME_MS=0.364, PVS_RENDER_TIME_MS=0.500,
-PVS_TOTAL_FRAME_TIME_MS=1.625, OVERALL_BUDGET=PASS
-
-HISTORICAL_CI_FIRST_ATTEMPT_OUTLIER_NOT_THIS_HEAD = macOS arm64 full benchmark
-TERMINAL_FULL_TIME_MS=3.546 and TERMINAL_FULL_BUDGET=FAIL; failed job was
-rerun without source or threshold changes and passed.
-
-## Scope
-
-IMPLEMENTED = bounded complete campaign from B1 to Roof with three ending
-policies, eight upper destinations, progressive unlock facts, return
-transitions, case-file lead/discovery presentation, existing save/load use,
-four full route probes with ending-specific assertions, and focused Power /
-Observation / Transit Act II route probes. Visual pass 07 adds authored weapon
-mass and restrained front human/maintenance states without changing the
-renderer contract.
-
-NOT_IMPLEMENTED = generic 41-floor tower, generic Campaign/Act/Region engine,
-new save schema section, unrestricted fast travel, product release, visual
-gold, course-document completion, or manual human acceptance.
-
-## Content counts
+## Frozen scope and content
 
 PLAYABLE_ROOMS = 19
-
 EXPLICIT_REGION_RECORDS = 0
-
 SCENE_TRANSITIONS = 32
-
 SCENE_ENTITIES = 152
-
 PATROL_ROUTES = 14
-
 FACT_RECORDS = 69
-
 STORYLET_RECORDS = 27
-
 NPC_PROFILE_RECORDS = 17
-
 FULL_CAMPAIGN_REPLAY_RUNTIME_NPCS = 16
-
 UPPER_DESTINATIONS = 8
-
 ENDINGS = 3
+SAVE_SCHEMA_CHANGE = NO
+PUBLIC_CONTRACT_DELTA = two bounded Settings preference fields; ADR-0010
+WORLD_IDENTITY = authored CharCell/Unicode FPS/MUD; no rasterized image assets
+NOT_IMPLEMENTED = 41 playable floors, generic act/region/quest/UI framework,
+new tactical-combat model, new population, Product Gold or public Release.
 
-## Source and artifact map
+## Audit source map
 
-ROOM_AUTHORING = data/rooms/*.json
+COMPOSITION_AND_RECOVERY = src/app/composition_root.cpp; src/app/game_main.cpp
+PRODUCT = src/app/player_product.h; campaign_panel.h
+PERCEPTION = src/app/perception_feed.h; player_perception.h
+SAVE_ROLE_POLICY = src/app/product_save.h; existing core/save.cpp and callbacks
+SETTINGS = include/writeover/core/settings.h; src/core/settings.cpp; ADR-0010
+ROOF = data/rooms/room_roof_exit.json/.woc; data/scenes/recovery_scene.json/.bin
+FINITE_PLANE_FIX = src/render/character_renderer.cpp (nonfinite intersection)
+BENCHMARK_DIAGNOSIS = tools/bench/main.cpp (all original samples/gates retained)
+TESTS = tests/test_product.cpp; existing tests registration
+PRODUCT_REPLAY = tools/replay/campaign_probe_amend_product.txt; product_new_game.txt
+PRODUCT_GATE = scripts/player_product_gate.ps1
+CAMPAIGN_AUTHORITY = src/app/tower_campaign_runtime.cpp/.h; existing facts/systemic
+AUTHORING = data/rooms, scenes, characters, text, npcs, facts, storylets, systemic
+COMPILER = tools/contentc/contentc.py; tools/systemic scripts
+CI = .github/workflows/ci.yml (Windows product/recovery gate added)
+PLAYER_INSTRUCTIONS = docs/release/PLAYER_README.txt
+PRESENTER_KNOWLEDGE = COMPLETE_GAME_TEACHBACK.md, final product addendum
 
-ROOM_COMPILED = data/rooms/*.woc
+## Focused audit questions
 
-SCENE_AUTHORING = data/scenes/recovery_scene.json
+- Does every successful load clear future presentation while restoring only
+  authoritative saved gameplay? Check staged commit, eight fault stages and CRC.
+- Are manual, checkpoint, pre-final, completion and resume roles distinct?
+  A role write and resume write are individually atomic, not jointly atomic.
+- Is New Game a true composition reconstruction, including memory, facts,
+  objectives, inventory and UI caches? Verify existing file preservation.
+- Do held Fire/Interact/movement, repeats, focus loss and remapped bindings stay
+  fenced across all menu exits, not only a single nominal path?
+- Can long Case File/directory/ending/history text be reached at 48x18 and 80x24?
+  Verify footer preservation, nearest focus ties and minimum-size fallback.
+- Is each feed observation actually same-room, visible/audible or direct feedback?
+  No consumers may infer gameplay from whether a cue was displayed.
+- Check dialogue classification against the actual current speaker bank.
+- Check the new Roof parapet and old valid Roof save positions; no out-of-bounds
+  navigation, sprite-only doorway or invented infinite ceiling.
+- Inspect the large composition root integration for callback lifetime/ordering.
+  Do not turn the audit into an unsolicited framework extraction.
+- Separate wall-time preemption from expensive compute using slow-frame stages
+  and POSIX std::clock; never relabel worst_1pct_avg_ms as p99.
 
-SCENE_COMPILED = data/scenes/recovery_scene.bin
-
-FACT_AUTHORING = data/facts/facts.json
-
-FACT_COMPILED = data/facts/facts.bin
-
-STORYLET_AUTHORING = data/storylets/storylets.json
-
-STORYLET_COMPILED = data/storylets/storylets.bin
-
-NPC_AUTHORING = data/npcs/npcs.json
-
-NPC_COMPILED = data/npcs/npcs.bin
-
-SYSTEMIC_AUTHORING = data/systemic/systemic_seed.json
-
-SYSTEMIC_COMPILED = data/systemic/systemic_seed.bin
-
-TEXT_AUTHORING = data/text/recovery_text.txt
-
-CAMPAIGN_POLICY = src/app/tower_campaign_runtime.cpp and
-src/app/tower_campaign_runtime.h
-
-INTEGRATION_ROOT = src/app/composition_root.cpp
-
-REPLAY_PROBES = tools/replay/campaign_probe_amend.txt,
-tools/replay/campaign_probe_disclose.txt,
-tools/replay/campaign_probe_breach.txt,
-tools/replay/campaign_probe_discovery_poor.txt,
-tools/replay/act2_power_route_from_concourse_probe.txt,
-tools/replay/act2_observation_terminal_route_probe.txt, and
-tools/replay/act2_transit_route_probe.txt
-
-CAMPAIGN_REPLAY_GATE = scripts/complete_game_campaign_gate.ps1
-
-ACT2_ROUTE_COVERAGE_GATE = scripts/act2_route_coverage_gate.ps1
-
-PACKAGE_NEGATIVE_PROBE = tools/release/package_negative_probe.py
-
-## Verification receipts
+## Regression evidence
 
 DEBUG_BUILD = PASS
-
 RELEASE_BUILD = PASS
-
-DEBUG_UNIT_TESTS = 219/219 PASS
-
-RELEASE_UNIT_TESTS = 219/219 PASS
-
-CONTENT_CHECK = PASS (19 rooms, 69 facts, 27 storylets, 17 NPC profiles)
-
+UNIT_TESTS = 229/229 PASS in both configurations
+CTEST = 2/2 PASS in both configurations
+CONTENT_DETERMINISTIC = PASS (19 rooms / 69 facts / 27 storylets / 17 profiles)
 CONTENT_TESTS = 13/13 PASS
-
-SYSTEMIC_SCHEMA_TESTS = 10/10 PASS
-
-SYSTEMIC_SCHEMA_CHECK = PASS
-
-STATIC_AUDIT = PASS (COUNT=0)
-
+SYSTEMIC_SCHEMA_TESTS = 10/10 PASS; production seed schema PASS
+INVALID_SEED_STARTUP = PASS
+STATIC_AUDIT = COUNT=0
 CONTRACT_CHECK = PASS
+RECOVERY_REPLAY_GATE = 21/21 PASS; ultra_recovery_final_20260914
+SCENARIO_MATRIX = 36 classified / 35 executed / 1 invalid-by-game-rules /
+0 valid-state-not-covered; PASS; ultra_scenarios_20260914
+ACT2_ROUTE_COVERAGE_GATE = 3/3 PASS; ultra_act2_routes_20260914
+FINAL_CAMPAIGN_GATE = 4/4 routes and 4/4 independent completed-save reloads PASS;
+ultra_campaign_final_20260915 at final Release source f0e30af
+PRODUCT_GATE = PASS; ultra_product_no_future_20260914 (final Debug gameplay)
+PRODUCT_NEW_GAME = completed world -> B1, health100, evidence0; save hashes unchanged
+PRODUCT_SAVE_FAULTS = 8/8 stages rejected and rolled back; completed reload PASS
+FACING_MAPPING = 36/36 exact authored selections; art-final.log
+LOCAL_BENCHMARK = all gates PASS; PVS_RENDER_TIME_MS=1.175;
+PVS_TOTAL_FRAME_TIME_MS=2.262; TERMINAL_FULL_TIME_MS=0.438;
+TERMINAL_DELTA_TIME_MS=0.128; TERMINAL_UNCHANGED_TIME_MS=0.099;
+TERMINAL_WORSTCASE_TIME_MS=0.466. Values are worst-one-percent averages.
 
-RELEASE_BENCHMARK = PASS (terminal full/delta/unchanged/worst-case safety,
-systemic lookup/update, PVS render/total frame, raycast, overall budget)
+Evidence paths above are relative to docs/production/evidence. Chapter/Act II
+gates preceded the final presentation-only sticky-subtitle removal; the final
+campaign/product gate and exact-head CI exercise the corrected integration.
+Source/build/hash metadata and compact receipts are in
+evidence/ultra_local_receipt_20260915.json.
 
-RELEASE_SMOKE = PASS (exit 0)
+## Production visual evidence
 
-CAMPAIGN_AMEND_REPLAY = PASS
+CURRENT_REVIEW = evidence/ultra_visual_20260914
+ROOF_FINAL = roof-skyline.png (production CharCell SVG export, not native screenshot)
+ROOF_PREVIOUS_ITERATION = roof.png (lower skyline, retained comparison)
+PRODUCT_PANELS = boot.png; controls-48x18.png; ending.png
+ART = guard_sheet.png; human_sheet.png; maintenance_sheet.png; weapon_sheet.png
+ROOMS = B1 plus nine named interior review frames; retained prior-stage exports
+do not claim to reflect final transient subtitle expiry changes.
+Evidence README describes capture stages and acceptance limits.
 
-CAMPAIGN_DISCLOSE_REPLAY = PASS
+## Package and exact-head CI
 
-CAMPAIGN_BREACH_REPLAY = PASS
+CANDIDATE_PACKAGE = out/ultra-package-20260915/WRITEOVER-07-audit-candidate.zip
+CANDIDATE_VERSION = 0.1.0-complete-campaign-candidate
+CANDIDATE_PACKAGE_COMMIT = f0e30afe9c330899c4e9fdf105c6c71b3001ca6c
+CANDIDATE_PACKAGE_SHA256 = 33690097B77ED32CAEF19BF504EBA2A36C45E8E83DEBBDC687443D5AB0FF0D20
+CANDIDATE_PACKAGE_BYTES = 608293
+PACKAGE_GATES = clean positive smoke and three missing-resource negative probes PASS
+PACKAGE_DEV_GARBAGE = 0
+PACKAGE_USER_DATA_SEPARATION = PASS
+PACKAGE_RELEASE_STATUS = local audit candidate only; no tag or GitHub Release
 
-COMPLETE_GAME_CAMPAIGN_GATE = PASS: 4/4 complete routes and 4/4 independent
-completed-save reloads at source 4153275. Earlier live-only checks missed the
-Authority/Roof save-order defect; the strengthened gate catches it.
+EXACT_HEAD_CI = final delivery receipt must match DELIVERY_HEAD; pending at authoring
+CI_JOBS = Windows; Linux GCC; Linux Clang; macOS arm64; Linux ARM64 link
+PREDECESSOR_RUN = 34849065030 at 4308337: only macOS Release benchmark failed
+PREDECESSOR_MACOS = total worst_1pct_avg_ms=8.895, max_ms=31.339;
+PVS_RENDER_TIME_MS=1.158. Do not present this as current source performance.
+RETRY_POLICY = at most one justified unchanged-source failed-job rerun;
+no sample/threshold/workload reductions and no documentation commit for sampling.
 
-ACT2_ROUTE_COVERAGE_GATE = PASS (3/3; Power, Observation, Transit)
+## Preserved boundaries / next owner
 
-CAMPAIGN_REPLAY_SHARED_ASSERTIONS = all eight upper rooms visited, Roof
-reached, CAMPAIGN_COMPLETION_REACHED=YES, SAVE_OK=YES, LOAD_OK=YES,
-TRANSITION_DENIED=NO, PLAYER_DEAD=NO
+USER_TRACKED_DIRTY = tests/test_harness.cpp EOF newline; never staged
+HISTORICAL_EVIDENCE = retained, including failed intermediate replay captures
+PRESERVATION_CAVEAT = root-run unit fixture settings were rewritten once; see
+handoff. No byte-identical preservation claim for those three untracked fixtures.
+NO_RESET_RESTORE_REBASE_FORCE_PUSH = YES
+NO_BROAD_CLEANUP = YES
 
-CAMPAIGN_AMEND_FACTS = records, operations, network, force, transfer,
-guard_down, guard_bypassed, alerted, archive, authority, pre_final,
-completed, roof, amend
+FOREGROUND_WINDOWS_TERMINAL = NOT_PERFORMED
+RAIN_VISUAL_ACCEPTANCE = NOT_CLAIMED
+AUDIO_HUMAN_ACCEPTANCE = NOT_CLAIMED
+FIRST_TIME_CLASSMATE_PLAYTEST = NOT_PERFORMED
+MEASURED_HUMAN_PLAYTIME = NOT_AVAILABLE
 
-CAMPAIGN_DISCLOSE_FACTS = records, operations, operations_cooperated, network,
-transfer, guard_bypassed, archive, authority, pre_final, completed, roof,
-disclose; no force/alert route
-
-ACT2_EXPANSION_GATE = PASS (Records baseline route)
-
-RECOVERY_REPLAY_GATE = PASS (21/21 cases)
-
-SCENARIO_MATRIX = PASS (36 classified rows, 35 executed, 20 expected success,
-11 expected denial, 1 recoverable failure, 3 death/restart,
-1 invalid-by-game-rules, 0 valid-state-not-covered)
-
-LOCAL_EVIDENCE_DIRECTORIES =
-docs/production/evidence/complete_game_act2_gate_20260914,
-docs/production/evidence/complete_game_recovery_gate_20260914,
-docs/production/evidence/complete_game_scenario_matrix_20260914,
-docs/production/evidence/complete_game_campaign_gate_20260914,
-docs/production/evidence/complete_game_campaign_gate_final_20260914,
-docs/production/evidence/act2_route_coverage_gate_20260914,
-docs/production/evidence/recovery_replay_gate_final_20260914,
-docs/production/evidence/act2_route_coverage_20260914
-
-## Required post-push gates
-
-DIRECTOR_LOCAL_EVIDENCE = director_recovery_20260914 (21/21),
-director_scenarios_20260914 (35 executed / 36 classified),
-director_act2_final_20260914 (3/3), director_campaign_verified_20260914
-(corrected completed-save gate; see final report for its result), all under
-docs/production/evidence. Earlier listed evidence remains historical.
-
-DIRECTOR_LOCAL_BENCHMARK = PVS_RENDER_TIME_MS=0.766,
-PVS_TOTAL_FRAME_TIME_MS=1.471, TERMINAL_FULL_TIME_MS=0.264,
-TERMINAL_DELTA_TIME_MS=0.065, TERMINAL_UNCHANGED_TIME_MS=0.035,
-TERMINAL_WORSTCASE_TIME_MS=0.257, OVERALL_BUDGET=PASS.
-Worst-one-percent average is not p99; platform write time is excluded from total.
-
-FINAL_CANDIDATE_VERSION = 0.1.0-complete-campaign-candidate
-
-FINAL_PACKAGE_GATE = package the Release binary from BASELINE_HEAD, then run
-positive package smoke and PACKAGE_NEGATIVE_PROBE; do not call it a Release.
-
-FINAL_EXACT_HEAD_CI_GATE = require a completed-success GitHub Actions run with
-headSha equal to the final pushed DELIVERY_HEAD; record the run/job IDs in the
-delivery receipt. The executable/package source must still be BASELINE_HEAD.
-
-PENDING_MANUAL_TERMINAL = foreground Windows terminal run.
-
-PENDING_MANUAL_AUDIO = audio listening and narrator/dialogue timing.
-
-PENDING_MANUAL_CAMPAIGN = Breach presentation, durable reload acceptance, first-time
-classmate playtest, and measured playtime.
-
-PENDING_MANUAL_VISUAL = integrated visual acceptance for faces, NPCs, weapons, rooms,
-doors, HUD, and directional labels.
-
-## Preserved evidence and boundaries
-
-PRESERVED = existing dirty tests/test_harness.cpp newline change, settings
-files, build directories, and historical docs/production/evidence content.
-
-NO_CLEANUP_PERFORMED = YES
-
-NO_RESET_RESTORE_REBASE_PERFORMED = YES
-
-NO_FORCE_PUSH_PERFORMED = YES
-
-MANUAL_ACCEPTANCE_INFERRED_FROM_REPLAY = NO
-
-VISUAL_GOLD_CLAIM = NO
-
-PUBLIC_ALPHA_CLAIM = NO
-
-COURSE_DELIVERY_CLAIM = NO
-
-## Handoff decision
-
-NEXT_OWNER = Rain visual/foreground acceptance and remaining Roof decision;
-exhaustive audit only after the explicit candidate boundary is accepted.
-
-SAFE_NEXT_SCOPE = manual visual/audio/first-time play review, targeted
-player-critical corrections, manual Breach presentation, final package/CI/course
-gates; no Luna handoff until the manual boundary is honestly closed
-
-FROZEN_SCOPE = renderer contract, authored Character-Art basis, existing
-Act II-A routes, fact/systemic/storylet/save ownership, bounded lift policy
-
-STOP_CONDITION = after exact-head CI, package smoke, and manual findings are
-honestly recorded; do not turn READY_FOR_GPT6_COMPLETE_GAME_DIRECTOR_PASS into
-PRODUCT_GOLD without human evidence.
+NEXT_OWNER = exhaustive mechanical audit, then bounded final closure and course
+materials. Human acceptance stays separate. Do not reopen art direction, renderer
+identity, campaign size or save schema absent an actual audit-confirmed blocker.

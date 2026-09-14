@@ -1,0 +1,140 @@
+{
+  "kind": "final-product-local-regression",
+  "date": "2026-09-15",
+  "startHead": "43083373a03b5583ae207001067cd866bdb9a2cc",
+  "sourceHead": "f0e30afe9c330899c4e9fdf105c6c71b3001ca6c",
+  "sourceContentFrozen": true,
+  "unitTests": {
+    "Debug": {
+      "passed": 229,
+      "failed": 0
+    },
+    "Release": {
+      "passed": 229,
+      "failed": 0
+    }
+  },
+  "ctest": {
+    "Debug": "2/2 PASS",
+    "Release": "2/2 PASS"
+  },
+  "content": {
+    "rooms": 19,
+    "facts": 69,
+    "storylets": 27,
+    "npcProfiles": 17,
+    "deterministic": "PASS",
+    "tests": "13/13",
+    "schemaTests": "10/10",
+    "invalidSeedStartup": "PASS"
+  },
+  "staticAuditCount": 0,
+  "contractCheck": "PASS",
+  "recovery": {
+    "cases": 21,
+    "status": "PASS",
+    "evidence": "ultra_recovery_final_20260914",
+    "stage": "before final presentation-only subtitle removal"
+  },
+  "scenarios": {
+    "classified": 36,
+    "executed": 35,
+    "ruleInvalid": 1,
+    "validGaps": 0,
+    "status": "PASS",
+    "evidence": "ultra_scenarios_20260914",
+    "stage": "before final presentation-only subtitle removal"
+  },
+  "act2": {
+    "cases": 3,
+    "status": "PASS",
+    "evidence": "ultra_act2_routes_20260914"
+  },
+  "campaign": {
+    "routes": 4,
+    "independentCompletedReloads": 4,
+    "status": "PASS",
+    "evidence": "ultra_campaign_final_20260915",
+    "stage": "final Release source"
+  },
+  "product": {
+    "status": "PASS",
+    "evidence": "ultra_product_no_future_20260914",
+    "stage": "final gameplay code, Debug; last change only adds test assertions",
+    "newGame": "completed -> B1 health100 evidence0; saved file hashes unchanged",
+    "rollbackStages": 8,
+    "historyAfterReload": 2
+  },
+  "visual": {
+    "facingMappings": 36,
+    "exactAssets": 36,
+    "mainEvidence": "ultra_visual_20260914",
+    "finalDoorCapture": "chapter01_creative_polish/ultra_final_20260915",
+    "productionCharCellExport": true,
+    "nativeForeground": false
+  },
+  "benchmark": {
+    "PVS_RENDER_TIME_MS": 1.175,
+    "PVS_TOTAL_FRAME_TIME_MS": 2.262,
+    "TERMINAL_FULL_TIME_MS": 0.438,
+    "TERMINAL_DELTA_TIME_MS": 0.128,
+    "TERMINAL_UNCHANGED_TIME_MS": 0.099,
+    "TERMINAL_WORSTCASE_TIME_MS": 0.466,
+    "OVERALL_BUDGET": "PASS",
+    "metric": "worst_1pct_avg_ms, not p99",
+    "currentWorkloadAltered": false,
+    "diagnosticTimestampsAdded": true,
+    "platformWritesExcluded": true
+  },
+  "package": {
+    "path": "out/ultra-package-20260915/WRITEOVER-07-audit-candidate.zip",
+    "size": 608293,
+    "sourceHead": "f0e30afe9c330899c4e9fdf105c6c71b3001ca6c",
+    "positiveSmoke": "PASS",
+    "negativeProbes": 3,
+    "negativeResult": "PASS",
+    "devGarbage": 0,
+    "secretPatternScan": "PASS",
+    "releasePublished": false
+  },
+  "hashes": [
+    {
+      "path": "out/build/release/Release/writeover_app.exe",
+      "sha256": "7E6B3AD6296A495C9AED78D2AC4A7DD64A4B82FDE2DB1A06A1CC1C1981D02F27"
+    },
+    {
+      "path": "out/build/debug/Debug/writeover_tests.exe",
+      "sha256": "213AE4D18C4F204FB5D6005EEB42563BFA7CB6B19F7F34BC1B4E888DCF704C51"
+    },
+    {
+      "path": "out/build/release/Release/writeover_tests.exe",
+      "sha256": "7845521DEB458D1BC5A74144A6E711C333222AFEBB19CDCA8D1F22727D80FC7A"
+    },
+    {
+      "path": "data/rooms/room_roof_exit.woc",
+      "sha256": "FB555B86160627ED87665B09754220A18DEED6868CFFE51ADDA7FF37DAD053D2"
+    },
+    {
+      "path": "data/scenes/recovery_scene.bin",
+      "sha256": "C0A174C5756EE1A5167DE3613941F2E8EE3495D62BA8D895766F1FFFC08277FF"
+    },
+    {
+      "path": "out/ultra-package-20260915/WRITEOVER-07-audit-candidate.zip",
+      "sha256": "33690097B77ED32CAEF19BF504EBA2A36C45E8E83DEBBDC687443D5AB0FF0D20"
+    }
+  ],
+  "exactHeadCI": "PENDING_PUSH; resolve final delivery receipt, not predecessor run",
+  "manual": {
+    "foregroundTerminal": "NOT_PERFORMED",
+    "rainVisual": "NOT_CLAIMED",
+    "audio": "NOT_CLAIMED",
+    "classmatePlaytest": "NOT_PERFORMED",
+    "humanPlaytime": "NOT_AVAILABLE"
+  },
+  "preservation": {
+    "userTrackedDirty": "tests/test_harness.cpp EOF newline excluded",
+    "rootTestFixtureRewrite": "settings_test.cfg / settings_ctx.cfg / settings_legacy.cfg were rewritten by first unit run; prior hashes unavailable",
+    "broadCleanup": false,
+    "resetRestoreRebaseForcePush": false
+  }
+}

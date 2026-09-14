@@ -1,0 +1,84 @@
+WRITEOVER-07 v0.1.0-complete-campaign-candidate
+[INFO][audio] winmm-procedural
+TERMINAL_BACKEND=win32-writeconsole TERMINAL_DIMENSIONS=240x67 TERMINAL_QUALITY_PRESET=COMPATIBILITY TERMINAL_COLOR_CAPABILITY=ANSI16 TERMINAL_PROBE=legacy-conhost
+TERMINAL_CAPABILITY_REASON=VT negotiation failed; using Win32 WriteConsole fallback VT_PROBE=FAILED_OR_UNAVAILABLE
+SUBTITLE_TRACE frame=0 room=room_b1_revival text=SYS/07: Revival complete. Release pending. Find the service route.
+SUBTITLE_TRACE frame=2 room=room_b1_revival text=Dr. Vale: Look at me, not the number. Steady? Find the service reader.
+SUBTITLE_TRACE frame=230 room=room_b1_revival text=UNDER FIRE / Break sight. Find cover.
+SUBTITLE_TRACE frame=565 room=room_b1_revival text=Target dead. The scene is now evidence.
+SUBTITLE_TRACE frame=745 room=room_b1_revival text=That will need an explanation. You need not stay to provide it.
+SUBTITLE_TRACE frame=773 room=room_b1_revival text=Search complete. Badge taken.
+SUBTITLE_TRACE frame=863 room=room_b1_revival text=ACCESS GRANTED. B1 service door unlocked.
+SUBTITLE_TRACE frame=957 room=room_b1_revival text=B1 service door is open. Move through the reader.
+SUBTITLE_TRACE frame=1000 room=room_01_calibration text=Checkpoint saved.
+SUBTITLE_TRACE frame=1236 room=room_01_calibration text=CALIBRATION: route verified. Service access is open.
+SUBTITLE_TRACE frame=1381 room=room_service_medical text=Intake note: Ask their name before checking their badge.
+SUBTITLE_TRACE frame=1670 room=room_service_medical text=MEDICAL: intake recorded. Choose a service route.
+SUBTITLE_TRACE frame=1681 room=room_service_medical text=MEDICAL: intake already recorded. Choose a service route.
+SUBTITLE_TRACE frame=1840 room=room_service_medical text=
+SUBTITLE_TRACE frame=1960 room=room_1f_security text=Security: B1 camera report. We were told to expect a disturbance.
+SUBTITLE_TRACE frame=2260 room=room_1f_security text=
+SUBTITLE_TRACE frame=2269 room=room_1f_security text=UNDER FIRE / Break sight. Find cover.
+SUBTITLE_TRACE frame=2419 room=room_1f_security text=
+SUBTITLE_TRACE frame=2421 room=room_1f_security text=Security: Credential accepted. Keep moving.
+SUBTITLE_TRACE frame=2460 room=room_1f_security text=Manual save recorded.
+SUBTITLE_TRACE frame=2471 room=room_1f_security text=Loaded.
+SUBTITLE_TRACE frame=2591 room=room_elevator_lobby text=ELEVATOR / All departures remain on record.
+SUBTITLE_TRACE frame=2785 room=room_elevator_lobby text=Chapter One complete. Departure recorded.
+SUBTITLE_TRACE frame=2796 room=room_act2_service_concourse text=Checkpoint saved.
+SUBTITLE_TRACE frame=2997 room=room_act2_service_concourse text=Dispatch files a route. Records and Utility disagree about how to make one.
+SUBTITLE_TRACE frame=3092 room=room_act2_service_concourse text=Dispatch has three ways to describe your arrival. It has not chosen one.
+SUBTITLE_TRACE frame=3271 room=room_act2_service_concourse text=Dispatch files a route. Records and Utility disagree about how to make one.
+SUBTITLE_TRACE frame=3553 room=room_act2_records_archive text=RECORDS / A clean file is still a choice.
+SUBTITLE_TRACE frame=3562 room=room_act2_records_archive text=ARCHIVE: manifest indexed. The next checkpoint can query this record.
+SUBTITLE_TRACE frame=3717 room=room_act2_records_archive text=Operator: Your file arrived before you did. I can still route the paperwork.
+SUBTITLE_TRACE frame=4076 room=room_act2_service_concourse text=ACT II-A / Transfer zone. The facility has more than one way to remember you.
+SUBTITLE_TRACE frame=4303 room=room_act2_service_concourse text=
+SUBTITLE_TRACE frame=4340 room=room_act2_service_concourse text=Dispatch files a route. Records and Utility disagree about how to make one.
+SUBTITLE_TRACE frame=4466 room=room_act2_transit_control text=UNDER FIRE / Break sight. Find cover.
+SUBTITLE_TRACE frame=4581 room=room_act2_transit_control text=Target down. Search the body before moving on.
+SUBTITLE_TRACE frame=4760 room=room_act2_transit_control text=
+SUBTITLE_TRACE frame=4916 room=room_act2_transit_control text=Transit Security: Route, credential, or reason.
+SUBTITLE_TRACE frame=5046 room=room_act2_transit_control text=Act II-A checkpoint recorded. The facility has opened a deeper question.
+SUBTITLE_TRACE frame=5055 room=room_1f_arrival_lobby text=Checkpoint saved.
+SUBTITLE_TRACE frame=5125 room=room_8f_records_core text=Lift arrival recorded. Records Core
+SUBTITLE_TRACE frame=5305 room=room_8f_records_core text=
+SUBTITLE_TRACE frame=5591 room=room_12f_operations_control text=Lift arrival recorded. Operations Control
+SUBTITLE_TRACE frame=5771 room=room_12f_operations_control text=
+SUBTITLE_TRACE frame=5790 room=room_18f_network_node text=Lift arrival recorded. Network Node
+SUBTITLE_TRACE frame=5971 room=room_18f_network_node text=
+SUBTITLE_TRACE frame=5990 room=room_24f_security_transfer text=Lift arrival recorded. Security Transfer
+SUBTITLE_TRACE frame=6171 room=room_24f_security_transfer text=
+SUBTITLE_TRACE frame=6190 room=room_30f_executive_archive text=Lift arrival recorded. Executive Archive
+SUBTITLE_TRACE frame=6371 room=room_30f_executive_archive text=
+SUBTITLE_TRACE frame=6386 room=room_36f_authority_core text=Lift arrival recorded. Authority Core
+SUBTITLE_TRACE frame=6470 room=room_36f_authority_core text=PRE-FINAL CHECKPOINT / The decision will be durable after you confirm it.
+SUBTITLE_TRACE frame=6480 room=room_roof_exit text=Decision recorded: AMEND. You are outside the authorization chain.
+REPLAY_PROCESS_EXIT_OK=YES
+REPLAY_INPUT_CONSUMED=YES KEYBOARD_EVENTS=297 MOUSE_EVENTS=18
+REPLAY_EXPECTED_STATE_REACHED=YES
+CHAPTER_CHECKPOINT_REACHED=NO
+CAMPAIGN_COMPLETION_REACHED=YES
+CAMPAIGN_END_SCREEN_READY=YES
+REPLAY_RESULT=PASS
+REPLAY_EXIT_CODE=0
+REPLAY_ROUTE=room_b1_revival>room_01_calibration>room_service_medical>room_1f_security>room_elevator_lobby>room_act2_service_concourse>room_act2_records_archive>room_act2_service_concourse>room_act2_transit_control>room_1f_arrival_lobby>room_8f_records_core>room_1f_arrival_lobby>room_12f_operations_control>room_1f_arrival_lobby>room_18f_network_node>room_1f_arrival_lobby>room_24f_security_transfer>room_1f_arrival_lobby>room_30f_executive_archive>room_1f_arrival_lobby>room_36f_authority_core>room_roof_exit
+CAMPAIGN_FACTS records=YES operations=YES operations_cooperated=NO network=YES force=YES transfer=YES guard_down=YES guard_bypassed=YES alerted=YES archive=YES authority=YES pre_final=YES completed=YES roof=YES amend=YES disclose=NO breach=NO
+NPC_COUNT=16 FULL_NPC_COUNT=9 SEMI_NPC_COUNT=7 AUTONOMOUS_LOOPS=229 DISCOVERY_RESPONSES=0 SAVE_ATTEMPTED=YES SAVE_OK=YES LOAD_ATTEMPTED=YES LOAD_OK=YES EVENT_JOURNAL=83 SYSTEMIC_EVENTS=96 MEMORIES=15
+SLICE_SHOT_HIT=YES NONLETHAL_HIT=YES BODY_CREATED=YES BODY_HIDDEN=NO BODY_DISCOVERED=NO ACCESS_ATTEMPTED=YES ACCESS_DENIED=NO GATE_OPEN=YES GATE_CROSSED=YES PLAYER_HEALTH=12 PLAYER_DEAD=NO
+TRANSITION_DENIED=NO PLAYER_RESTARTED=NO NORMAL_QUIT_REQUESTED=NO FACT_R1_GUARD_DEAD=YES FACT_CHAPTER_SECURITY_CHECKPOINT=YES FACT_B1_CAMERA_DISABLED=NO FACT_CHAPTER_MEDICAL_ASSESSED=YES FACT_CHAPTER_QUIET_ROUTE=NO FACT_CHAPTER_AGGRESSIVE_ROUTE=YES FACT_CHAPTER_STAFF_ROUTE=NO FACILITY_ALERT_LEVEL=1 CAMERA_SURVEILLANCE_RESPONSE=SECURITY_ALERT GUARD_ATTACKS=11 BACKTRACK_MEDICAL=NO
+BADGE_HELD_BY_PLAYER=YES
+CLEANER_RELATIONSHIP=NO CLEANER_HELP_COVERUP=NO
+NPC_RUNTIME id_2488473085217973507 room_16417277286269975506 state_3 pos_16.500_7.453 health_100
+NPC_RUNTIME id_17478114847079800061 room_16417277286269975506 state_7 pos_19.500_5.500 health_0
+TERMINAL_ATTEMPTED=NO TERMINAL_DENIED=NO CLEANER_RESPONSE=NO PLAYER_DIED=NO PLAYER_RECOVERED=NO PLAYER_RESTARTED=NO
+NARRATOR_TYPOGRAPHY_ACTIVE=NO
+NARRATIVE_VISIBLE_ACTION=YES
+NARRATIVE_LAST_TEXT=Dispatch files a route. Records and Utility disagree about how to make one.
+QUEST_PRESENTED_DURING_ROUTE=YES
+QUEST_PRESENTATION_VISIBLE=YES OBJECTIVE=Campaign complete. You may stay, return or quit.
+BODY_STATUS=DEAD BODY_STATE=disposition_0 drag_0 searched_YES BADGE_HOLDER=1 TERMINAL_SESSION=NO
+BADGE_REVOKED=NO DURABLE_HISTORY_PRESERVED=NO
+GUARD_LINE_OF_SIGHT_BLOCKED=NO ELEVATOR_ENTRY_ATTEMPTED=YES ELEVATOR_ENTRY_DENIED=NO
+PLAYER_STATE=room_room_roof_exit pos_2.500_32.000_0.000
+writeover_game exit=0

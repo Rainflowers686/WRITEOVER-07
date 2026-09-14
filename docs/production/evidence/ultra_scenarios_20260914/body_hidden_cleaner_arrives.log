@@ -1,0 +1,53 @@
+WRITEOVER-07 v0.1.0-complete-campaign-candidate
+[INFO][audio] winmm-procedural
+TERMINAL_BACKEND=win32-writeconsole TERMINAL_DIMENSIONS=240x67 TERMINAL_QUALITY_PRESET=COMPATIBILITY TERMINAL_COLOR_CAPABILITY=ANSI16 TERMINAL_PROBE=legacy-conhost
+TERMINAL_CAPABILITY_REASON=VT negotiation failed; using Win32 WriteConsole fallback VT_PROBE=FAILED_OR_UNAVAILABLE
+SUBTITLE_TRACE frame=1 room=room_b1_revival text=Dr. Vale: Look at me, not the number. Steady? Find the service reader.
+SUBTITLE_TRACE frame=229 room=room_b1_revival text=UNDER FIRE / Break sight. Find cover.
+SUBTITLE_TRACE frame=427 room=room_b1_revival text=Target down. Search the body before moving on.
+SUBTITLE_TRACE frame=607 room=room_b1_revival text=A weapon was issued. The record is less certain about you.
+SUBTITLE_TRACE frame=851 room=room_b1_revival text=Cart latched. The corridor is quiet again.
+SUBTITLE_TRACE frame=961 room=room_b1_revival text=TERMINAL: calibration route unlocked.
+SUBTITLE_TRACE frame=1141 room=room_b1_revival text=You have changed what the corridor shows. Not what happened.
+SUBTITLE_TRACE frame=1331 room=room_b1_revival text=ACCESS GRANTED. B1 service door unlocked.
+SUBTITLE_TRACE frame=1470 room=room_01_calibration text=Checkpoint saved.
+SUBTITLE_TRACE frame=1696 room=room_01_calibration text=CALIBRATION: route verified. Service access is open.
+SUBTITLE_TRACE frame=1860 room=room_service_medical text=Intake note: Ask their name before checking their badge.
+SUBTITLE_TRACE frame=2236 room=room_service_medical text=MEDICAL: intake recorded. Choose a service route.
+SUBTITLE_TRACE frame=2245 room=room_service_medical text=MEDICAL: intake already recorded. Choose a service route.
+SUBTITLE_TRACE frame=2251 room=room_service_medical text=Manual save recorded.
+SUBTITLE_TRACE frame=2260 room=room_service_medical text=Loaded.
+SUBTITLE_TRACE frame=2381 room=room_service_medical text=MEDICAL / Intake first. Explanations can wait.
+SUBTITLE_TRACE frame=2550 room=room_restroom_staff text=STAFF / Please leave this passage as you found it.
+SUBTITLE_TRACE frame=2850 room=room_restroom_staff text=You are using the staff passage. Please do not describe it as an exit.
+SUBTITLE_TRACE frame=2895 room=room_elevator_lobby text=ELEVATOR / All departures remain on record.
+SUBTITLE_TRACE frame=3090 room=room_elevator_lobby text=Chapter One complete. Departure recorded.
+SUBTITLE_TRACE frame=3451 room=room_elevator_lobby text=Departure recorded. I have not marked you resolved.
+REPLAY_PROCESS_EXIT_OK=YES
+REPLAY_INPUT_CONSUMED=YES KEYBOARD_EVENTS=85 MOUSE_EVENTS=11
+REPLAY_EXPECTED_STATE_REACHED=YES
+CHAPTER_CHECKPOINT_REACHED=YES
+CAMPAIGN_COMPLETION_REACHED=NO
+CAMPAIGN_END_SCREEN_READY=NO
+REPLAY_RESULT=PASS
+REPLAY_EXIT_CODE=0
+REPLAY_ROUTE=room_b1_revival>room_01_calibration>room_service_medical>room_restroom_staff>room_elevator_lobby
+CAMPAIGN_FACTS records=NO operations=NO operations_cooperated=NO network=NO force=NO transfer=NO guard_down=NO guard_bypassed=NO alerted=NO archive=NO authority=NO pre_final=NO completed=NO roof=NO amend=NO disclose=NO breach=NO
+NPC_COUNT=16 FULL_NPC_COUNT=9 SEMI_NPC_COUNT=7 AUTONOMOUS_LOOPS=92 DISCOVERY_RESPONSES=1 SAVE_ATTEMPTED=YES SAVE_OK=YES LOAD_ATTEMPTED=YES LOAD_OK=YES EVENT_JOURNAL=32 SYSTEMIC_EVENTS=40 MEMORIES=7
+SLICE_SHOT_HIT=YES NONLETHAL_HIT=YES BODY_CREATED=YES BODY_HIDDEN=YES BODY_DISCOVERED=YES ACCESS_ATTEMPTED=YES ACCESS_DENIED=NO GATE_OPEN=YES GATE_CROSSED=YES PLAYER_HEALTH=68 PLAYER_DEAD=NO
+TRANSITION_DENIED=NO PLAYER_RESTARTED=NO NORMAL_QUIT_REQUESTED=NO FACT_R1_GUARD_DEAD=NO FACT_CHAPTER_SECURITY_CHECKPOINT=NO FACT_B1_CAMERA_DISABLED=NO FACT_CHAPTER_MEDICAL_ASSESSED=YES FACT_CHAPTER_QUIET_ROUTE=YES FACT_CHAPTER_AGGRESSIVE_ROUTE=NO FACT_CHAPTER_STAFF_ROUTE=YES FACILITY_ALERT_LEVEL=0 CAMERA_SURVEILLANCE_RESPONSE=NO_LOUD_ACTION GUARD_ATTACKS=4 BACKTRACK_MEDICAL=NO
+BADGE_HELD_BY_PLAYER=YES
+CLEANER_RELATIONSHIP=NO CLEANER_HELP_COVERUP=NO
+NPC_RUNTIME id_2488473085217973507 room_16417277286269975506 state_1 pos_15.500_5.349 health_100
+NPC_RUNTIME id_17478114847079800061 room_16417277286269975506 state_5 pos_19.500_5.500 health_1
+TERMINAL_ATTEMPTED=YES TERMINAL_DENIED=NO CLEANER_RESPONSE=YES PLAYER_DIED=NO PLAYER_RECOVERED=NO PLAYER_RESTARTED=NO
+NARRATOR_TYPOGRAPHY_ACTIVE=NO
+NARRATIVE_VISIBLE_ACTION=YES
+NARRATIVE_LAST_TEXT=Departure recorded. I have not marked you resolved.
+QUEST_PRESENTED_DURING_ROUTE=YES
+QUEST_PRESENTATION_VISIBLE=YES OBJECTIVE=Act II-A: use the transfer control
+BODY_STATUS=UNCONSCIOUS BODY_STATE=disposition_0 drag_0 searched_YES BADGE_HOLDER=1 TERMINAL_SESSION=YES
+BADGE_REVOKED=NO DURABLE_HISTORY_PRESERVED=NO
+GUARD_LINE_OF_SIGHT_BLOCKED=NO ELEVATOR_ENTRY_ATTEMPTED=YES ELEVATOR_ENTRY_DENIED=NO
+PLAYER_STATE=room_room_elevator_lobby pos_9.260_5.547_0.000
+writeover_game exit=0

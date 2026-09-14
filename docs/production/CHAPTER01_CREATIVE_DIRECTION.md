@@ -2,6 +2,14 @@
 
 ## Current acceptance boundary — 2026-09-14
 
+FINAL_PRODUCT_FREEZE = f0e30afe9c330899c4e9fdf105c6c71b3001ca6c.
+POST_ULTRA_FINAL_HANDOFF.md now owns current audit readiness and supersedes
+older open Roof implementation / pre-audit human-gate statements. The Roof
+is an authored open-distance platform with contained parapets and a distant
+skyline; menus/history/Inspect remain glyph-based private presentation. Human
+visual/audio acceptance is still not claimed. Earlier freeze references below
+are historical layers, not the current delivery head.
+
 PROTECTED_CREATIVE_BASELINE = POST_ASTRA_CREATIVE_BASELINE /
 CHAPTER01_AUTHORED_FPS_20260913.
 CURRENT_PRODUCTION_LAYER = ACT2_AUTHORED_SPACES_23EADDB +

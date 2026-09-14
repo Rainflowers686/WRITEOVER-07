@@ -3,7 +3,9 @@
 PURPOSE = give Rain a compact, source-grounded explanation of the complete
 bounded campaign and the systems a presenter must understand
 
-BASELINE_HEAD = a509e3f5b1dc47baf3dd5a466d13ab1b593cfd53
+BASELINE_HEAD = see POST_ULTRA_FINAL_HANDOFF.md for the current implementation.
+Historical campaign head was a509e3fa6b9edcb0ff1392d4ae7eaa2de2a913d6;
+the earlier long hash in this field was incorrect.
 
 ## One-minute explanation
 
@@ -247,3 +249,25 @@ acceptance proves the actual player experience.
   application policy, not a generic Act system.
 - No claim about 41 floors, B4, a public GitHub release, or visual gold should
   be made from this baseline.
+
+## Final product-pass teaching addendum
+
+Explain the separation first: gameplay owns what happened; the product layer
+owns how an already-perceived event is shown. Displaying, hiding or forgetting
+a cue cannot change facts, relationships, access or ending eligibility.
+
+| IMPORTANT_FILES | IMPORTANT_CLASSES | IMPORTANT_FUNCTIONS | WHY_THIS_DESIGN | HOW_TO_EXPLAIN_IT_IN_CLASS |
+|---|---|---|---|---|
+| src/app/perception_feed.h; player_perception.h | PerceptionFeed; PlayerPerceptionObserver | Publish, Visible, History, Observe, PlayerCanPerceive | One bounded 48-entry presentation stream; same-room, FOV, range and LOS observations | We remember only what the player could perceive, then show two short cues or a scrollable history. |
+| src/app/player_perception.h; composition_root.cpp | SystemicWorld; RenderModule | InspectVisibleTarget, PlayerKnownEvidence, case-file source | Existing focused targets and known_by records remain authoritative | Examine describes the visible body or equipment, not a secret inventory or the NPC's thoughts. |
+| src/app/player_product.h; campaign_panel.h | PlayerProductRuntime; ProductInputLease | Handle, Rows, DrawCampaignPanel | Small private menu with bounded scrolling; raw input kept intact while held menu actions are fenced | A held mouse button must not become a shot just because a menu closed. Long text scrolls without hiding Back. |
+| src/app/game_main.cpp; composition_root.cpp | Engine; application modules | main reconstruction loop; RunComposition | New Game destroys all runtime owners and constructs them from content again | Moving the player to B1 would leave old NPC memories. A new composition actually starts a new game. |
+| src/app/product_save.h; composition_root.cpp | SaveManager; ProductSaveRole; RenderModule | ProductResumeName, save/load callbacks, ResetTransientPresentation | Separate save purposes use the existing codec and staged rollback; cosmetic history clears after a successful load | A pre-final save is not an ending save. Failed loads roll back; successful loads must not show future menu text. |
+| include/writeover/core/settings.h; src/core/settings.cpp; ADR-0010 | Settings; SettingsRegistry | ApplyKeyValue, ComposeKeyValues | Two bounded cosmetic preferences in the existing text file; no world-wire growth | Settings control readability. They are not another campaign state and should not rewind with a world save. |
+| data/rooms/room_roof_exit.json; data/scenes/recovery_scene.json; src/render/character_renderer.cpp | Room; GridWorldQuery; CharCell | RenderCharacterFrame; existing plane sampling and locomotion | Authored platform, parapet and distant geometry; retain clear cells when no finite plane exists | A ray with no floor or ceiling hit must not invent a fake wall of texture. This remains glyph rendering, not pixels. |
+| tools/bench/main.cpp; tests/test_product.cpp; scripts/player_product_gate.ps1 | FrameTimeSampler; TestHarness | CharacterRuntimeFrameBenchmark; RegisterProductTests; production probes | Original workload/gate retained, with slow-stage diagnostics and real save/rebuild coverage | worst_1pct_avg_ms averages the slowest one percent; it is not p99. CPU time and wall time answer different questions. |
+
+Presentation demo: show Boot, enter B1, Examine a visible object, open Recent
+Events, show current bindings, then show an earned ending summary and separate
+Replay Final Choice. Explain the 19 playable rooms versus the fictional 41-level
+directory. Do not present automated SVG exports as a human Terminal playtest.
