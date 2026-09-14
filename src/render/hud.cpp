@@ -1,6 +1,7 @@
 #include "writeover/render/hud.h"
 
 #include "writeover/render/terminal_backend.h"
+#include "text_layout.h"
 
 #include <algorithm>
 #include <cctype>
@@ -11,71 +12,21 @@ namespace writeover {
 
 namespace {
 
-char32_t NextUtf8(const std::string& text, size_t& index) {
-    const auto byte = [&](size_t at) -> uint8_t {
-        return static_cast<uint8_t>(text[at]);
-    };
-    const uint8_t first = byte(index++);
-    if (first < 0x80) return first;
-    int extra = 0;
-    char32_t value = 0;
-    if ((first & 0xE0) == 0xC0) { extra = 1; value = first & 0x1F; }
-    else if ((first & 0xF0) == 0xE0) { extra = 2; value = first & 0x0F; }
-    else if ((first & 0xF8) == 0xF0) { extra = 3; value = first & 0x07; }
-    else return U'?' ;
-    if (index + static_cast<size_t>(extra) > text.size()) {
-        index = text.size();
-        return U'?';
-    }
-    for (int i = 0; i < extra; ++i) {
-        const uint8_t continuation = byte(index++);
-        if ((continuation & 0xC0) != 0x80) return U'?';
-        value = (value << 6) | (continuation & 0x3F);
-    }
-    return value;
-}
-
 void DrawText(CharCell* buffer, int width, int row, const std::string& utf8_text,
               Color ink, bool bold) {
     if (row < 0) {
         return;
     }
-    int x = 2;
-    for (size_t index = 0; index < utf8_text.size();) {
-        if (x >= width - 2) {
-            break;
-        }
-        CharCell& cell = buffer[row * width + x];
-        cell.code_point = NextUtf8(utf8_text, index);
-        cell.fg_r = ink.r;
-        cell.fg_g = ink.g;
-        cell.fg_b = ink.b;
-        cell.bg_r = 8;
-        cell.bg_g = 13;
-        cell.bg_b = 22;
-        cell.flags = bold ? 0x01 : 0;
-        ++x;
-    }
+    CharCell style;
+    style.fg_r = ink.r; style.fg_g = ink.g; style.fg_b = ink.b;
+    style.bg_r = 8; style.bg_g = 13; style.bg_b = 22;
+    style.flags = bold ? 0x01 : 0;
+    text::DrawRow(buffer + static_cast<size_t>(row) * width, width, 2, width - 4, utf8_text, style);
 }
 
 std::vector<std::string> SubtitleRows(const std::string& text, int columns) {
-    std::vector<std::string> rows;
-    size_t start = 0;
-    while (start < text.size() && rows.size() < 2) {
-        size_t end = start;
-        size_t last_space = std::string::npos;
-        int count = 0;
-        while (end < text.size() && count < columns) {
-            if (text[end] == ' ') last_space = end;
-            (void)NextUtf8(text, end);
-            ++count;
-        }
-        if (end < text.size() && last_space != std::string::npos && last_space > start)
-            end = last_space;
-        rows.push_back(text.substr(start, end - start));
-        start = end;
-        while (start < text.size() && text[start] == ' ') ++start;
-    }
+    auto rows = text::Wrap(text, columns);
+    if (rows.size() > 2) rows.resize(2);
     return rows;
 }
 

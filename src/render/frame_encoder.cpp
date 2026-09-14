@@ -1,5 +1,6 @@
 #include "writeover/render/frame_encoder.h"
 #include "utf_append.h"
+#include "text_layout.h"
 
 #include <algorithm>
 #include <cmath>
@@ -100,6 +101,7 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
             out.append("\x1b[" + std::to_string(y + 1) + ";1H");
             for (int x = 0; x < width; ++x) {
                 const CharCell& cell = frame[static_cast<size_t>(y) * width + x];
+                if (cell.flags & text::kWideTail) continue;
                 AppendSgr(out, state, cell);
                 detail::AppendUtf8(out, cell.code_point);
                 state = cell;
@@ -123,6 +125,21 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
             cur.flags != prv.flags) {
             changed_mask[i] = true;
             ++changed;
+        }
+    }
+
+    // A delta must include both halves of either the old or new wide glyph.
+    // Otherwise cursor positioning into a continuation can erase its head.
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            const size_t i = static_cast<size_t>(y) * width + x;
+            if (!changed_mask[i]) continue;
+            if (x > 0 && ((frame[i].flags | prev_[i].flags) & text::kWideTail) && !changed_mask[i - 1]) {
+                changed_mask[i - 1] = true; ++changed;
+            }
+            if (x + 1 < width && ((frame[i].flags | prev_[i].flags) & text::kWideHead) && !changed_mask[i + 1]) {
+                changed_mask[i + 1] = true; ++changed;
+            }
         }
     }
 
@@ -150,6 +167,7 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
             out.append("\x1b[" + std::to_string(y + 1) + ";1H");
             for (int x = 0; x < width; ++x) {
                 const CharCell& cell = frame[static_cast<size_t>(y) * width + x];
+                if (cell.flags & text::kWideTail) continue;
                 AppendSgr(out, state, cell);
                 detail::AppendUtf8(out, cell.code_point);
                 state = cell;
@@ -180,6 +198,7 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
                 CharCell state = InitialSgrState(frame[static_cast<size_t>(row_start + run_start)]);
                 for (int cx = run_start; cx < x; ++cx) {
                     const CharCell& cell = frame[static_cast<size_t>(row_start + cx)];
+                    if (cell.flags & text::kWideTail) continue;
                     AppendSgr(out, state, cell);
                     detail::AppendUtf8(out, cell.code_point);
                     state = cell;
@@ -196,6 +215,7 @@ EncodeResult AnsiFrameEncoder::Encode(const CharCell* frame, int width, int heig
             CharCell state = InitialSgrState(frame[static_cast<size_t>(row_start + run_start)]);
             for (int cx = run_start; cx < width; ++cx) {
                 const CharCell& cell = frame[static_cast<size_t>(row_start + cx)];
+                if (cell.flags & text::kWideTail) continue;
                 AppendSgr(out, state, cell);
                 detail::AppendUtf8(out, cell.code_point);
                 state = cell;

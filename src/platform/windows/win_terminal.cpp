@@ -8,6 +8,7 @@
 
 #include "writeover/render/terminal_backend.h"
 #include "writeover/render/frame_encoder.h"
+#include "src/render/text_layout.h"
 
 #if defined(_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -208,6 +209,13 @@ public:
             const int bi = Nearest16Color(c.bg_r, c.bg_g, c.bg_b);
             cells[i].Attributes = static_cast<WORD>(kAnsi16[fi].fg_attr |
                                                     kAnsi16[bi].bg_attr);
+            if ((c.flags & text::kWideHead) && i % static_cast<size_t>(width) + 1 < static_cast<size_t>(width)) {
+                cells[i].Attributes |= COMMON_LVB_LEADING_BYTE;
+            }
+            if ((c.flags & text::kWideTail) && i % static_cast<size_t>(width) > 0) {
+                cells[i].Char.UnicodeChar = cells[i - 1].Char.UnicodeChar;
+                cells[i].Attributes |= COMMON_LVB_TRAILING_BYTE;
+            }
         }
         COORD origin{0, 0};
         CONSOLE_SCREEN_BUFFER_INFO info{};

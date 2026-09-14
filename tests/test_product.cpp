@@ -7,12 +7,65 @@
 #include "src/app/player_save.h"
 #include "src/app/terminal_surface.h"
 #include "src/app/runtime_time_gate.h"
+#include "src/render/text_layout.h"
 #include "writeover/render/frame_encoder.h"
+#include "writeover/render/hud.h"
 #include "writeover/render/character_renderer.h"
 #include "writeover/world/room.h"
 
 namespace writeover {
 namespace {
+bool ChineseDisplayColumns() {
+    WO_CHECK_EQ(text::Columns("中文 FPS，门 A1"), 15);
+    WO_CHECK(text::Clip("A中文B", 4) == "A中");
+    const auto rows = text::Wrap("中文AB 中文CD", 6);
+    WO_CHECK_EQ(rows.size(), 2); WO_CHECK(rows[0] == "中文AB");
+    std::vector<CharCell> cells(10);
+    WO_CHECK_EQ(text::DrawRow(cells.data(), 10, 0, 5, "中A文", CharCell{}), 5);
+    WO_CHECK(cells[0].code_point == U'中' && (cells[1].flags & text::kWideTail));
+    WO_CHECK(cells[2].code_point == U'A' && cells[3].code_point == U'文');
+    AnsiFrameEncoder encoder;
+    std::string output;
+    encoder.Encode(cells.data(), 10, 1, output);
+    WO_CHECK(output.find("中A文") != std::string::npos);
+    // Modifying the tail's style must repaint its head rather than position
+    // the cursor inside a two-column glyph.
+    cells[1].fg_r = 50; output.clear();
+    encoder.Encode(cells.data(), 10, 1, output);
+    WO_CHECK(output.find("\x1b[1;1H") != std::string::npos);
+    WO_CHECK(output.find("\x1b[1;2H") == std::string::npos);
+    cells.assign(10, CharCell{}); output.clear();
+    encoder.Encode(cells.data(), 10, 1, output);
+    WO_CHECK(output.find("中") == std::string::npos);
+    size_t invalid_offset = 0;
+    WO_CHECK(text::Decode("\xf0\x80\x80\x80", invalid_offset) == U'?');
+    WO_CHECK_EQ(invalid_offset, 4);
+    WO_CHECK(text::Wrap("中", 1).front() == "?");
+    for (const auto size : {TerminalSurface{48, 18}, TerminalSurface{80, 25}, TerminalSurface{240, 67}}) {
+        // Guard cells around the canvas catch row overruns while mixed text
+        // exercises footer wrapping and whole-glyph right-edge clipping.
+        std::vector<CharCell> guarded(static_cast<size_t>(size.width) * size.height + 2);
+        guarded.front().code_point = U'!'; guarded.back().code_point = U'!';
+        HudFrame hud;
+        hud.subtitle = "清洁工：门禁还亮着，先别开枪。 Cleaner: wait for the reader.";
+        HudRenderer{}.Draw(guarded.data() + 1, size.width, size.height, hud);
+        DrawCampaignPanel(guarded.data() + 1, size.width, size.height,
+                          {"设置 / SETTINGS", "> 简体中文 / English", "返回：ESC / 确认：F"});
+        WO_CHECK(guarded.front().code_point == U'!' && guarded.back().code_point == U'!');
+        for (int y = 0; y < size.height; ++y) {
+            for (int x = 0; x < size.width; ++x) {
+                const size_t i = 1 + static_cast<size_t>(y) * size.width + x;
+                if (guarded[i].flags & text::kWideHead) {
+                    WO_CHECK(x + 1 < size.width && (guarded[i + 1].flags & text::kWideTail));
+                }
+                if (guarded[i].flags & text::kWideTail) {
+                    WO_CHECK(x > 0 && (guarded[i - 1].flags & text::kWideHead));
+                }
+            }
+        }
+    }
+    return true;
+}
 bool SurfaceResizeAndRecovery() {
     RuntimeTimeGate clock;
     clock.ObserveSchedulerFrame(0); clock.ObserveSchedulerFrame(10);
@@ -380,6 +433,7 @@ bool KnownEvidenceAndNearestInspect() {
 }
 } // namespace
 void RegisterProductTests(TestHarness& harness) {
+    harness.Add("product.chinese display columns", &ChineseDisplayColumns);
     harness.Add("product.surface resize and recovery", &SurfaceResizeAndRecovery);
     harness.Add("product.save role partial failure", &SaveRolePartialFailurePreservesFiles);
     harness.Add("product.player payload versions and truncation", &PlayerPayloadVersionsAndTruncation);

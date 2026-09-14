@@ -21,7 +21,8 @@ struct CharCell {
     char32_t code_point = U' ';
     uint8_t fg_r = 255, fg_g = 255, fg_b = 255;
     uint8_t bg_r = 0, bg_g = 0, bg_b = 0;
-    uint8_t flags = 0;  // 0x01 bold, 0x02 blink, 0x04 underline
+    uint8_t flags = 0;  // 0x01 bold, 0x02 blink, 0x04 underline;
+                        // compositor only: 0x08 wide head, 0x10 continuation
 };
 
 inline constexpr int k3dLayerSingleWidthMin = 0x20;   // first printable single-width

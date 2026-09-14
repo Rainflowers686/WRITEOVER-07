@@ -1636,19 +1636,21 @@ public:
                 const std::string text = closure_text_source_
                     ? closure_text_source_(row) : text_source_(lines[row]);
                 if (text.empty()) continue;
-                const int count = std::min(static_cast<int>(text.size()), width_ - 8);
+                const std::string clipped = text::Clip(text, width_ - 8);
+                const int count = text::Columns(clipped);
                 const int left = (width_ - count) / 2;
                 const int y = height_ / 5 + static_cast<int>(row) * 2;
                 for (int x = -2; x < count + 2; ++x) {
                     CharCell& cell = body_[static_cast<size_t>(y) * width_ + left + x];
-                    cell.code_point = x >= 0 && x < count
-                        ? static_cast<unsigned char>(text[static_cast<size_t>(x)]) : U' ';
+                    cell.code_point = U' ';
                     cell.fg_r = row == 2 ? 209 : 232;
                     cell.fg_g = row == 2 ? 167 : 228;
                     cell.fg_b = row == 2 ? 100 : 209;
                     cell.bg_r = 8; cell.bg_g = 13; cell.bg_b = 19;
                     cell.flags = row == 0 ? 0x01 : 0;
                 }
+                text::DrawRow(body_.data() + static_cast<size_t>(y) * width_, width_, left,
+                              count, clipped, body_[static_cast<size_t>(y) * width_ + left]);
             }
         }
         if (narrator_intrusion_.Active(game_frame)) {
@@ -1668,14 +1670,13 @@ public:
             const auto feed_rows = product_->feed.Visible(game_frame, settings_->sensory_verbosity, subtitle_, objective_);
             for (size_t row = 0; row < feed_rows.size() && height_ >= 18; ++row) {
                 const size_t available = width_ > 4 ? static_cast<size_t>(width_ - 4) : 0;
-                const std::string line = available >= 3 && feed_rows[row].size() > available
-                    ? feed_rows[row].substr(0, available - 3) + "..." : feed_rows[row];
-                for (size_t x = 0; x < line.size() && x < available; ++x) {
-                    CharCell& cell = body_[(row + 7) * static_cast<size_t>(width_) + x + 2];
-                    cell.code_point = static_cast<unsigned char>(line[x]);
-                    cell.fg_r = 218; cell.fg_g = 210; cell.fg_b = 178;
-                    cell.bg_r = 8; cell.bg_g = 13; cell.bg_b = 19;
-                }
+                const std::string line = available >= 3 && text::Columns(feed_rows[row]) > static_cast<int>(available)
+                    ? text::Clip(feed_rows[row], static_cast<int>(available) - 3) + "..." : feed_rows[row];
+                CharCell style;
+                style.fg_r = 218; style.fg_g = 210; style.fg_b = 178;
+                style.bg_r = 8; style.bg_g = 13; style.bg_b = 19;
+                text::DrawRow(body_.data() + (row + 7) * static_cast<size_t>(width_), width_, 2,
+                              static_cast<int>(available), line, style);
             }
         }
         DrawCampaignPanel(body_.data(), width_, height_, campaign_panel,

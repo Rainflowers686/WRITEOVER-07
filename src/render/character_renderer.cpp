@@ -1,4 +1,5 @@
 #include "writeover/render/character_renderer.h"
+#include "text_layout.h"
 
 #include "writeover/common/math.h"
 
@@ -1636,8 +1637,10 @@ bool WriteCharacterFrameSvg(const CharCell* cells, int cell_w, int cell_h,
     for (int y = 0; y < cell_h; ++y) {
         for (int x = 0; x < cell_w; ++x) {
             const CharCell& cell = cells[static_cast<size_t>(y) * cell_w + x];
+            if (cell.flags & text::kWideTail) continue;
+            const int glyph_columns = (cell.flags & text::kWideHead) ? 2 : 1;
             file << "<rect x=\"" << x * kCellWidthPx << "\" y=\""
-                 << y * kCellHeightPx << "\" width=\"" << kCellWidthPx
+                 << y * kCellHeightPx << "\" width=\"" << kCellWidthPx * glyph_columns
                  << "\" height=\"" << kCellHeightPx << "\" fill=\"#"
                  << std::hex << std::setw(2) << std::setfill('0')
                  << static_cast<int>(cell.bg_r) << std::setw(2)
@@ -1646,7 +1649,8 @@ bool WriteCharacterFrameSvg(const CharCell* cells, int cell_w, int cell_h,
             if (cell.code_point != U' ' && IsXmlSafe(cell.code_point)) {
                 const std::string utf8 = XmlEscape(CharCellToUtf8(cell.code_point));
                 file << "<text x=\"" << x * kCellWidthPx << "\" y=\""
-                     << (y + 1) * kCellHeightPx - 2 << "\" fill=\"#"
+                     << (y + 1) * kCellHeightPx - 2 << "\" textLength=\""
+                     << kCellWidthPx * glyph_columns - 1 << "\" fill=\"#"
                      << std::hex << std::setw(2) << std::setfill('0')
                      << static_cast<int>(cell.fg_r) << std::setw(2)
                      << static_cast<int>(cell.fg_g) << std::setw(2)
