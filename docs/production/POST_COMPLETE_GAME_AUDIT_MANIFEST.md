@@ -1,0 +1,178 @@
+# WRITEOVER-07 — Post Complete-Game Audit Manifest
+
+MANIFEST_KIND = post-complete-game-baseline
+
+STATUS = READY_FOR_GPT6_COMPLETE_GAME_DIRECTOR_PASS
+
+BASELINE_HEAD = 6054c7258f39cd375ea5f499e1b6650c39e3c508
+
+BASELINE_COMMIT = feat: complete bounded tower campaign path
+
+REMOTE_HEAD_AT_SOURCE_COMMIT = 6b0d44cedc34df4ef62c1ec03cbf26d530c6a746
+
+EXACT_HEAD_CI = PENDING_NORMAL_PUSH
+
+## Scope
+
+IMPLEMENTED = bounded complete campaign from B1 to Roof with three ending
+policies, eight upper destinations, progressive unlock facts, return
+transitions, case-file lead/discovery presentation, existing save/load use, and
+two full route probes.
+
+NOT_IMPLEMENTED = generic 41-floor tower, generic Campaign/Act/Region engine,
+new save schema section, unrestricted fast travel, product release, visual
+gold, course-document completion, or manual human acceptance.
+
+## Content counts
+
+PLAYABLE_ROOMS = 19
+
+EXPLICIT_REGION_RECORDS = 0
+
+SCENE_TRANSITIONS = 32
+
+SCENE_ENTITIES = 152
+
+PATROL_ROUTES = 14
+
+FACT_RECORDS = 69
+
+STORYLET_RECORDS = 27
+
+NPC_PROFILE_RECORDS = 17
+
+FULL_CAMPAIGN_REPLAY_RUNTIME_NPCS = 16
+
+UPPER_DESTINATIONS = 8
+
+ENDINGS = 3
+
+## Source and artifact map
+
+ROOM_AUTHORING = data/rooms/*.json
+
+ROOM_COMPILED = data/rooms/*.woc
+
+SCENE_AUTHORING = data/scenes/recovery_scene.json
+
+SCENE_COMPILED = data/scenes/recovery_scene.bin
+
+FACT_AUTHORING = data/facts/facts.json
+
+FACT_COMPILED = data/facts/facts.bin
+
+STORYLET_AUTHORING = data/storylets/storylets.json
+
+STORYLET_COMPILED = data/storylets/storylets.bin
+
+NPC_AUTHORING = data/npcs/npcs.json
+
+NPC_COMPILED = data/npcs/npcs.bin
+
+SYSTEMIC_AUTHORING = data/systemic/systemic_seed.json
+
+SYSTEMIC_COMPILED = data/systemic/systemic_seed.bin
+
+TEXT_AUTHORING = data/text/recovery_text.txt
+
+CAMPAIGN_POLICY = src/app/tower_campaign_runtime.cpp and
+src/app/tower_campaign_runtime.h
+
+INTEGRATION_ROOT = src/app/composition_root.cpp
+
+REPLAY_PROBES = tools/replay/campaign_probe_amend.txt and
+tools/replay/campaign_probe_disclose.txt
+
+## Verification receipts
+
+DEBUG_BUILD = PASS
+
+RELEASE_BUILD = PASS
+
+DEBUG_UNIT_TESTS = 217/217 PASS
+
+RELEASE_UNIT_TESTS = 217/217 PASS
+
+CONTENT_CHECK = PASS (19 rooms, 69 facts, 27 storylets, 17 NPC profiles)
+
+CONTENT_TESTS = 13/13 PASS
+
+SYSTEMIC_SCHEMA_TESTS = 10/10 PASS
+
+SYSTEMIC_SCHEMA_CHECK = PASS
+
+STATIC_AUDIT = PASS (COUNT=0)
+
+CONTRACT_CHECK = PASS
+
+RELEASE_BENCHMARK = PASS (terminal full/delta/unchanged/worst-case safety,
+systemic lookup/update, PVS render/total frame, raycast, overall budget)
+
+RELEASE_SMOKE = PASS (exit 0)
+
+CAMPAIGN_AMEND_REPLAY = PASS
+
+CAMPAIGN_DISCLOSE_REPLAY = PASS
+
+CAMPAIGN_REPLAY_SHARED_ASSERTIONS = all eight upper rooms visited, Roof
+reached, CAMPAIGN_COMPLETION_REACHED=YES, SAVE_OK=YES, LOAD_OK=YES,
+TRANSITION_DENIED=NO, PLAYER_DEAD=NO
+
+CAMPAIGN_AMEND_FACTS = records, operations, network, force, transfer,
+guard_down, guard_bypassed, alerted, archive, authority, pre_final,
+completed, roof, amend
+
+CAMPAIGN_DISCLOSE_FACTS = records, operations, operations_cooperated, network,
+transfer, guard_bypassed, archive, authority, pre_final, completed, roof,
+disclose; no force/alert route
+
+## Required post-push gates
+
+PENDING = normal push of main from this baseline plus exact-head CI.
+
+PENDING = final package generation and package smoke from the pushed binary.
+
+PENDING = manual foreground Windows terminal run.
+
+PENDING = audio listening.
+
+PENDING = Breach dedicated end-to-end route/manual acceptance.
+
+PENDING = first-time classmate playtest and measured playtime.
+
+PENDING = integrated visual acceptance for faces, NPCs, weapons, rooms, doors,
+HUD, and directional labels.
+
+## Preserved evidence and boundaries
+
+PRESERVED = existing dirty tests/test_harness.cpp newline change, settings
+files, build directories, and historical docs/production/evidence content.
+
+NO_CLEANUP_PERFORMED = YES
+
+NO_RESET_RESTORE_REBASE_PERFORMED = YES
+
+NO_FORCE_PUSH_PERFORMED = YES
+
+MANUAL_ACCEPTANCE_INFERRED_FROM_REPLAY = NO
+
+VISUAL_GOLD_CLAIM = NO
+
+PUBLIC_ALPHA_CLAIM = NO
+
+COURSE_DELIVERY_CLAIM = NO
+
+## Handoff decision
+
+NEXT_OWNER = GPT-6 complete-game director/audit pass
+
+SAFE_NEXT_SCOPE = manual visual/audio/first-time play review, targeted
+player-critical corrections, Breach verification, final package/CI/course
+gates
+
+FROZEN_SCOPE = renderer contract, authored Character-Art basis, existing
+Act II-A routes, fact/systemic/storylet/save ownership, bounded lift policy
+
+STOP_CONDITION = after exact-head CI, package smoke, and manual findings are
+honestly recorded; do not turn READY_FOR_GPT6_COMPLETE_GAME_DIRECTOR_PASS into
+PRODUCT_GOLD without human evidence.
