@@ -1,16 +1,29 @@
 # WRITEOVER-07 — Post Complete-Game GPT-6 Handoff
 
-STATUS = READY_FOR_GPT6_COMPLETE_GAME_DIRECTOR_PASS
+STATUS = COMPLETE_GAME_CAMPAIGN_BASELINE_VERIFIED_MANUAL_ACCEPTANCE_OPEN
 
-BASELINE_HEAD = ff12db15d584ed6aefa6c4561b1089c97440b5c2
+BASELINE_HEAD = a509e3f5b1dc47baf3dd5a466d13ab1b593cfd53
 
-BASELINE_COMMIT = feat: polish authored combat and campaign endings
+DELIVERY_HEAD = final pushed HEAD; it may be a documentation-only descendant
+of BASELINE_HEAD and must be verified live before claiming exact-head CI.
+
+BASELINE_COMMIT = feat: close campaign routing and delivery contracts
+
+CANDIDATE_PACKAGE = build-campaign-release/dist-final-pass09/
+writeover-07-v0.1.0-complete-campaign-candidate-windows-x64.zip
+
+CANDIDATE_PACKAGE_SHA256 = 68589068CB1385E6DC40BFB02A2E1AD167C5F5A32D3134FBC50F3694A60D0B37
+
+CANDIDATE_PACKAGE_GATES = positive smoke PASS; missing content, character-art,
+and recovery-text negative probes PASS; package is a candidate, not a Release
 
 This handoff supersedes the older Chapter One, Astra/Luna, and pre-complete
 game handoff notes for the current source baseline. It does not mean final
 release, visual gold, manual acceptance, course-report completion, or public
-alpha readiness. Exact-head CI and the human acceptance boundary must still be
-closed after the normal push.
+alpha readiness. The source baseline is now locally verified; delivery still
+requires a candidate package from BASELINE_HEAD and a GitHub Actions run whose
+headSha exactly matches the final pushed DELIVERY_HEAD. This is not a Luna
+handoff.
 
 ## Protected baseline
 
@@ -73,8 +86,9 @@ checkpoint. The lift directory progressively exposes Records Core, Operations
 Control, Network Node, Security Transfer, Executive Archive, Authority Core,
 and Roof. The player can return to Arrival between upper rooms. Authority Core
 writes a pre-final checkpoint and presents eligible endings. Amend, Disclose,
-and Breach now each have a dedicated Release route probe and ending-specific
-assertion; manual foreground presentation remains open.
+Breach, and a discovery-poor Breach route now each have a dedicated Release
+probe and ending-specific assertion; manual foreground presentation remains
+open.
 
 Automated route observations:
 
@@ -85,6 +99,12 @@ Automated route observations:
   `disclose=YES`, roof reached, no transition denial, player alive.
 - Breach replay: all eight new rooms, save/load, campaign completion, force and
   alert facts, `breach=YES`, roof reached, no transition denial, player alive.
+- Discovery-poor Breach replay: skips optional Network, uses the Operations
+  force/alert fallback, reaches Transfer/Archive/Authority/Roof, and asserts
+  `network=NO`, `force=YES`, `transfer=YES`, `breach=YES`.
+- Focused Act II route gate: Power, Observation, and Transit each enter their
+  authored room and assert their key player-facing consequence without a
+  transition denial or player death.
 - Current replay output distinguishes legacy CHAPTER_CHECKPOINT_REACHED from
   CAMPAIGN_COMPLETION_REACHED; a complete campaign should use the latter.
 
@@ -128,7 +148,9 @@ OPEN_P1 =
 - First-time classmate playtest and measured playtime remain open.
 - Manual Breach presentation and durable reload acceptance remain open; the
   dedicated automated route is now covered.
-- Final package smoke and exact-head CI for the pushed commit remain open.
+- The final candidate archive must be built from BASELINE_HEAD, and exact-head
+  CI must be checked against the final pushed DELIVERY_HEAD; the older
+  `b734e706...` CI receipt is intentionally not authoritative for either.
 
 REMAINING_OBJECTIVE_WORK = manually validate objective readability,
 case-file lead/discovery usefulness, directory selection affordance, and
@@ -144,13 +166,15 @@ first-time-play review. Preserve the bounded eight-destination scope unless a
 new player-critical gap is proven.
 
 REMAINING_TEST_WORK = add narrowly targeted regression for discovered defects;
-keep the existing 217-test suite, content checks, schema checks, the three
-campaign ending probes, save-fault coverage, static audit, contract check, and
-benchmark contracts green.
+keep the existing 217-test suite, content checks, schema checks, the four
+campaign ending probes, three focused Act II route probes, save-fault coverage,
+static audit, contract check, package positive/negative checks, and benchmark
+contracts green.
 
-REMAINING_PACKAGE_WORK = package the final pushed Windows binary using the
-existing release scripts, run package smoke, and record archive/hash without
-staging build/dist artifacts.
+REMAINING_PACKAGE_WORK = package the Windows candidate from BASELINE_HEAD using
+the existing release scripts, run positive package smoke plus the missing
+content/art/text negative probe, and record archive/hash without staging
+build/dist artifacts.
 
 REMAINING_COURSE_REPORT_WORK = inspect actual course requirements, then fill
 the code/playable-package/test-report/design-report/PPT/WBS/UML/algorithm/STL/
@@ -193,7 +217,8 @@ LIKELY_COMPLETION_SEQUENCE =
    only player-critical revisions for B1, Security, Elevator, major NPCs,
    four-way facing, Pistol, and Stunner.
 4. Run all three ending paths, including Breach, with save/load and backtrack;
-   the automated three-ending gate is already present.
+   the automated four-route ending gate and three-route Act II coverage gate
+   are already present.
 5. Run Debug/Release build, tests, content/schema/static/contract checks,
    replay suite, scenario/save matrix, benchmark, and package smoke.
 6. Commit documentation/evidence separately from source/content where practical.
@@ -269,7 +294,13 @@ data/npcs/npcs.json,
 tools/replay/campaign_probe_amend.txt,
 tools/replay/campaign_probe_disclose.txt,
 tools/replay/campaign_probe_breach.txt,
-scripts/complete_game_campaign_gate.ps1
+tools/replay/campaign_probe_discovery_poor.txt,
+tools/replay/act2_power_route_from_concourse_probe.txt,
+tools/replay/act2_observation_terminal_route_probe.txt,
+tools/replay/act2_transit_route_probe.txt,
+scripts/complete_game_campaign_gate.ps1,
+scripts/act2_route_coverage_gate.ps1,
+tools/release/package_negative_probe.py
 
 IMPORTANT_CLASSES = SliceRuntime, PlayerModule, RenderModule,
 TowerCampaignRuntime, SceneRuntime, InteractionRuntime, ProductionRenderer,

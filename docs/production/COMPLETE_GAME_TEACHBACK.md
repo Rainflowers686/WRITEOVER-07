@@ -3,14 +3,14 @@
 PURPOSE = give Rain a compact, source-grounded explanation of the complete
 bounded campaign and the systems a presenter must understand
 
-BASELINE_HEAD = ff12db15d584ed6aefa6c4561b1089c97440b5c2
+BASELINE_HEAD = a509e3f5b1dc47baf3dd5a466d13ab1b593cfd53
 
 ## One-minute explanation
 
 WRITEOVER-07 is a first-person MUD/FPS hybrid whose world is rendered from
 CharCell/Unicode glyphs. The player wakes in B1, makes route and violence
 choices, crosses an Act II-A service hub, takes a bounded lift directory into
-seven upper destinations, and reaches a durable three-ending decision. The
+eight named destinations, and reaches a durable three-ending decision. The
 interesting part is not a cinematic branch tree: facts about noise, bodies,
 credentials, cooperation, force, and discovery remain in the existing
 systemic/narrative state and change what later rooms and endings permit.
@@ -238,8 +238,11 @@ acceptance proves the actual player experience.
   and Roof.
 - Amend is the baseline ending; Disclose requires network discovery plus
   cooperative Operations; Breach requires the upper security/force trace.
-  The three campaign probes and `complete_game_campaign_gate.ps1` assert the
-  selected ending fact, not just Roof reachability.
+  Four campaign probes and `complete_game_campaign_gate.ps1` assert the
+  selected ending fact and end-screen readiness, not just Roof reachability.
+- `act2_route_coverage_gate.ps1` covers the Power, Observation, and Transit
+  branches independently; `package_negative_probe.py` proves required content,
+  character-art, and recovery-text resources fail closed when removed.
 - Act II-A remains a named existing route. The upper sequence is bounded
   application policy, not a generic Act system.
 - No claim about 41 floors, B4, a public GitHub release, or visual gold should

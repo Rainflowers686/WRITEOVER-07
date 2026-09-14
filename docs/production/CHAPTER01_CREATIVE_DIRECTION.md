@@ -10,8 +10,8 @@ VISUAL_PASS07_AUTHORED_WEAPON_MASS_AND_FACE_EYELINE.
 The source/content baseline is the creative freeze commit recorded below;
 the later documentation commit may become the delivery HEAD, but it must
 not change this contract.
-CREATIVE_FREEZE_HEAD = `ff12db1` (`feat: polish authored combat and campaign
-endings`).
+CREATIVE_FREEZE_HEAD = `a509e3f` (`feat: close campaign routing and delivery
+contracts`).
 This is a stylized character-built FPS, not photorealism, VISUAL_GOLD or a
 claim of Rain's subjective foreground-terminal acceptance. Production frames,
 route gates and exact-head CI remain separate acceptance questions.

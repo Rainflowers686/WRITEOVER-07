@@ -2,19 +2,30 @@
 
 MANIFEST_KIND = post-complete-game-baseline
 
-STATUS = READY_FOR_GPT6_COMPLETE_GAME_DIRECTOR_PASS
+STATUS = COMPLETE_GAME_CAMPAIGN_BASELINE_VERIFIED_MANUAL_ACCEPTANCE_OPEN
 
-BASELINE_HEAD = ff12db15d584ed6aefa6c4561b1089c97440b5c2
+BASELINE_HEAD = a509e3f5b1dc47baf3dd5a466d13ab1b593cfd53
 
-BASELINE_COMMIT = feat: polish authored combat and campaign endings
+DELIVERY_HEAD = final pushed HEAD; verify live because documentation may be a
+descendant of BASELINE_HEAD
 
-REMOTE_HEAD_AT_SOURCE_COMMIT = 6b0d44cedc34df4ef62c1ec03cbf26d530c6a746
+BASELINE_COMMIT = feat: close campaign routing and delivery contracts
 
-EXACT_HEAD_CI = PENDING (visual-pass07 source head has not yet been pushed)
+CANDIDATE_PACKAGE = build-campaign-release/dist-final-pass09/
+writeover-07-v0.1.0-complete-campaign-candidate-windows-x64.zip
 
-EXACT_HEAD_CI_JOBS = build 103902064569 PASS, linux 103902064089 PASS,
-linux-clang 103902064264 PASS, linux-arm64-link 103902064556 PASS,
-macos-arm64 rerun 103902063068 PASS
+CANDIDATE_PACKAGE_SHA256 = 68589068CB1385E6DC40BFB02A2E1AD167C5F5A32D3134FBC50F3694A60D0B37
+
+CANDIDATE_PACKAGE_GATES = positive smoke PASS; missing content, character-art,
+and recovery-text negative probes PASS; candidate only, no Release claim
+
+ORIGIN_HEAD_AT_DOC_AUTHORING = b734e7064bf910d69588670d9e3567864cc71e71
+
+EXACT_HEAD_CI = MUST_MATCH_DELIVERY_HEAD (the older b734e706... run is not
+authoritative for this source head)
+
+EXACT_HEAD_CI_JOBS = verify the post-push run by headSha, status, and
+conclusion in the final delivery receipt
 
 EXACT_HEAD_CI_MACOS_RELEASE_BENCHMARK = TERMINAL_FULL_TIME_MS=0.287,
 TERMINAL_DELTA_TIME_MS=0.105, TERMINAL_UNCHANGED_TIME_MS=0.047,
@@ -29,10 +40,11 @@ rerun without source or threshold changes and passed.
 
 IMPLEMENTED = bounded complete campaign from B1 to Roof with three ending
 policies, eight upper destinations, progressive unlock facts, return
-transitions, case-file lead/discovery presentation, existing save/load use, and
-three full route probes with ending-specific assertions. Visual pass 07 adds
-authored weapon mass and restrained front human/maintenance states without
-changing the renderer contract.
+transitions, case-file lead/discovery presentation, existing save/load use,
+four full route probes with ending-specific assertions, and focused Power /
+Observation / Transit Act II route probes. Visual pass 07 adds authored weapon
+mass and restrained front human/maintenance states without changing the
+renderer contract.
 
 NOT_IMPLEMENTED = generic 41-floor tower, generic Campaign/Act/Region engine,
 new save schema section, unrestricted fast travel, product release, visual
@@ -96,10 +108,18 @@ src/app/tower_campaign_runtime.h
 INTEGRATION_ROOT = src/app/composition_root.cpp
 
 REPLAY_PROBES = tools/replay/campaign_probe_amend.txt,
-tools/replay/campaign_probe_disclose.txt, and
-tools/replay/campaign_probe_breach.txt
+tools/replay/campaign_probe_disclose.txt,
+tools/replay/campaign_probe_breach.txt,
+tools/replay/campaign_probe_discovery_poor.txt,
+tools/replay/act2_power_route_from_concourse_probe.txt,
+tools/replay/act2_observation_terminal_route_probe.txt, and
+tools/replay/act2_transit_route_probe.txt
 
 CAMPAIGN_REPLAY_GATE = scripts/complete_game_campaign_gate.ps1
+
+ACT2_ROUTE_COVERAGE_GATE = scripts/act2_route_coverage_gate.ps1
+
+PACKAGE_NEGATIVE_PROBE = tools/release/package_negative_probe.py
 
 ## Verification receipts
 
@@ -134,7 +154,10 @@ CAMPAIGN_DISCLOSE_REPLAY = PASS
 
 CAMPAIGN_BREACH_REPLAY = PASS
 
-COMPLETE_GAME_CAMPAIGN_GATE = PASS (3/3; ending-specific facts asserted)
+COMPLETE_GAME_CAMPAIGN_GATE = PASS (4/4; ending-specific facts and end-screen
+readiness asserted)
+
+ACT2_ROUTE_COVERAGE_GATE = PASS (3/3; Power, Observation, Transit)
 
 CAMPAIGN_REPLAY_SHARED_ASSERTIONS = all eight upper rooms visited, Roof
 reached, CAMPAIGN_COMPLETION_REACHED=YES, SAVE_OK=YES, LOAD_OK=YES,
@@ -148,7 +171,7 @@ CAMPAIGN_DISCLOSE_FACTS = records, operations, operations_cooperated, network,
 transfer, guard_bypassed, archive, authority, pre_final, completed, roof,
 disclose; no force/alert route
 
-ACT2_EXPANSION_GATE = PASS
+ACT2_EXPANSION_GATE = PASS (Records baseline route)
 
 RECOVERY_REPLAY_GATE = PASS (21/21 cases)
 
@@ -160,25 +183,32 @@ LOCAL_EVIDENCE_DIRECTORIES =
 docs/production/evidence/complete_game_act2_gate_20260914,
 docs/production/evidence/complete_game_recovery_gate_20260914,
 docs/production/evidence/complete_game_scenario_matrix_20260914,
-docs/production/evidence/complete_game_campaign_gate_20260914
+docs/production/evidence/complete_game_campaign_gate_20260914,
+docs/production/evidence/complete_game_campaign_gate_final_20260914,
+docs/production/evidence/act2_route_coverage_gate_20260914,
+docs/production/evidence/recovery_replay_gate_final_20260914,
+docs/production/evidence/act2_route_coverage_20260914
 
 ## Required post-push gates
 
-COMPLETE = normal push of main from this baseline plus exact-head CI for the
-final documentation head.
+FINAL_CANDIDATE_VERSION = 0.1.0-complete-campaign-candidate
 
-PENDING = final package generation and package smoke from the pushed binary.
+FINAL_PACKAGE_GATE = package the Release binary from BASELINE_HEAD, then run
+positive package smoke and PACKAGE_NEGATIVE_PROBE; do not call it a Release.
 
-PENDING = manual foreground Windows terminal run.
+FINAL_EXACT_HEAD_CI_GATE = require a completed-success GitHub Actions run with
+headSha equal to the final pushed DELIVERY_HEAD; record the run/job IDs in the
+delivery receipt. The executable/package source must still be BASELINE_HEAD.
 
-PENDING = audio listening.
+PENDING_MANUAL_TERMINAL = foreground Windows terminal run.
 
-PENDING = manual Breach presentation and durable reload acceptance.
+PENDING_MANUAL_AUDIO = audio listening and narrator/dialogue timing.
 
-PENDING = first-time classmate playtest and measured playtime.
+PENDING_MANUAL_CAMPAIGN = Breach presentation, durable reload acceptance, first-time
+classmate playtest, and measured playtime.
 
-PENDING = integrated visual acceptance for faces, NPCs, weapons, rooms, doors,
-HUD, and directional labels.
+PENDING_MANUAL_VISUAL = integrated visual acceptance for faces, NPCs, weapons, rooms,
+doors, HUD, and directional labels.
 
 ## Preserved evidence and boundaries
 
@@ -201,11 +231,12 @@ COURSE_DELIVERY_CLAIM = NO
 
 ## Handoff decision
 
-NEXT_OWNER = GPT-6 complete-game director/audit pass
+NEXT_OWNER = Rain foreground acceptance, then GPT-6 integrated director/audit
+pass
 
 SAFE_NEXT_SCOPE = manual visual/audio/first-time play review, targeted
 player-critical corrections, manual Breach presentation, final package/CI/course
-gates
+gates; no Luna handoff until the manual boundary is honestly closed
 
 FROZEN_SCOPE = renderer contract, authored Character-Art basis, existing
 Act II-A routes, fact/systemic/storylet/save ownership, bounded lift policy

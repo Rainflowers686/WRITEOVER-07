@@ -2,9 +2,14 @@
 
 STATUS = LOCAL_COMPLETE_GAME_CAMPAIGN_BASELINE_VERIFIED_VISUAL_PASS07_NOT_PRODUCT_GOLD
 
-BASELINE_HEAD = ff12db15d584ed6aefa6c4561b1089c97440b5c2
+BASELINE_HEAD = a509e3f5b1dc47baf3dd5a466d13ab1b593cfd53
 
-BASELINE_COMMIT = feat: polish authored combat and campaign endings
+BASELINE_COMMIT = feat: close campaign routing and delivery contracts
+
+CANDIDATE_PACKAGE = build-campaign-release/dist-final-pass09/
+writeover-07-v0.1.0-complete-campaign-candidate-windows-x64.zip
+
+CANDIDATE_PACKAGE_SHA256 = 68589068CB1385E6DC40BFB02A2E1AD167C5F5A32D3134FBC50F3694A60D0B37
 
 This report records the complete, bounded Chapter One plus Act II-A plus
 upper-tower campaign baseline and the subsequent visual pass 07. It is a
@@ -26,7 +31,8 @@ The player-facing arc is now:
    and transit alternatives.
 3. A bounded lift directory that unlocks Records Core, Operations Control,
    Network Node, Security Transfer, Executive Archive, and Authority Core.
-4. A durable pre-final checkpoint followed by Amend, Disclose, or Breach.
+4. A durable pre-final checkpoint followed by Amend, Disclose, or Breach;
+   force/alert also remains a valid discovery-poor route that skips Network.
 5. Roof / Exit epilogue and campaign-complete closure.
 
 The future 41-floor tower remains a design possibility only. B4 through Roof,
@@ -332,17 +338,24 @@ The following were run locally against this source baseline:
 - Release full replay: Amend, Disclose, and Breach PASS. All three reached all
   eight new rooms, roof, save/load, CAMPAIGN_COMPLETION_REACHED=YES, and their
   required ending fact.
-- Complete campaign ending gate: PASS, 3/3; each fixture independently asserts
-  its expected ending fact rather than treating Roof alone as completion.
+- Complete campaign ending gate: PASS, 4/4; each fixture independently asserts
+  its expected ending fact and end-screen readiness rather than treating Roof
+  alone as completion. The fourth fixture skips optional Network and still
+  completes through the force/alert fallback.
+- Focused Act II route coverage gate: PASS, 3/3 for Power, Observation, and
+  Transit; each route entered its authored destination and asserted its key
+  consequence without a transition denial or player death.
 - Act II expansion gate: PASS.
 - Recovery replay gate: PASS, 21/21 legacy replay cases.
 - Scenario matrix: PASS; 36 classified rows, 35 executed, 1
   INVALID_BY_GAME_RULES, 0 VALID_STATE_NOT_COVERED.
-- Exact-head GitHub Actions for this visual-pass head: pending until the
-  normal push and final documentation head are verified.
+- The older exact-head CI run for `b734e706...` is not authoritative for this
+  source head. The final delivery receipt must show a completed-success run
+  whose `headSha` equals the final pushed DELIVERY_HEAD.
 
-The exact remote CI result for this new head is intentionally not recorded here
-until the normal push and a fresh exact-head run have completed.
+The exact remote CI result is intentionally maintained as a live delivery
+receipt: it must be checked against the final pushed DELIVERY_HEAD rather than
+copied from an older run.
 
 ## Open acceptance boundary
 
