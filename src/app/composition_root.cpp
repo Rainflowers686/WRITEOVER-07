@@ -2000,6 +2000,10 @@ private:
         if (name == "NUM3" || name == "3") return PhysicalKey::Num3;
         if (name == "MOUSELEFT" || name == "LMB") return PhysicalKey::MouseLeft;
         if (name == "MOUSERIGHT" || name == "RMB") return PhysicalKey::MouseRight;
+        for (size_t key = 0; key < kPhysicalKeyCount; ++key) {
+            const auto physical = static_cast<PhysicalKey>(key);
+            if (ProductKeyName(physical) == name) return physical;
+        }
         return PhysicalKey::Unknown;
     }
 
@@ -2105,11 +2109,13 @@ public:
         if (replay_keyboard) {
             selection_.pointer_name = "replay";
             selection_.mouse_button_source = "replay";
-            runtime_ = InputRuntime(std::move(replay_keyboard),
-                                    std::move(replay_mouse));
+            replay_keyboard_ = dynamic_cast<ReplayKeyboardBackend*>(replay_keyboard.get());
+            replay_mouse_ = dynamic_cast<ReplayMouseBackend*>(replay_mouse.get());
+            runtime_ = InputRuntime(ObserveKeys(std::move(replay_keyboard)),
+                                    ObserveKeys(std::move(replay_mouse)));
         } else {
-            runtime_ = InputRuntime(std::move(selection_.keyboard),
-                                    std::move(selection_.pointer));
+            runtime_ = InputRuntime(ObserveKeys(std::move(selection_.keyboard)),
+                                    ObserveKeys(std::move(selection_.pointer)));
         }
     }
     ~InputModule() override = default;
@@ -2128,21 +2134,28 @@ public:
 
     void SimTick(const SimClock&) override {
         if (!input_ || !mapper_) return;
+        keys_.BeginTick();
         runtime_.SampleTick(*input_, *mapper_);
+        if (!input_->has_focus) keys_.Clear();
     }
+    const ProductKeys& Keys() const { return keys_; }
     size_t ReplayKeyboardEventCount() const {
-        const auto* backend = dynamic_cast<const ReplayKeyboardBackend*>(runtime_.Keyboard());
-        return backend != nullptr ? backend->ConsumedEventCount() : 0;
+        return replay_keyboard_ != nullptr ? replay_keyboard_->ConsumedEventCount() : 0;
     }
     size_t ReplayMouseEventCount() const {
-        const auto* backend = dynamic_cast<const ReplayMouseBackend*>(runtime_.Mouse());
-        return backend != nullptr ? backend->ConsumedEventCount() : 0;
+        return replay_mouse_ != nullptr ? replay_mouse_->ConsumedEventCount() : 0;
     }
     const char* Name() const override { return "input"; }
 
 private:
+    std::unique_ptr<IInputBackend> ObserveKeys(std::unique_ptr<IInputBackend> backend) {
+        return backend ? std::make_unique<ProductKeyObserver>(std::move(backend), keys_) : nullptr;
+    }
     PointerBackendSelection selection_;
+    ProductKeys keys_;
     InputRuntime runtime_;
+    ReplayKeyboardBackend* replay_keyboard_ = nullptr; // observed; owned by runtime adapter
+    ReplayMouseBackend* replay_mouse_ = nullptr;
     InputState* input_ = nullptr;
     const InputMapper* mapper_ = nullptr;
     bool ready_ = false;
@@ -4604,7 +4617,8 @@ int RunComposition(const GameConfig& config) {
     };
     services.player->SetInputOverlayCallback([&](const InputState& input) {
         const auto pressed = [&](GameAction action) {
-            return input.action_pressed[static_cast<size_t>(action)];
+            return input.action_pressed[static_cast<size_t>(action)] ||
+                (action == GameAction::Pause && input_module->Keys().Pressed(PhysicalKey::Escape));
         };
         product.dead = services.player->Dead();
         product.completed = fact_is_true("fact_campaign_completed");
@@ -4637,6 +4651,7 @@ int RunComposition(const GameConfig& config) {
             {"room_act2_transit_control", "Transit Checkpoint"}};
         for (const auto& name : local_names) if (current_room == name.first) product.location = name.second;
         if (!input.has_focus) {
+            product.CancelBindingCapture();
             if (!product.Active() && campaign_overlay == CampaignOverlay::None) {
                 product.boot_context = false;
                 product.Open(ProductPage::Pause);
@@ -4666,12 +4681,14 @@ int RunComposition(const GameConfig& config) {
         };
         // World-mode load remains a normal player action. Only modal/death
         // recovery owns the transaction and fences held menu keys.
-        if (pressed(GameAction::LoadGame) && (product.Active() ||
+        if (!product.capturing_binding && product.pending_binding == PhysicalKey::Unknown &&
+            pressed(GameAction::LoadGame) && (product.Active() ||
             campaign_overlay != CampaignOverlay::None || services.player->Dead())) {
             load_product_save(); return true;
         }
         if (product.Active()) {
-            const ProductCommand command = product.Handle(input, settings);
+            const auto menu_input = ProductNavigation(input, input_module->Keys(), &services.player->Mapper());
+            const ProductCommand command = product.Handle(menu_input, settings, &input_module->Keys());
             switch (command) {
             case ProductCommand::Resume: time_gate.SetPaused(false); break;
             case ProductCommand::Continue:
@@ -4694,6 +4711,7 @@ int RunComposition(const GameConfig& config) {
                 slice.normal_quit_requested = true; engine.RequestStop(); break;
             case ProductCommand::CaseFile: open_case_file(); break;
             case ProductCommand::SettingsChanged: {
+                services.player->ApplySettingsBindings(settings);
                 SettingsRegistry registry;
                 const auto saved = registry.Save((user_data_root / "settings.cfg").string(), settings);
                 product.notice = saved.IsOk() ? "Preference saved." : "Preference active; persistence failed.";
@@ -6357,12 +6375,19 @@ int RunComposition(const GameConfig& config) {
             campaign_end_screen_ready && fact_is_true("fact_roof_reached") &&
             recorded_endings == 1 && !services.player->Dead();
         const bool product_probe = config.replay_path.find("campaign_probe_amend_product") != std::string::npos;
+        const bool rebind_probe = config.replay_path.find("product_rebind") != std::string::npos;
+        const bool rebind_probe_ok = product.Visited(ProductPage::Rebind) && !product.Active() &&
+            settings.key_bindings[0][static_cast<size_t>(GameAction::MoveForward)] == PhysicalKey::N &&
+            services.player->Mapper().MapKey(PhysicalKey::N) == GameAction::MoveForward &&
+            services.player->MovementDemonstrated() && services.player->Health() == 100 &&
+            services.player->CurrentRoom() == "room_b1_revival" && product.preference_changes == 1;
+        if (rebind_probe) std::fprintf(stderr, "PRODUCT_REBIND_PROBE=%s\n", rebind_probe_ok ? "PASS" : "FAIL");
         const bool product_probe_ok = product.Visited(ProductPage::Inspect) && product.Visited(ProductPage::History) &&
             product.Visited(ProductPage::Dialogue) && product.Visited(ProductPage::Ending) && product.preference_changes > 0 &&
             !product.Active() && replay_save_ok && replay_load_ok && product.feed.Size() < PerceptionFeed::kCapacity;
         if (product_probe) std::fprintf(stderr, "PRODUCT_INTEGRATED_PROBE=%s UI_PAGES=%u PREFERENCE_CHANGES=%zu HISTORY_SIZE=%zu\n",
             product_probe_ok ? "PASS" : "FAIL", product.visited_pages, product.preference_changes, product.feed.Size());
-        const bool expected_state_reached = (product_probe ? product_probe_ok : true) && (normal_quit_replay
+        const bool expected_state_reached = (product_probe ? product_probe_ok : true) && (rebind_probe ? rebind_probe_ok : normal_quit_replay
             ? slice.normal_quit_requested
             : campaign_reload_replay ? campaign_reload_complete
             : campaign_replay

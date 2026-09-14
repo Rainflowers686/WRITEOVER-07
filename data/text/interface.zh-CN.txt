@@ -63,3 +63,36 @@ ui_detailed	详细
 ui_short	短
 ui_normal	标准
 ui_long	长
+ui_rebind	修改按键
+ui_rebind_title	修改按键 / 选择一个动作
+ui_rebind_default	恢复默认按键
+ui_rebind_cancel	已取消这次改键。
+ui_rebind_reserved	方向键保留给菜单导航，请选其他键。
+ui_rebind_conflict	这个键已有用途。请选择其他键，或取消。
+ui_rebind_capture	按下新键。ESC 取消；不会覆盖已占用的键。
+ui_rebind_footer	方向键选择 / F 确认 / ESC 返回
+ui_pending	等待确认
+ui_f_confirm	F 确认
+ui_esc_cancel	ESC 取消
+ui_forward	前进
+ui_backward	后退
+ui_left	左移
+ui_right	右移
+ui_sprint	冲刺
+ui_jump	跳跃
+ui_crouch	蹲下
+ui_prone	卧倒
+ui_lean_left	向左探身
+ui_lean_right	向右探身
+ui_interact	交互与确认
+ui_examine	检查
+ui_examine_noads	检查（未启用机瞄）
+ui_fire	开火
+ui_reload	换弹
+ui_stun_shortcut	快速使用电击器
+ui_pistol_title	手枪
+ui_stunner_title	电击器
+ui_save_title	手动保存
+ui_load_title	读取最近存档
+ui_case_title	案件档案
+ui_pause_title	暂停、记录与设置

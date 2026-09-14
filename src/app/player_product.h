@@ -1,6 +1,7 @@
 #pragma once
 
 #include "src/app/perception_feed.h"
+#include "src/app/product_keys.h"
 #include "writeover/core/settings.h"
 #include "writeover/player/input.h"
 
@@ -77,7 +78,21 @@ inline std::string ProductControlText(std::string text, const Settings& settings
     return text;
 }
 
-enum class ProductPage : uint8_t { None, Boot, Pause, Controls, Settings, History, Dialogue, Inspect, Ending, NewGame, Language };
+inline const std::vector<std::pair<GameAction, const char*>>& ProductBindableActions() {
+    static const std::vector<std::pair<GameAction, const char*>> actions{
+        {GameAction::MoveForward,"Forward"},{GameAction::MoveBackward,"Backward"},
+        {GameAction::MoveLeft,"Left"},{GameAction::MoveRight,"Right"},
+        {GameAction::Sprint,"Sprint"},{GameAction::Jump,"Jump"},{GameAction::Crouch,"Crouch"},
+        {GameAction::Prone,"Prone"},{GameAction::LeanLeft,"Lean left"},{GameAction::LeanRight,"Lean right"},
+        {GameAction::Interact,"Interact / confirm"},{GameAction::AimDownSights,"Examine"},
+        {GameAction::Fire,"Fire"},{GameAction::Reload,"Reload"},{GameAction::Melee,"Stunner shortcut"},
+        {GameAction::WeaponSlot1,"Pistol"},{GameAction::WeaponSlot2,"SMG"},{GameAction::WeaponSlot3,"Stunner"},
+        {GameAction::SaveGame,"Manual save"},{GameAction::LoadGame,"Load last save"},
+        {GameAction::Help,"Case File"},{GameAction::Pause,"Pause / history / settings"}};
+    return actions;
+}
+
+enum class ProductPage : uint8_t { None, Boot, Pause, Controls, Settings, History, Dialogue, Inspect, Ending, NewGame, Language, Rebind };
 enum class ProductCommand : uint8_t { None, Resume, Continue, NewGame, Save, Load, Checkpoint, PreFinal, CaseFile, Quit, SettingsChanged };
 
 // One bounded application menu, not a widget framework. The composition root
@@ -100,9 +115,14 @@ public:
     std::vector<std::string> ending_rows;
     uint32_t visited_pages = 0; // process-local UI evidence, never gameplay state
     size_t preference_changes = 0;
+    bool capturing_binding = false;
+    PhysicalKey pending_binding = PhysicalKey::Unknown;
+
+    void CancelBindingCapture() { capturing_binding = false; pending_binding = PhysicalKey::Unknown; }
 
     bool Active() const { return page != ProductPage::None; }
     void Open(ProductPage next) {
+        CancelBindingCapture();
         notice.clear();
         page = next; selection = next == ProductPage::Boot && !continue_available ? 1 : 0; scroll = 0;
         visited_pages |= 1u << static_cast<unsigned>(next);
@@ -110,6 +130,13 @@ public:
     bool Visited(ProductPage item) const { return (visited_pages & (1u << static_cast<unsigned>(item))) != 0; }
     void Close() { page = ProductPage::None; selection = 0; scroll = 0; }
     std::vector<std::string> Options(const Settings& s) const {
+        if (page == ProductPage::Rebind) {
+            std::vector<std::string> rows;
+            for (const auto& entry : ProductBindableActions()) rows.push_back(
+                std::string(entry.second) + " / " + ProductBinding(s, entry.first));
+            rows.push_back("RESTORE DEFAULT BINDINGS");
+            return rows;
+        }
         if (page == ProductPage::Language) return {"简体中文", "English"};
         if (page == ProductPage::Boot) return {continue_available ? "CONTINUE" : "CONTINUE / unavailable",
             "NEW GAME", "CONTROLS / HELP", "ACCESSIBILITY / SETTINGS", "QUIT"};
@@ -132,13 +159,37 @@ public:
                 "MASTER VOLUME / " + std::to_string(s.master_volume),
                 "FRAME LIMIT / " + (s.frame_rate_cap == 0 ? std::string("AUTO (UP TO 120)") :
                     std::to_string(s.frame_rate_cap) + " FPS"),
-                s.language == "zh-CN" ? "LANGUAGE / 简体中文" : "LANGUAGE / English"};
+                s.language == "zh-CN" ? "LANGUAGE / 简体中文" : "LANGUAGE / English",
+                "REBIND KEYS"};
         }
         return {};
     }
-    ProductCommand Handle(const InputState& input, Settings& settings) {
+    ProductCommand Handle(const InputState& input, Settings& settings, const ProductKeys* keys = nullptr) {
         if (!Active() || !input.has_focus) return ProductCommand::None;
         const auto pressed = [&](GameAction a) { return input.action_pressed[static_cast<size_t>(a)]; };
+        if (page == ProductPage::Rebind && (capturing_binding || pending_binding != PhysicalKey::Unknown)) {
+            if (keys && keys->Pressed(PhysicalKey::Escape)) { CancelBindingCapture(); notice = "Binding change cancelled."; return ProductCommand::None; }
+            if (capturing_binding) {
+                const PhysicalKey key = keys ? keys->FirstPressed() : PhysicalKey::Unknown;
+                if (key == PhysicalKey::Unknown) return ProductCommand::None;
+                if (key == PhysicalKey::Up || key == PhysicalKey::Down || key == PhysicalKey::Left || key == PhysicalKey::Right) {
+                    notice = "Arrow keys are reserved for safe menu navigation."; return ProductCommand::None;
+                }
+                const auto action = ProductBindableActions()[selection].first;
+                for (size_t i = 0; i < kGameActionCount; ++i) {
+                    if (i != static_cast<size_t>(action) && settings.key_bindings[0][i] == key) {
+                        notice = "Key already used. Choose another key or cancel."; return ProductCommand::None;
+                    }
+                }
+                pending_binding = key; capturing_binding = false;
+                notice = "PENDING / " + ProductKeyName(key) + " / F CONFIRM / ESC CANCEL";
+            } else if (keys && keys->Pressed(PhysicalKey::F)) {
+                settings.key_bindings[0][static_cast<size_t>(ProductBindableActions()[selection].first)] = pending_binding;
+                CancelBindingCapture(); ++preference_changes;
+                return ProductCommand::SettingsChanged;
+            }
+            return ProductCommand::None;
+        }
         if (pressed(GameAction::Pause)) {
             if (page == ProductPage::Boot || page == ProductPage::Language) return ProductCommand::None;
             if (page == ProductPage::Pause) {
@@ -160,7 +211,15 @@ public:
         if (pressed(GameAction::MoveForward)) selection = selection == 0 ? options.size() - 1 : selection - 1;
         if (pressed(GameAction::MoveBackward)) selection = (selection + 1) % options.size();
         if (!pressed(GameAction::Interact)) return ProductCommand::None;
-        if (page == ProductPage::Language) {
+        if (page == ProductPage::Rebind) {
+            if (selection == ProductBindableActions().size()) {
+                settings.key_bindings = Settings::Defaults().key_bindings;
+                ++preference_changes;
+                return ProductCommand::SettingsChanged;
+            }
+            capturing_binding = true; pending_binding = PhysicalKey::Unknown;
+            notice = "Press a new key. ESC cancels; conflicts are not overwritten.";
+        } else if (page == ProductPage::Language) {
             settings.language = selection == 0 ? "zh-CN" : "en";
             Open(ProductPage::Boot);
             ++preference_changes;
@@ -219,6 +278,7 @@ public:
                     settings.frame_rate_cap == 30 ? 60 : settings.frame_rate_cap == 60 ? 120 : 0;
                 break;
             case 9: settings.language = settings.language == "zh-CN" ? "en" : "zh-CN"; break;
+            case 10: Open(ProductPage::Rebind); return ProductCommand::None;
             default: break;
             }
             ++preference_changes;
@@ -232,7 +292,8 @@ public:
         std::vector<std::string> rows;
         const auto options = Options(s);
         if (!options.empty()) {
-            rows = {page == ProductPage::Language ? "选择语言 / CHOOSE LANGUAGE" :
+            rows = {page == ProductPage::Rebind ? "REBIND KEYS / SELECT AN ACTION" :
+                page == ProductPage::Language ? "选择语言 / CHOOSE LANGUAGE" :
                 page == ProductPage::Boot ? "WRITEOVER-07 / THE RECORD IS NOT THE EVENT" :
                 page == ProductPage::Settings ? "ACCESSIBILITY / CHANGES SAVE AUTOMATICALLY" :
                 page == ProductPage::NewGame ? "NEW GAME / RESET ALL LIVE PROGRESSION?" :
@@ -268,6 +329,10 @@ public:
             rows.push_back("Bindings use the existing settings.cfg table; no hidden fixed gameplay keys.");
         }
         if (!notice.empty()) rows.insert(rows.begin() + 1, notice);
+        if (page == ProductPage::Rebind) {
+            rows.push_back("ARROWS SELECT / F CONFIRM / ESC BACK");
+            return rows;
+        }
         if (page == ProductPage::Language) {
             rows.push_back(ProductBinding(s, GameAction::MoveForward) + "/" +
                 ProductBinding(s, GameAction::MoveBackward) + " 选择 / SELECT    " +

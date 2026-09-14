@@ -64,3 +64,36 @@ ui_detailed	DETAILED
 ui_short	SHORT
 ui_normal	NORMAL
 ui_long	LONG
+ui_rebind	REBIND KEYS
+ui_rebind_title	REBIND KEYS / SELECT AN ACTION
+ui_rebind_default	RESTORE DEFAULT BINDINGS
+ui_rebind_cancel	Binding change cancelled.
+ui_rebind_reserved	Arrow keys are reserved for safe menu navigation.
+ui_rebind_conflict	Key already used. Choose another key or cancel.
+ui_rebind_capture	Press a new key. ESC cancels; conflicts are not overwritten.
+ui_rebind_footer	ARROWS SELECT / F CONFIRM / ESC BACK
+ui_pending	PENDING
+ui_f_confirm	F CONFIRM
+ui_esc_cancel	ESC CANCEL
+ui_forward	Forward
+ui_backward	Backward
+ui_left	Left
+ui_right	Right
+ui_sprint	Sprint
+ui_jump	Jump
+ui_crouch	Crouch
+ui_prone	Prone
+ui_lean_left	Lean left
+ui_lean_right	Lean right
+ui_interact	Interact / confirm
+ui_examine	Examine
+ui_examine_noads	Examine (ADS is disabled)
+ui_fire	Fire
+ui_reload	Reload
+ui_stun_shortcut	Stunner shortcut
+ui_pistol_title	Pistol
+ui_stunner_title	Stunner
+ui_save_title	Manual save
+ui_load_title	Load last save
+ui_case_title	Case File
+ui_pause_title	Pause / history / settings

@@ -313,6 +313,48 @@ bool BoundControlsAndPreferences() {
     WO_CHECK(first == second); // cosmetic text preferences never alter world wire
     return true;
 }
+bool RebindingConfirmationAndConflict() {
+    Settings settings = Settings::Defaults();
+    PlayerProductRuntime menu;
+    ProductKeys keys;
+    menu.Open(ProductPage::Rebind);
+    WO_CHECK(menu.Handle(Press(GameAction::Interact), settings, &keys) == ProductCommand::None);
+    WO_CHECK(menu.capturing_binding);
+    keys.Observe({PhysicalKey::S, true, 0}); // occupied by Backward
+    menu.Handle(InputState{}, settings, &keys);
+    WO_CHECK(menu.capturing_binding && menu.pending_binding == PhysicalKey::Unknown);
+    WO_CHECK(settings.key_bindings[0][0] == PhysicalKey::W);
+    keys.Clear(); keys.Observe({PhysicalKey::N, true, 0});
+    menu.Handle(InputState{}, settings, &keys);
+    WO_CHECK(!menu.capturing_binding && menu.pending_binding == PhysicalKey::N);
+    WO_CHECK(settings.key_bindings[0][0] == PhysicalKey::W); // pending is not committed
+    keys.BeginTick(); keys.Observe({PhysicalKey::N, true, 0});
+    WO_CHECK(keys.FirstPressed() == PhysicalKey::Unknown); // key repeat is not a press
+    keys.Observe({PhysicalKey::Escape, true, 0});
+    menu.Handle(InputState{}, settings, &keys);
+    WO_CHECK(menu.pending_binding == PhysicalKey::Unknown);
+    WO_CHECK(settings.key_bindings[0][0] == PhysicalKey::W);
+    keys.Clear(); menu.Handle(Press(GameAction::Interact), settings, &keys);
+    keys.Observe({PhysicalKey::N, true, 0}); menu.Handle(InputState{}, settings, &keys);
+    keys.Clear(); keys.Observe({PhysicalKey::F, true, 0});
+    WO_CHECK(menu.Handle(InputState{}, settings, &keys) == ProductCommand::SettingsChanged);
+    WO_CHECK(settings.key_bindings[0][0] == PhysicalKey::N);
+    InputMapper mapper;
+    mapper.SetBinding(GameAction::MoveForward, settings.key_bindings[0][0]);
+    WO_CHECK(mapper.MapKey(PhysicalKey::N) == GameAction::MoveForward);
+    keys.Clear(); keys.Observe({PhysicalKey::Down, true, 0});
+    const auto navigation = ProductNavigation(InputState{}, keys);
+    WO_CHECK(navigation.action_pressed[static_cast<size_t>(GameAction::MoveBackward)]);
+    menu.selection = ProductBindableActions().size();
+    WO_CHECK(menu.Handle(Press(GameAction::Interact), settings, &keys) == ProductCommand::SettingsChanged);
+    WO_CHECK(settings.key_bindings == Settings::Defaults().key_bindings);
+    mapper.SetBinding(GameAction::MoveForward, PhysicalKey::F);
+    keys.Clear(); keys.Observe({PhysicalKey::F, true, 0});
+    const auto fixed_confirm = ProductNavigation(Press(GameAction::MoveForward), keys, &mapper);
+    WO_CHECK(fixed_confirm.action_pressed[static_cast<size_t>(GameAction::Interact)]);
+    WO_CHECK(!fixed_confirm.action_pressed[static_cast<size_t>(GameAction::MoveForward)]);
+    return true;
+}
 bool PanelScrollAndBounds() {
     std::vector<std::string> rows{"LONG RECORD", std::string(200, 'a'), "LAST EVIDENCE", "A/D SCROLL  ESC BACK"};
     for (const int width : {48, 80, 120}) {
@@ -454,6 +496,7 @@ bool KnownEvidenceAndNearestInspect() {
 }
 } // namespace
 void RegisterProductTests(TestHarness& harness) {
+    harness.Add("product.rebinding confirmation and conflict", &RebindingConfirmationAndConflict);
     harness.Add("product.chinese display columns", &ChineseDisplayColumns);
     harness.Add("product.surface resize and recovery", &SurfaceResizeAndRecovery);
     harness.Add("product.save role partial failure", &SaveRolePartialFailurePreservesFiles);
