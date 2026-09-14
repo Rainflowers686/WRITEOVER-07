@@ -126,5 +126,5 @@ visual acceptance.
 - The first attempted full replay after the guard visibility experiment is
   retained as a failure diagnosis; the corrected full replay is the authority.
 - Package smoke and release benchmark pass at the current local documentation
-  baseline; exact pushed-head CI passed for `a1feb5c160eb91ba0980f5d156ee3cac2550f698`
-  in run `34790805997`.
+  baseline; exact pushed-head CI passed for `e933ad7cef2b82a1f807cf9b65c6d25776557690`
+  in run `34791383959`.

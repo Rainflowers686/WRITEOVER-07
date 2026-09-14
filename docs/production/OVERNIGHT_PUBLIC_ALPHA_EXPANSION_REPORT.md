@@ -87,8 +87,8 @@ Runtime/content evidence:
 - only the Records route is covered by a dedicated Act II gate; focused
   Power/Observation/Transit fixtures and a first-time human read remain;
 - package smoke and Release benchmark pass locally at the current documentation
-  baseline; exact pushed-head CI passed for `a1feb5c160eb91ba0980f5d156ee3cac2550f698`
-  in run `34790805997`;
+  baseline; exact pushed-head CI passed for `e933ad7cef2b82a1f807cf9b65c6d25776557690`
+  in run `34791383959`;
 - no exact pushed-head CI result exists at the time of this report;
 - no public alpha announcement, release, Steam upload or course final is
   authorized;
