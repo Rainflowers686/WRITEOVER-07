@@ -1,5 +1,9 @@
 # WRITEOVER-07 — Final product/director audit handoff
 
+> Historical pre-audit baseline. The current post-audit authority is
+> [FINAL_PRODUCT_CLOSURE_REPORT.md](FINAL_PRODUCT_CLOSURE_REPORT.md).
+> The values below describe that earlier handoff, not current readiness.
+
 START_HEAD = 43083373a03b5583ae207001067cd866bdb9a2cc
 
 FINAL_IMPLEMENTATION_HEAD = d2654f8974922a1e8db9d23e1ef99819cb5f5524

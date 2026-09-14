@@ -1,6 +1,7 @@
 # 课程交付入口
 
 - [课程设计报告](COURSE_REPORT.md)：可编辑 Markdown，技术说明依据实际源代码。
+- [测试报告与组间评价](TEST_REPORT.md)：机器证据与待真人填写的评分分开。
 - [五份 Mermaid 图源](diagrams/README.md)：WBS、用例、主要类关系和两个算法图。
 - [十页课堂 PPT](output/WRITEOVER07_Course_Presentation_v2.pptx)：文字和示意图可编辑，备注附来源。
 - [五分钟演示路线](DEMO_5_MINUTES.md)：预算、话术和失败退路，不是实测通关时间。
