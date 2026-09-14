@@ -328,6 +328,10 @@ The following were run locally against this source baseline:
   PVS_TOTAL_FRAME_BUDGET=PASS, RAYCAST_BUDGET=PASS, OVERALL_BUDGET=PASS.
 - Release full replay: Amend PASS and Disclose PASS. Both reached all eight
   new rooms, roof, save/load, and CAMPAIGN_COMPLETION_REACHED=YES.
+- Act II expansion gate: PASS.
+- Recovery replay gate: PASS, 21/21 legacy replay cases.
+- Scenario matrix: PASS; 36 classified rows, 35 executed, 1
+  INVALID_BY_GAME_RULES, 0 VALID_STATE_NOT_COVERED.
 
 The exact remote CI result for this new head is intentionally not recorded here
 until the normal push and a fresh exact-head run have completed.

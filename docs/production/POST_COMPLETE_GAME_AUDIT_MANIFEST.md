@@ -126,6 +126,19 @@ CAMPAIGN_DISCLOSE_FACTS = records, operations, operations_cooperated, network,
 transfer, guard_bypassed, archive, authority, pre_final, completed, roof,
 disclose; no force/alert route
 
+ACT2_EXPANSION_GATE = PASS
+
+RECOVERY_REPLAY_GATE = PASS (21/21 cases)
+
+SCENARIO_MATRIX = PASS (36 classified rows, 35 executed, 20 expected success,
+11 expected denial, 1 recoverable failure, 3 death/restart,
+1 invalid-by-game-rules, 0 valid-state-not-covered)
+
+LOCAL_EVIDENCE_DIRECTORIES =
+docs/production/evidence/complete_game_act2_gate_20260914,
+docs/production/evidence/complete_game_recovery_gate_20260914,
+docs/production/evidence/complete_game_scenario_matrix_20260914
+
 ## Required post-push gates
 
 PENDING = normal push of main from this baseline plus exact-head CI.
