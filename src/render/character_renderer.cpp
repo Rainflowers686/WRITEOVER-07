@@ -168,11 +168,11 @@ void DecodeArtRow(const std::string& text, std::u32string& glyphs,
             // is never emitted as a visible glyph.
             glyph = U' ';
             opacity.push_back(CharacterCellOpacity::OpaqueEmpty);
-        } else if (glyph == U'^') {
-            // '^' is an authored occupied blank with a skin material.  Keep
-            // the marker in the parsed row so the existing OpaqueEmpty path
-            // can select the bounded semantic background without expanding
-            // the public opacity enum.
+        } else if (glyph == U'^' || glyph == U'&') {
+            // '^' is the base authored skin plane and '&' is its restrained
+            // cheek/temple shadow. Keep both markers in the parsed row so the
+            // existing OpaqueEmpty path can select bounded semantic
+            // materials without expanding the public opacity enum.
             opacity.push_back(CharacterCellOpacity::OpaqueEmpty);
         } else if (glyph == U' ') {
             opacity.push_back(CharacterCellOpacity::Transparent);
@@ -588,8 +588,11 @@ Color SpriteForeground(const CharacterArtAsset& asset, char32_t glyph,
                                              (options.high_contrast ? 1.08f : 1.0f),
                                     210);
     if (asset.is_pistol && (glyph == U'·' || glyph == U':' || glyph == U';')) {
-        const Color glove = glyph == U'·' ? Color{180, 166, 141}
-            : glyph == U':' ? Color{132, 119, 101} : Color{79, 73, 67};
+        // The viewmodel hand is a cool tactical glove, not a warm orange
+        // rectangle.  Keep the three authored ink levels readable as palm,
+        // seam, and recess while leaving the weapon's metal palette intact.
+        const Color glove = glyph == U'·' ? Color{166, 160, 151}
+            : glyph == U':' ? Color{108, 106, 105} : Color{63, 67, 70};
         return ScaleColor(glove, depth * light_level, 220);
     }
     // The authored vocabulary separates skin planes from cloth/armour. It is
@@ -600,16 +603,16 @@ Color SpriteForeground(const CharacterArtAsset& asset, char32_t glyph,
         // A single restrained iris glyph keeps the face readable without the
         // uncanny punctuation/emoji look of bright twin dots. It remains an
         // authored facial mark, not a generated screen-space eye mask.
-        return ScaleColor({104, 78, 64}, depth * light_level, 220);
+        return ScaleColor({73, 68, 67}, depth * light_level, 220);
     }
     if (skin_ink && (glyph == U'·' || glyph == U':' || glyph == U'╵' ||
                      glyph == U'╴' || glyph == U'ˉ' || glyph == U'ˍ')) {
         if (glyph == U'╵') {
-            return ScaleColor({94, 75, 63}, depth * light_level, 220);
+            return ScaleColor({86, 75, 72}, depth * light_level, 220);
         }
         const Color skin = glyph == U'╴' || glyph == U'ˉ' || glyph == U'ˍ'
-            ? Color{92, 68, 57} : glyph == U':' ? Color{118, 88, 70}
-                                             : Color{184, 148, 116};
+            ? Color{82, 72, 70} : glyph == U':' ? Color{112, 91, 86}
+                                             : Color{168, 145, 132};
         return ScaleColor(skin, depth * light_level, 235);
     }
     if (glyph == U'░') return ScaleColor(palette.highlight, depth * light_level, 240);
@@ -648,10 +651,13 @@ Color SpriteBackground(const CharacterArtAsset& asset, char32_t glyph,
     // planes. Transparent space and occupied blanks keep their old semantics;
     // monochrome glyph silhouettes remain complete without this colour.
     const float depth = 0.72f + 0.28f * Saturate(1.0f - distance / 32.0f);
-    if (glyph == U'^' &&
+    if ((glyph == U'^' || glyph == U'&') &&
         (asset.ink == CharacterInk::FullHuman ||
          asset.ink == CharacterInk::Maintenance)) {
-        return ScaleColor({154, 121, 96}, depth, 165);
+        if (glyph == U'&') {
+            return ScaleColor({111, 92, 84}, depth, 155);
+        }
+        return ScaleColor({154, 134, 122}, depth, 165);
     }
     if (asset.is_pistol && (glyph == U'·' || glyph == U':' || glyph == U';'))
         return ScaleColor({65, 57, 47}, depth, 70);
@@ -660,7 +666,7 @@ Color SpriteBackground(const CharacterArtAsset& asset, char32_t glyph,
     if (skin_ink && (glyph == U'·' || glyph == U':' || glyph == U'•' ||
                      glyph == U'╵' || glyph == U'╴' ||
                      glyph == U'ˉ' || glyph == U'ˍ'))
-        return ScaleColor({145, 113, 88}, depth, 150);
+        return ScaleColor({139, 120, 111}, depth, 150);
     const InkPalette palette = Palette(asset.ink);
     if (glyph == U'░') return ScaleColor(palette.base, 0.34f * depth, 75);
     if (glyph == U'▒') return ScaleColor(palette.base, 0.23f * depth, 60);

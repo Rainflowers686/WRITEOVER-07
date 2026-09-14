@@ -4374,8 +4374,17 @@ int RunComposition(const GameConfig& config) {
                             ? "text_technician_greeting"
                             : npc.instance.role == Role::Doctor
                                 ? "text_doctor_greeting"
-                                : "text_security_greeting";
-                        render->SetSubtitleOnce(services.narrative->Text(id), 420);
+                                : npc.instance.role == Role::Cleaner
+                                    ? "text_cleaner_greeting"
+                                    : npc.instance.faction == Faction::Security
+                                        ? "text_security_greeting" : nullptr;
+                        // A missing authored line is silence, not permission to
+                        // borrow Security's voice. This keeps the opening
+                        // quiet for staff, research, and other non-security
+                        // actors whose interaction contract is not yet authored.
+                        if (id != nullptr) {
+                            render->SetSubtitleOnce(services.narrative->Text(id), 420);
+                        }
                         break;
                     }
                 }
