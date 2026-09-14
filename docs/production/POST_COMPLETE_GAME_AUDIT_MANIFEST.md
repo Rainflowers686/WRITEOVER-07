@@ -2,26 +2,32 @@
 
 MANIFEST_KIND = post-complete-game-baseline
 
-STATUS = COMPLETE_GAME_CAMPAIGN_BASELINE_VERIFIED_MANUAL_ACCEPTANCE_OPEN
+STATUS = DIRECTOR_CANDIDATE_WITH_OPEN_VISUAL_AND_MANUAL_ACCEPTANCE
 
-BASELINE_HEAD = a509e3f5b1dc47baf3dd5a466d13ab1b593cfd53
+BASELINE_HEAD = 4153275550248ce28b42d95ce136959e9e2b1450
+
+AUTHORITATIVE_REVIEW = COMPLETE_GAME_DIRECTOR_REPORT.md and
+COMPLETE_GAME_CREATIVE_REVIEW_CHECKLIST.md supersede earlier creative handoff
+status for this pass. They do not claim foreground or human acceptance.
+
+HISTORICAL_SHA_CORRECTION = the actual a509e3f commit is
+a509e3fa6b9edcb0ff1392d4ae7eaa2de2a913d6, not the previously recorded full SHA.
 
 DELIVERY_HEAD = final pushed HEAD; verify live because documentation may be a
 descendant of BASELINE_HEAD
 
-BASELINE_COMMIT = feat: close campaign routing and delivery contracts
+BASELINE_COMMIT = fix: persist completed endings after the roof transition
 
-CANDIDATE_PACKAGE = build-campaign-release/dist-final-pass10/
-writeover-07-v0.1.0-complete-campaign-candidate-windows-x64.zip
+CANDIDATE_PACKAGE = out/director-package-20260914/WRITEOVER-07-director-candidate.zip
 
-CANDIDATE_PACKAGE_COMMIT = 670aa2441628f632f564b6961827ede73333770e
+CANDIDATE_PACKAGE_COMMIT = 4153275550248ce28b42d95ce136959e9e2b1450
 
-CANDIDATE_PACKAGE_SHA256 = 0804E354AC0138760CE3EFC92BB7B8056586E1B0BBAA96CB333BFB6BE509DA8A
+CANDIDATE_PACKAGE_SHA256 = 84AB89FCA28D84378971367AC0A40121685D30FCE6D99E82264F92281482EA18
 
 CANDIDATE_PACKAGE_GATES = positive smoke PASS; missing content, character-art,
 and recovery-text negative probes PASS; candidate only, no Release claim
 
-ORIGIN_HEAD_AT_DOC_AUTHORING = b734e7064bf910d69588670d9e3567864cc71e71
+ORIGIN_HEAD_AT_DOC_AUTHORING = a7c6d5bf8bafcf28cd24edf91ff3f1ef207bbf54
 
 EXACT_HEAD_CI = MUST_MATCH_DELIVERY_HEAD (the older b734e706... run is not
 authoritative for this source head)
@@ -29,12 +35,12 @@ authoritative for this source head)
 EXACT_HEAD_CI_JOBS = verify the post-push run by headSha, status, and
 conclusion in the final delivery receipt
 
-EXACT_HEAD_CI_MACOS_RELEASE_BENCHMARK = TERMINAL_FULL_TIME_MS=0.287,
+HISTORICAL_CI_MACOS_RELEASE_BENCHMARK_NOT_THIS_HEAD = TERMINAL_FULL_TIME_MS=0.287,
 TERMINAL_DELTA_TIME_MS=0.105, TERMINAL_UNCHANGED_TIME_MS=0.047,
 TERMINAL_WORSTCASE_TIME_MS=0.364, PVS_RENDER_TIME_MS=0.500,
 PVS_TOTAL_FRAME_TIME_MS=1.625, OVERALL_BUDGET=PASS
 
-EXACT_HEAD_CI_FIRST_ATTEMPT_OUTLIER = macOS arm64 full benchmark
+HISTORICAL_CI_FIRST_ATTEMPT_OUTLIER_NOT_THIS_HEAD = macOS arm64 full benchmark
 TERMINAL_FULL_TIME_MS=3.546 and TERMINAL_FULL_BUDGET=FAIL; failed job was
 rerun without source or threshold changes and passed.
 
@@ -129,9 +135,9 @@ DEBUG_BUILD = PASS
 
 RELEASE_BUILD = PASS
 
-DEBUG_UNIT_TESTS = 217/217 PASS
+DEBUG_UNIT_TESTS = 219/219 PASS
 
-RELEASE_UNIT_TESTS = 217/217 PASS
+RELEASE_UNIT_TESTS = 219/219 PASS
 
 CONTENT_CHECK = PASS (19 rooms, 69 facts, 27 storylets, 17 NPC profiles)
 
@@ -156,8 +162,9 @@ CAMPAIGN_DISCLOSE_REPLAY = PASS
 
 CAMPAIGN_BREACH_REPLAY = PASS
 
-COMPLETE_GAME_CAMPAIGN_GATE = PASS (4/4; ending-specific facts and end-screen
-readiness asserted)
+COMPLETE_GAME_CAMPAIGN_GATE = PASS: 4/4 complete routes and 4/4 independent
+completed-save reloads at source 4153275. Earlier live-only checks missed the
+Authority/Roof save-order defect; the strengthened gate catches it.
 
 ACT2_ROUTE_COVERAGE_GATE = PASS (3/3; Power, Observation, Transit)
 
@@ -192,6 +199,18 @@ docs/production/evidence/recovery_replay_gate_final_20260914,
 docs/production/evidence/act2_route_coverage_20260914
 
 ## Required post-push gates
+
+DIRECTOR_LOCAL_EVIDENCE = director_recovery_20260914 (21/21),
+director_scenarios_20260914 (35 executed / 36 classified),
+director_act2_final_20260914 (3/3), director_campaign_verified_20260914
+(corrected completed-save gate; see final report for its result), all under
+docs/production/evidence. Earlier listed evidence remains historical.
+
+DIRECTOR_LOCAL_BENCHMARK = PVS_RENDER_TIME_MS=0.766,
+PVS_TOTAL_FRAME_TIME_MS=1.471, TERMINAL_FULL_TIME_MS=0.264,
+TERMINAL_DELTA_TIME_MS=0.065, TERMINAL_UNCHANGED_TIME_MS=0.035,
+TERMINAL_WORSTCASE_TIME_MS=0.257, OVERALL_BUDGET=PASS.
+Worst-one-percent average is not p99; platform write time is excluded from total.
 
 FINAL_CANDIDATE_VERSION = 0.1.0-complete-campaign-candidate
 
@@ -233,8 +252,8 @@ COURSE_DELIVERY_CLAIM = NO
 
 ## Handoff decision
 
-NEXT_OWNER = Rain foreground acceptance, then GPT-6 integrated director/audit
-pass
+NEXT_OWNER = Rain visual/foreground acceptance and remaining Roof decision;
+exhaustive audit only after the explicit candidate boundary is accepted.
 
 SAFE_NEXT_SCOPE = manual visual/audio/first-time play review, targeted
 player-critical corrections, manual Breach presentation, final package/CI/course
