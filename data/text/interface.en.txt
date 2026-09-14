@@ -97,3 +97,11 @@ ui_save_title	Manual save
 ui_load_title	Load last save
 ui_case_title	Case File
 ui_pause_title	Pause / history / settings
+ui_fov	FIELD OF VIEW
+ui_narrator_volume	NARRATOR VOLUME
+ui_sfx_volume	SFX VOLUME
+ui_difficulty	DIFFICULTY
+ui_easy	EASY
+ui_hard	HARD
+ui_emphasis	INTERACTION EMPHASIS
+ui_invert_y	INVERT MOUSE Y

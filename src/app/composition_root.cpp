@@ -44,6 +44,7 @@
 #include "src/app/terminal_surface.h"
 #include "src/app/runtime_time_gate.h"
 #include "src/app/presentation_text.h"
+#include "src/app/product_preferences.h"
 #include "src/app/player_perception.h"
 #include "src/player/dynamic_collision.h"
 #include "src/app/runtime_paths.h"
@@ -611,7 +612,7 @@ public:
 
         // Mouse look: apply accumulated mouse delta before movement
         // (camera-relative movement depends on the current yaw).
-        ApplyMouseLook(locomotion_, input_.mouse_delta,
+        ApplyMouseLook(locomotion_, ctx_.settings ? PreferenceMouseDelta(input_.mouse_delta, *ctx_.settings) : input_.mouse_delta,
                        ctx_.settings != nullptr
                            ? ctx_.settings->mouse_sensitivity
                            : 50);
@@ -1565,6 +1566,7 @@ public:
             last_traced_subtitle_ = subtitle_;
         }
         HudFrame hud;
+        hud.interaction_highlight = !settings_ || settings_->interaction_highlight;
         hud.health = health_ != nullptr ? *health_ : 100;
         if (combat_ != nullptr) {
             const size_t slot = static_cast<size_t>(ValidWeaponSlot(combat_));
@@ -2593,7 +2595,7 @@ int RunComposition(const GameConfig& config) {
         [&](const WorldEvent& event) {
             const auto* damage = std::get_if<EventPlayerDamage>(&event.payload);
             if (damage == nullptr || event.target_entity != EntityId::New(1)) return;
-            if (!services.player->ApplyDamage(damage->amount)) return;
+            if (!services.player->ApplyDamage(IncomingDamageForDifficulty(damage->amount, settings.difficulty))) return;
             if (services.player->Dead()) {
                 slice.player_died = true;
             }
@@ -4712,6 +4714,7 @@ int RunComposition(const GameConfig& config) {
             case ProductCommand::CaseFile: open_case_file(); break;
             case ProductCommand::SettingsChanged: {
                 services.player->ApplySettingsBindings(settings);
+                services.narrative->SetDifficulty(settings.difficulty);
                 SettingsRegistry registry;
                 const auto saved = registry.Save((user_data_root / "settings.cfg").string(), settings);
                 product.notice = saved.IsOk() ? "Preference saved." : "Preference active; persistence failed.";

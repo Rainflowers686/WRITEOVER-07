@@ -68,7 +68,8 @@ void HudRenderer::Draw(CharCell* buffer, int width, int height,
         const int prompt_row = height >= 12 ? (frame.developer_overlay ? 6 : 5) : 3;
         if (prompt_row < height - 3) {
             DrawText(buffer, width, prompt_row, frame.interaction_prompt,
-                      {118, 216, 186}, true);
+                      frame.interaction_highlight ? Color{118, 216, 186} : Color{188, 206, 208},
+                      frame.interaction_highlight);
         }
     }
     if (width > 4 && height > 4) {

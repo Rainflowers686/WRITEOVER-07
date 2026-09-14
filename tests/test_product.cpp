@@ -9,6 +9,7 @@
 #include "src/app/runtime_time_gate.h"
 #include "src/render/text_layout.h"
 #include "src/app/presentation_text.h"
+#include "src/app/product_preferences.h"
 #include "writeover/render/frame_encoder.h"
 #include "writeover/render/hud.h"
 #include "writeover/render/character_renderer.h"
@@ -355,6 +356,38 @@ bool RebindingConfirmationAndConflict() {
     WO_CHECK(!fixed_confirm.action_pressed[static_cast<size_t>(GameAction::MoveForward)]);
     return true;
 }
+bool FunctionalPreferenceConsumers() {
+    Settings settings = Settings::Defaults();
+    PlayerProductRuntime menu;
+    menu.Open(ProductPage::Settings);
+    for (const size_t row : {size_t{10}, size_t{11}, size_t{12}, size_t{13}, size_t{14}, size_t{15}}) {
+        menu.selection = row;
+        WO_CHECK(menu.Handle(Press(GameAction::Interact), settings) == ProductCommand::SettingsChanged);
+    }
+    WO_CHECK_EQ(settings.fov, 95); WO_CHECK_EQ(settings.narrator_volume, 80);
+    WO_CHECK_EQ(settings.sfx_volume, 80); WO_CHECK_EQ(settings.difficulty, 2);
+    WO_CHECK(!settings.interaction_highlight && settings.invert_y);
+    const auto delta = PreferenceMouseDelta(Vec2{3, 4}, settings);
+    WO_CHECK(delta.x == 3 && delta.y == -4);
+    WO_CHECK_EQ(IncomingDamageForDifficulty(12, 0), 9);
+    WO_CHECK_EQ(IncomingDamageForDifficulty(12, 1), 12);
+    WO_CHECK_EQ(IncomingDamageForDifficulty(12, 2), 15);
+    WO_CHECK_EQ(IncomingDamageForDifficulty(0, 2), 0);
+    WO_CHECK_EQ(IncomingDamageForDifficulty(1, 0), 1);
+    WO_CHECK_EQ(IncomingDamageForDifficulty(65535, 2), 65535);
+    std::vector<CharCell> plain(80 * 25), emphasized(80 * 25);
+    HudFrame frame; frame.interaction_prompt = "[F] Use";
+    HudRenderer{}.Draw(emphasized.data(), 80, 25, frame);
+    frame.interaction_highlight = false;
+    HudRenderer{}.Draw(plain.data(), 80, 25, frame);
+    WO_CHECK(plain[5 * 80 + 2].code_point == emphasized[5 * 80 + 2].code_point);
+    WO_CHECK(plain[5 * 80 + 2].flags != emphasized[5 * 80 + 2].flags);
+    SettingsRegistry registry;
+    WO_CHECK(registry.Save("functional_preferences.cfg", settings).IsOk());
+    const auto loaded = registry.Load("functional_preferences.cfg");
+    WO_CHECK(loaded.IsOk() && loaded.Value().invert_y);
+    return true;
+}
 bool PanelScrollAndBounds() {
     std::vector<std::string> rows{"LONG RECORD", std::string(200, 'a'), "LAST EVIDENCE", "A/D SCROLL  ESC BACK"};
     for (const int width : {48, 80, 120}) {
@@ -496,6 +529,7 @@ bool KnownEvidenceAndNearestInspect() {
 }
 } // namespace
 void RegisterProductTests(TestHarness& harness) {
+    harness.Add("product.functional preference consumers", &FunctionalPreferenceConsumers);
     harness.Add("product.rebinding confirmation and conflict", &RebindingConfirmationAndConflict);
     harness.Add("product.chinese display columns", &ChineseDisplayColumns);
     harness.Add("product.surface resize and recovery", &SurfaceResizeAndRecovery);

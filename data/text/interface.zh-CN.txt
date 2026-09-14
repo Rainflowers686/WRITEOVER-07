@@ -96,3 +96,11 @@ ui_save_title	手动保存
 ui_load_title	读取最近存档
 ui_case_title	案件档案
 ui_pause_title	暂停、记录与设置
+ui_fov	视野角度
+ui_narrator_volume	旁白音量
+ui_sfx_volume	音效音量
+ui_difficulty	难度
+ui_easy	简单
+ui_hard	困难
+ui_emphasis	突出交互提示
+ui_invert_y	反转鼠标纵轴

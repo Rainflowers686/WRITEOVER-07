@@ -48,6 +48,7 @@ struct Settings {
     uint8_t sensory_verbosity = 1;      // 0=off, 1=important, 2=detailed
     uint8_t text_duration = 1;          // 0=short, 1=normal, 2=long
     std::string language;              // empty=first-run choice, en or zh-CN; settings.cfg only
+    bool invert_y = false;             // settings.cfg only, pointer pitch preference
 
     // Defaults for all fields (including the binding tables).
     static Settings Defaults();

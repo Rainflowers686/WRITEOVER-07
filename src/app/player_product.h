@@ -160,6 +160,12 @@ public:
                 "FRAME LIMIT / " + (s.frame_rate_cap == 0 ? std::string("AUTO (UP TO 120)") :
                     std::to_string(s.frame_rate_cap) + " FPS"),
                 s.language == "zh-CN" ? "LANGUAGE / 简体中文" : "LANGUAGE / English",
+                "FIELD OF VIEW / " + std::to_string(s.fov),
+                "NARRATOR VOLUME / " + std::to_string(s.narrator_volume),
+                "SFX VOLUME / " + std::to_string(s.sfx_volume),
+                std::string("DIFFICULTY / ") + (s.difficulty == 0 ? "EASY" : s.difficulty == 2 ? "HARD" : "NORMAL"),
+                std::string("INTERACTION EMPHASIS / ") + (s.interaction_highlight ? "ON" : "OFF"),
+                std::string("INVERT MOUSE Y / ") + (s.invert_y ? "ON" : "OFF"),
                 "REBIND KEYS"};
         }
         return {};
@@ -278,7 +284,13 @@ public:
                     settings.frame_rate_cap == 30 ? 60 : settings.frame_rate_cap == 60 ? 120 : 0;
                 break;
             case 9: settings.language = settings.language == "zh-CN" ? "en" : "zh-CN"; break;
-            case 10: Open(ProductPage::Rebind); return ProductCommand::None;
+            case 10: settings.fov = static_cast<uint8_t>(settings.fov >= 120 ? 60 : settings.fov + 5); break;
+            case 11: settings.narrator_volume = static_cast<uint8_t>((settings.narrator_volume + 10) % 110); break;
+            case 12: settings.sfx_volume = static_cast<uint8_t>((settings.sfx_volume + 10) % 110); break;
+            case 13: settings.difficulty = static_cast<uint8_t>((settings.difficulty + 1) % 3); break;
+            case 14: settings.interaction_highlight = !settings.interaction_highlight; break;
+            case 15: settings.invert_y = !settings.invert_y; break;
+            case 16: Open(ProductPage::Rebind); return ProductCommand::None;
             default: break;
             }
             ++preference_changes;

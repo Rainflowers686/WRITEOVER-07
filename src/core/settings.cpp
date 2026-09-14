@@ -247,6 +247,8 @@ void ApplyKeyValue(Settings& s, const KeyValue& kv) {
         s.text_duration = tmp8;
     } else if (kv.key == "language" && (kv.value == "en" || kv.value == "zh-CN")) {
         s.language = kv.value;
+    } else if (kv.key == "inverty" && ParseBool(kv.value, tmpb)) {
+        s.invert_y = tmpb;
     } else if (kv.key.rfind("bind.", 0) == 0) {
         // New format: bind.<contextIndex>.<actionIndex>=<PhysicalKeyValue>
         const std::string spec = kv.key.substr(5);
@@ -296,6 +298,7 @@ std::string ComposeKeyValues(const Settings& s) {
     out << "sensoryverbosity=" << static_cast<unsigned>(s.sensory_verbosity) << "\n";
     out << "textduration=" << static_cast<unsigned>(s.text_duration) << "\n";
     if (!s.language.empty()) out << "language=" << s.language << "\n";
+    out << "inverty=" << (s.invert_y ? "true" : "false") << "\n";
     for (size_t c = 0; c < kInputContextCount; ++c) {
         for (size_t i = 0; i < kGameActionCount; ++i) {
             out << "bind." << c << "." << i << "="
