@@ -9,10 +9,12 @@ of BASELINE_HEAD and must be verified live before claiming exact-head CI.
 
 BASELINE_COMMIT = feat: close campaign routing and delivery contracts
 
-CANDIDATE_PACKAGE = build-campaign-release/dist-final-pass09/
+CANDIDATE_PACKAGE = build-campaign-release/dist-final-pass10/
 writeover-07-v0.1.0-complete-campaign-candidate-windows-x64.zip
 
-CANDIDATE_PACKAGE_SHA256 = 68589068CB1385E6DC40BFB02A2E1AD167C5F5A32D3134FBC50F3694A60D0B37
+CANDIDATE_PACKAGE_COMMIT = 670aa2441628f632f564b6961827ede73333770e
+
+CANDIDATE_PACKAGE_SHA256 = 0804E354AC0138760CE3EFC92BB7B8056586E1B0BBAA96CB333BFB6BE509DA8A
 
 CANDIDATE_PACKAGE_GATES = positive smoke PASS; missing content, character-art,
 and recovery-text negative probes PASS; package is a candidate, not a Release
