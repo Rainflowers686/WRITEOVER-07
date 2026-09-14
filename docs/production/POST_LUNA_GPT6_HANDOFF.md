@@ -118,11 +118,11 @@ still a subjective boundary. This is not a photorealism claim.
   first-time human playthrough and focused Power/Observation/Transit fixtures
   remain.
 - Local package smoke and the post-face Release benchmark pass locally
-  (`PVS_RENDER_TIME_MS=0.737`, `PVS_TOTAL_FRAME_TIME_MS=1.335`). The exact
-  remote CI for the pending post-face push is not yet recorded here. The
-  previous documentation-only head had a macOS benchmark tail failure on two
-  attempts (`4.968/8.011`, then `4.384/7.012`) while its parent source head
-  passed; do not call that gate green by inference.
+  (`PVS_RENDER_TIME_MS=0.737`, `PVS_TOTAL_FRAME_TIME_MS=1.335`). Exact-head
+  CI for `f15b7ffd71ffdc73201693fe0b3e9bbaeb198a8b` is PASS in run
+  `34794078556`, including the macOS arm64 benchmark and recovery replay. The
+  previous documentation-only head's two macOS tail failures remain preserved
+  as historical evidence; they are not silently relabeled as source fixes.
 
 ## REMAINING_OBJECTIVE_WORK
 
