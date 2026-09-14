@@ -168,6 +168,12 @@ void DecodeArtRow(const std::string& text, std::u32string& glyphs,
             // is never emitted as a visible glyph.
             glyph = U' ';
             opacity.push_back(CharacterCellOpacity::OpaqueEmpty);
+        } else if (glyph == U'^') {
+            // '^' is an authored occupied blank with a skin material.  Keep
+            // the marker in the parsed row so the existing OpaqueEmpty path
+            // can select the bounded semantic background without expanding
+            // the public opacity enum.
+            opacity.push_back(CharacterCellOpacity::OpaqueEmpty);
         } else if (glyph == U' ') {
             opacity.push_back(CharacterCellOpacity::Transparent);
         } else {
@@ -642,6 +648,11 @@ Color SpriteBackground(const CharacterArtAsset& asset, char32_t glyph,
     // planes. Transparent space and occupied blanks keep their old semantics;
     // monochrome glyph silhouettes remain complete without this colour.
     const float depth = 0.72f + 0.28f * Saturate(1.0f - distance / 32.0f);
+    if (glyph == U'^' &&
+        (asset.ink == CharacterInk::FullHuman ||
+         asset.ink == CharacterInk::Maintenance)) {
+        return ScaleColor({154, 121, 96}, depth, 165);
+    }
     if (asset.is_pistol && (glyph == U'·' || glyph == U':' || glyph == U';'))
         return ScaleColor({65, 57, 47}, depth, 70);
     const bool skin_ink = asset.ink == CharacterInk::FullHuman ||

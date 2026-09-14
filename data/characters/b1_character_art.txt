@@ -1062,6 +1062,9 @@ sprite security_guard near security
     ╰═════╯       ╰══════╯
 end
 
+# Full Human / Maintenance faces use '^' as an occupied blank skin plane.
+# It keeps cheeks and forehead continuous while the surrounding glyphs carry
+# hair, eye-line, nose and jaw structure; '^' is never emitted as a glyph.
 sprite full_human far full
   ╭▓▓╮
   │▓╴│
@@ -1072,11 +1075,11 @@ end
 
 sprite full_human mid full
       ▓▓▓▓▓
-     ╭▓:::▓╮
-     ╱▓:·:▓╲
-     │▓• •▓│
-     ╲▓·╵▓╱
-      ╲▓╴▓╱
+     ╭▓▓▓▓▓╮
+     ╱▓^^^▓╲
+     │▓^•^•^▓│
+     │▓^^╵^▓│
+     ╲▓^ˍ^▓╱
     ╭─╯╲╱╰─╮
    ╱░░░░│░░▒▒╲
    │░▒│░│░+│▒│
@@ -1093,12 +1096,12 @@ end
 
 sprite full_human near full
           ╭▓▓▓▓▓╮
-         ╱▓▓:::▓╲
-        ╱▓:···:▓╲
-        │▓:• •:▓│
-        ╲▓:·╵:▓╱
-         ╲▓:╴:▓╱
-          ╲▓▓▓╱
+         ╱▓▓▓▓▓▓▓╲
+        ╱▓^^^^^▓▓╲
+        │▓^•^•^▓│
+        │▓^^╵^^▓│
+        ╲▓^ˍ^^▓╱
+         ╲▓▓▓▓▓╱
             ╰┬─╯
             │:│
        ╭───╯~~╰───╮
@@ -1139,12 +1142,12 @@ end
 sprite maintenance_worker mid maintenance
       ╭────╮
       ╱░░▒▒▓└─╮
-      ╰═══════╯
-       │▓:::▓:│
-       ╭▓:·:▓╮
-       │▓• •▓│
-       ╲▓·╵▓╱
-       ╲▓:╴:▓╱
+       ╰═══════╯
+       │▓▓▓▓▓▓│
+       ╱▓^^^▓╲
+       │▓^•^•^▓│
+       │▓^^╵^▓│
+       ╲▓^ˍ^▓╱
        ╭───╯╰──╮
    ╱▒▒▒╲▒│▒│▓╲
    │▒▓│▒╲│▒│▓│
@@ -1165,12 +1168,12 @@ sprite maintenance_worker near maintenance
           ╱░░░▒▒▒▓└──╮
           ╰══════════╯
            ╭▓▓▓▓▓╮
-          ╱▓:::▓╲
-         ╱▓:···:▓╲
-         │▓:• •:▓│
-         ╲▓:·╵:▓╱
-            ╲▓:╴:▓╱
-             ╲▓▓╱
+          ╱▓▓▓▓▓▓▓╲
+         ╱▓^^^^^▓▓╲
+         │▓^•^•^▓│
+         │▓^^╵^^▓│
+         ╲▓^ˍ^^▓╱
+          ╲▓▓▓▓╱
             ╰┬─╯
             │:│
        ╭────╯~╰───╮
