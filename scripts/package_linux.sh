@@ -12,7 +12,6 @@ if [[ "${1:-}" != "--skip-build" ]]; then
   python3 tools/systemic/compile_systemic_seed.py --src data/systemic/systemic_seed.json --out data/systemic/systemic_seed.bin
   cmake --preset linux-release
   cmake --build --preset linux-release --parallel 2
-  ./out/build/linux-release/writeover_tests
   ctest --test-dir out/build/linux-release --output-on-failure
   ./out/build/linux-release/writeover_bench
 fi

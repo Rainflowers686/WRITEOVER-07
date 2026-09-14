@@ -286,6 +286,14 @@ def main() -> int:
         info["settings_dir"] = "~/Library/Application Support/WRITEOVER-07/settings.cfg"
 
     version = read_version(source_root, args.version)
+    player_documents = [
+        source_root / "docs/release/PLAYER_GUIDE.zh-CN.md",
+        source_root / "docs/release/PLAYER_GUIDE.en.md",
+        source_root / f"docs/release/RELEASE_NOTES_v{version}.md",
+    ]
+    for document in player_documents:
+        if not document.is_file():
+            fail(f"missing player document: {document.name}")
     binary = absolute(args.binary if args.binary.is_absolute() else source_root / args.binary)
     if not binary.is_file():
         fail(f"release binary is missing: {binary}")
@@ -331,6 +339,8 @@ def main() -> int:
         fail(f"missing third-party notice: {notice}")
     shutil.copy2(notice, stage_root / "THIRD_PARTY_NOTICES.txt")
     write_player_readme(source_root, stage_root, info, version)
+    for document in player_documents:
+        shutil.copy2(document, stage_root / document.name)
     version_json = {
         "product": "WRITEOVER-07",
         "version": version,

@@ -78,6 +78,10 @@ def main() -> int:
                 Path("data/text/recovery_text.txt"),
                 "missing required player runtime resources",
             ),
+            ("missing_chinese_text", Path("data/text/interface.zh-CN.txt"),
+             "missing required player runtime resources"),
+            ("missing_english_guide", Path("PLAYER_GUIDE.en.md"),
+             "missing package metadata"),
         )
         for name, relative, expected in probes:
             variant = workspace / name / source_root.name

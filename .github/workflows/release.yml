@@ -1,199 +1,111 @@
 name: Release Player Packages
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       source_ref:
-        description: Immutable tag/ref to package and publish
+        description: Existing immutable version tag (must match PRODUCT_VERSION)
         required: true
         type: string
+      publish:
+        description: Publish a NEW pre-release after all package checks pass
+        required: true
+        default: false
+        type: boolean
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  windows:
-    runs-on: windows-2022
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-x64
+            os: windows-2022
+          - platform: linux-x64
+            os: ubuntu-24.04
+          - platform: macos-arm64
+            os: macos-14
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.source_ref || github.ref }}
-
-      - name: Checkout current release validators for immutable-tag recovery
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          path: release-validation-tools
-
-      - name: Verify release tag
-        shell: pwsh
-        run: |
-          $version = (Get-Content -LiteralPath PRODUCT_VERSION -Raw).Trim()
-          $releaseTag = "${{ inputs.source_ref || github.ref_name }}"
-          if ($releaseTag -ne "v$version") { throw "Tag does not match PRODUCT_VERSION: $releaseTag vs v$version" }
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Package Windows x64
+      - name: Resolve and verify immutable release metadata
+        id: metadata
+        env:
+          WRITEOVER_RELEASE_TAG: ${{ inputs.source_ref }}
+        run: python tools/release/release_metadata.py --require-tag --platform ${{ matrix.platform }} --github-output-env
+      - name: Package Windows
+        if: runner.os == 'Windows'
         shell: pwsh
         run: pwsh -ExecutionPolicy Bypass -File scripts/package_windows.ps1
-
-      - name: Clean-package Windows smoke
-        shell: pwsh
-        run: |
-          $smoke = "tools/release/package_smoke.py"
-          if (Test-Path "release-validation-tools/tools/release/package_smoke.py") { $smoke = "release-validation-tools/tools/release/package_smoke.py" }
-          python $smoke --platform windows-x64 --archive dist/WRITEOVER-07-v0.1.0-pvs01-gold-win-x64.zip
-
-      - name: Upload Windows package
-        uses: actions/upload-artifact@v4
-        with:
-          name: writeover-windows-x64
-          path: dist/WRITEOVER-07-v0.1.0-pvs01-gold-win-x64.zip
-          if-no-files-found: error
-
-  linux:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.source_ref || github.ref }}
-
-      - name: Checkout current release validators for immutable-tag recovery
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          path: release-validation-tools
-
-      - name: Verify release tag
-        shell: bash
-        run: |
-          version="$(tr -d '\r\n' < PRODUCT_VERSION)"
-          release_tag="${{ inputs.source_ref || github.ref_name }}"
-          test "$release_tag" = "v$version"
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Package Linux x64
-        shell: bash
+      - name: Package Linux
+        if: runner.os == 'Linux'
         run: bash scripts/package_linux.sh
-
-      - name: Clean-package Linux smoke
-        shell: bash
-        run: |
-          smoke="tools/release/package_smoke.py"
-          if [[ -f release-validation-tools/tools/release/package_smoke.py ]]; then smoke="release-validation-tools/tools/release/package_smoke.py"; fi
-          python3 "$smoke" --platform linux-x64 --archive dist/WRITEOVER-07-v0.1.0-pvs01-gold-linux-x64.tar.gz
-
-      - name: Upload Linux package
-        uses: actions/upload-artifact@v4
-        with:
-          name: writeover-linux-x64
-          path: dist/WRITEOVER-07-v0.1.0-pvs01-gold-linux-x64.tar.gz
-          if-no-files-found: error
-
-  macos:
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.source_ref || github.ref }}
-
-      - name: Checkout current release validators for immutable-tag recovery
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          path: release-validation-tools
-
-      - name: Verify release tag
-        shell: bash
-        run: |
-          version="$(tr -d '\r\n' < PRODUCT_VERSION)"
-          release_tag="${{ inputs.source_ref || github.ref_name }}"
-          test "$release_tag" = "v$version"
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Package macOS arm64
-        shell: bash
+      - name: Package macOS
+        if: runner.os == 'macOS'
         run: bash scripts/package_macos.sh
-
-      - name: Clean-package macOS smoke
-        shell: bash
-        run: |
-          smoke="tools/release/package_smoke.py"
-          if [[ -f release-validation-tools/tools/release/package_smoke.py ]]; then smoke="release-validation-tools/tools/release/package_smoke.py"; fi
-          python3 "$smoke" --platform macos-arm64 --archive dist/WRITEOVER-07-v0.1.0-pvs01-gold-macos-arm64.zip
-
-      - name: Upload macOS package
-        uses: actions/upload-artifact@v4
+      - name: Verify clean package
+        run: python tools/release/package_smoke.py --platform ${{ matrix.platform }} --archive dist/${{ steps.metadata.outputs.archive }}
+      - uses: actions/upload-artifact@v4
         with:
-          name: writeover-macos-arm64
-          path: dist/WRITEOVER-07-v0.1.0-pvs01-gold-macos-arm64.zip
+          name: writeover-${{ matrix.platform }}
+          path: dist/${{ steps.metadata.outputs.archive }}
           if-no-files-found: error
 
   publish:
-    needs: [windows, linux, macos]
+    if: inputs.publish
+    needs: package
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.source_ref || github.ref }}
-
-      - name: Download Windows package
-        uses: actions/download-artifact@v4
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
         with:
-          name: writeover-windows-x64
-          path: dist
-
-      - name: Download Linux package
-        uses: actions/download-artifact@v4
+          python-version: "3.11"
+      - name: Resolve and verify immutable release metadata
+        id: metadata
+        env:
+          WRITEOVER_RELEASE_TAG: ${{ inputs.source_ref }}
+        run: python tools/release/release_metadata.py --require-tag --github-output-env
+      - uses: actions/download-artifact@v4
         with:
-          name: writeover-linux-x64
+          pattern: writeover-*
+          merge-multiple: true
           path: dist
-
-      - name: Download macOS package
-        uses: actions/download-artifact@v4
-        with:
-          name: writeover-macos-arm64
-          path: dist
-
-      - name: Aggregate checksums
+      - name: Publish new candidate without modifying old releases
         shell: bash
-        run: |
-          cd dist
-          sha256sum WRITEOVER-07-v0.1.0-pvs01-gold-win-x64.zip \
-            WRITEOVER-07-v0.1.0-pvs01-gold-linux-x64.tar.gz \
-            WRITEOVER-07-v0.1.0-pvs01-gold-macos-arm64.zip > SHA256SUMS.txt
-          cat SHA256SUMS.txt
-
-      - name: Create GitHub pre-release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.source_ref || github.ref_name }}
-        shell: bash
+          RELEASE_TAG: ${{ steps.metadata.outputs.tag }}
+          RELEASE_TITLE: ${{ steps.metadata.outputs.title }}
+          RELEASE_NOTES: ${{ steps.metadata.outputs.notes }}
+          WINDOWS_ARCHIVE: ${{ steps.metadata.outputs.windows_archive }}
+          LINUX_ARCHIVE: ${{ steps.metadata.outputs.linux_archive }}
+          MACOS_ARCHIVE: ${{ steps.metadata.outputs.macos_archive }}
         run: |
-          gh release create "$RELEASE_TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "WRITEOVER-07 — PVS-01 Gold" \
-            --notes-file docs/release/RELEASE_NOTES_v0.1.0-pvs01-gold.md \
-            --prerelease \
-            dist/WRITEOVER-07-v0.1.0-pvs01-gold-win-x64.zip \
-            dist/WRITEOVER-07-v0.1.0-pvs01-gold-linux-x64.tar.gz \
-            dist/WRITEOVER-07-v0.1.0-pvs01-gold-macos-arm64.zip \
-            dist/SHA256SUMS.txt
+          set -euo pipefail
+          test -f docs/release/PLAYER_GUIDE.zh-CN.md
+          test -f docs/release/PLAYER_GUIDE.en.md
+          test -f "$RELEASE_NOTES"
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release already exists; refusing to replace it."
+            exit 1
+          fi
+          (cd dist && sha256sum "$WINDOWS_ARCHIVE" "$LINUX_ARCHIVE" "$MACOS_ARCHIVE" > SHA256SUMS.txt)
+          gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "$RELEASE_TITLE" --notes-file "$RELEASE_NOTES" --prerelease \
+            "dist/$WINDOWS_ARCHIVE" "dist/$LINUX_ARCHIVE" "dist/$MACOS_ARCHIVE" \
+            dist/SHA256SUMS.txt docs/release/PLAYER_GUIDE.zh-CN.md \
+            docs/release/PLAYER_GUIDE.en.md "$RELEASE_NOTES"

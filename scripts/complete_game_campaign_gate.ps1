@@ -1,6 +1,7 @@
 param(
     [string]$Executable = "out/build/release/Release/writeover_app.exe",
-    [string]$EvidenceDirectory = ""
+    [string]$EvidenceDirectory = "",
+    [switch]$Fast
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,6 +18,11 @@ $cases = @(
     @{ Name = "campaign_probe_breach"; File = "campaign_probe_breach.txt"; Frames = 6800; Ending = "breach" },
     @{ Name = "campaign_probe_discovery_poor"; File = "campaign_probe_discovery_poor.txt"; Frames = 6800; Ending = "breach" }
 )
+if ($Fast) {
+    # Cooperative/evidence-rich and forced/discovery-poor full routes. The
+    # integrated product gate independently covers AMEND and all save roles.
+    $cases = @($cases | Where-Object { $_.Name -in @("campaign_probe_disclose", "campaign_probe_discovery_poor") })
+}
 
 if ($EvidenceDirectory) {
     $candidateEvidence = [IO.Path]::GetFullPath((Join-Path $repoRoot $EvidenceDirectory))

@@ -43,6 +43,8 @@ FORBIDDEN_NAMES = {
 PATH_MARKERS = (
     b"D:\\Edge Download",
     b"C:\\Users\\Rain",
+    b"D:\\AAAbiancheng",
+    b"D:/AAAbiancheng",
     b"/mnt/d/Edge Download",
     b"out/build",
     b"CMakeCache.txt",
@@ -110,7 +112,8 @@ def check_inventory(root: Path, platform: str) -> dict:
         fail(f"missing player entry: {entry_path.relative_to(root)}")
     if archive_type == "tar.gz" and not (entry_path.stat().st_mode & stat.S_IXUSR):
         fail("Linux player entry is not executable")
-    required = {"README.txt", "THIRD_PARTY_NOTICES.txt", "version.json", "manifest.json", "SHA256SUMS.txt"}
+    required = {"README.txt", "THIRD_PARTY_NOTICES.txt", "version.json", "manifest.json", "SHA256SUMS.txt",
+                "PLAYER_GUIDE.en.md", "PLAYER_GUIDE.zh-CN.md"}
     actual = {path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()}
     missing = required - actual
     if missing:
@@ -128,6 +131,9 @@ def check_inventory(root: Path, platform: str) -> dict:
     required_runtime = {
         "data/characters/b1_character_art.txt",
         "data/text/recovery_text.txt",
+        "data/text/recovery_text.zh-CN.txt",
+        "data/text/interface.en.txt",
+        "data/text/interface.zh-CN.txt",
     }
     actual_runtime = {
         path.relative_to(runtime_root).as_posix()
@@ -164,6 +170,8 @@ def check_metadata(root: Path, platform: str) -> None:
         fail("version.json product/platform mismatch")
     if version["buildType"] != "Release":
         fail("player package is not marked Release")
+    if not (root / f"RELEASE_NOTES_v{version['version']}.md").is_file():
+        fail("missing version-matched release notes")
     if len(version["gitCommit"]) != 40 or any(c not in "0123456789abcdef" for c in version["gitCommit"].lower()):
         fail("version.json gitCommit is not a full SHA")
 

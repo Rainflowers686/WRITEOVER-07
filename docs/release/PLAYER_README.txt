@@ -14,6 +14,9 @@ How to start
 The player entry is @ENTRY@. Game data is bundled with the entry and is
 located relative to it; do not move the data directory by itself.
 Choose New Game to begin in B1, or Continue to resume the latest recovery file.
+First launch offers English or Simplified Chinese. Change it later in Settings.
+Read PLAYER_GUIDE.en.md or PLAYER_GUIDE.zh-CN.md for the complete player guide.
+首次启动可选择简体中文或英文。完整说明见 PLAYER_GUIDE.zh-CN.md。
 This is a complete-campaign playtest candidate with 19 rooms and three endings.
 It is not a finished 1.0 release.
 The tower directory describes 41 levels; 19 rooms are playable. Unlisted stops
@@ -41,9 +44,15 @@ F9                Load latest recovery file
 Pause menu        Controls, settings, recent events, dialogue, ending summary
 W / S in menus    Select; F confirms; A / D scrolls long text; Esc goes back
 The Controls page shows your actual settings.cfg bindings, including remaps.
+Settings > Rebind Keys captures a new key, rejects conflicts and asks for
+confirmation. Arrow keys stay reserved for menus; Esc cancels capture.
+Arrows / F / Esc remain safe menu navigation regardless of gameplay bindings.
 Sensitivity, volume, subtitles, contrast, reduced motion/flicker and sensory
 detail can be changed in the existing Settings page. History stays available
 when sensory messages are off. Terminal minimum for menus is 48 x 18 cells.
+Resize adapts the character surface; a smaller window pauses play until enlarged.
+FOV, inverted mouse Y, interaction emphasis and separate volumes are adjustable.
+Difficulty changes incoming damage only, not evidence or route requirements.
 Frame Limit cycles Auto / 30 / 60 / 120 in Settings. Auto presents at up to the
 existing 120 Hz simulation cadence; terminal/device speed can lower actual FPS.
 Flashes and narrative effects keep their game-time duration at every frame limit.
@@ -70,8 +79,8 @@ Windows uses the native raw-mouse and WinMM procedural audio paths when the
 device is available. Linux and macOS use terminal keyboard input and retain
 gameplay messages as text. They do not have the same mouse/audio experience
 as Windows. A macOS arm64 package requires an arm64 system.
-The September 2026 complete-campaign download is Windows x64 only; older
-PVS-01 Linux/macOS downloads do not contain this campaign version.
+Only platforms actually attached to this version's release are available as
+downloads. Older PVS-01 packages do not contain this campaign version.
 Unsigned packages may prompt an operating-system warning. Check the source
 and checksum; do not disable system protection to run the game.
 
@@ -85,6 +94,8 @@ screenshots and paths; do not attach your entire user-data directory.
 
 Credits and distribution notice
 --------------------------------
+Content includes firearms, lethal and non-lethal combat, unconscious and dead
+bodies, body hiding and institutional suspense. There is no formal age rating.
 See THIRD_PARTY_NOTICES.txt. This candidate has automated engineering evidence,
 but foreground terminal appearance, audio listening and first-time human play
 acceptance must be checked separately. No Product Gold status is claimed.

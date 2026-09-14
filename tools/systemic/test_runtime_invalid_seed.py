@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Integration test: an invalid systemic seed must prevent app startup."""
 import pathlib
+import argparse
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -22,18 +24,25 @@ def find_app():
 
 
 def main():
-    app = find_app()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--executable", type=pathlib.Path)
+    args = parser.parse_args()
+    app = args.executable.resolve() if args.executable else find_app()
     if app is None:
         print("FAIL: writeover_app.exe not built")
         return 1
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = pathlib.Path(tmp)
-        systemic_dir = tmp_path / "systemic"
-        systemic_dir.mkdir()
+        # Keep every other startup prerequisite valid. Missing locale files
+        # must not mask the systemic-seed rejection this probe is testing.
+        data_root = tmp_path / "data"
+        shutil.copytree(ROOT / "data", data_root)
+        systemic_dir = data_root / "systemic"
         (systemic_dir / "systemic_seed.bin").write_bytes(b"NOTAVALIDSEED")
         cp = subprocess.run(
-            [str(app), "--smoke", "--data-dir", str(tmp_path)],
+            [str(app), "--smoke", "--data-dir", str(data_root),
+             "--user-data-dir", str(tmp_path / "user")],
             capture_output=True,
             text=True,
             timeout=30,

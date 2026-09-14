@@ -23,8 +23,6 @@ try {
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         cmake --build --preset release --config Release
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-        & "out\build\release\Release\writeover_tests.exe"
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         ctest --test-dir out/build/release -C Release --output-on-failure
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         & "out\build\release\Release\writeover_bench.exe"

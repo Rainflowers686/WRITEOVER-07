@@ -12,7 +12,6 @@ if [[ "${1:-}" != "--skip-build" ]]; then
   python3 tools/systemic/compile_systemic_seed.py --src data/systemic/systemic_seed.json --out data/systemic/systemic_seed.bin
   cmake --preset macos-arm64-release
   cmake --build --preset macos-arm64-release --parallel 2
-  ./out/build/macos-arm64-release/writeover_tests
   ctest --test-dir out/build/macos-arm64-release --output-on-failure
   ./out/build/macos-arm64-release/writeover_bench
 fi
