@@ -50,7 +50,8 @@ def main():
             ['PRODUCT_NEW_GAME_INITIAL_STATE=PASS', 'ROOM=room_b1_revival HEALTH=100 EVIDENCE=0'])
         assert snapshot() == before, 'New Game changed previous saves'
         assert not list((user / 'saves').glob('*.tmp'))
-        print('SAVE_PATH_CASE=' + label + ' PASS', flush=True)
+        case_id = 'ascii' if label == 'ascii-user' else 'chinese'
+        print('SAVE_PATH_CASE=' + case_id + ' PASS', flush=True)
     (evidence / 'result.json').write_text(json.dumps(
         {'status': 'PASS', 'steps': steps}, ensure_ascii=False, indent=2), encoding='utf-8')
     print('SAVE_PATH_REGRESSION=PASS')
