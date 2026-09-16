@@ -62,8 +62,8 @@ Result<std::vector<SaveSection>> ParseSaveBuffer(const uint8_t* data, size_t siz
 class SaveManager {
 public:
     // path without extension; writes <path>.wo07 atomically.
-    Result<void> SaveWorld(const std::string& path, const std::vector<SaveSection>& sections);
-    Result<std::vector<SaveSection>> LoadWorld(const std::string& path);
+    Result<void> SaveWorld(const std::filesystem::path& path, const std::vector<SaveSection>& sections);
+    Result<std::vector<SaveSection>> LoadWorld(const std::filesystem::path& path);
 };
 
 } // namespace writeover

@@ -247,6 +247,7 @@ if(WO_BUILD_TESTS)
         ${WO_INCLUDE_DIR}
     )
     target_link_libraries(writeover_tests PRIVATE
+        writeover_platform
         writeover_common
     writeover_systemic
         writeover_core

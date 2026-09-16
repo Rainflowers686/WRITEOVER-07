@@ -27,9 +27,9 @@ inline ProductSaveWriteResult WriteProductSaveRoles(
     const std::vector<SaveSection>& sections) {
     SaveManager save;
     ProductSaveWriteResult result;
-    result.primary_saved = save.SaveWorld((directory / ProductSaveName(role)).string(), sections).IsOk();
+    result.primary_saved = save.SaveWorld(directory / ProductSaveName(role), sections).IsOk();
     if (result.primary_saved) {
-        result.resume_saved = save.SaveWorld((directory / "pvs_resume").string(), sections).IsOk();
+        result.resume_saved = save.SaveWorld(directory / "pvs_resume", sections).IsOk();
     }
     return result; // individually atomic; secondary failure never rewinds/deletes the primary
 }
@@ -37,7 +37,7 @@ inline ProductSaveWriteResult WriteProductSaveRoles(
 // the existing full staged validation/rollback path and can report a safe error.
 inline bool ProductSaveEnvelopeValid(const std::filesystem::path& base) {
     SaveManager save;
-    const auto loaded = save.LoadWorld(base.string());
+    const auto loaded = save.LoadWorld(base);
     if (loaded.IsError()) return false;
     std::array<bool, 8> present{};
     for (const auto& section : loaded.Value()) {

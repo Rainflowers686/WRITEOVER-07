@@ -168,15 +168,17 @@ Result<std::vector<SaveSection>> ParseSaveBuffer(const uint8_t* data, size_t siz
     return Result<std::vector<SaveSection>>::Ok(std::move(sections));
 }
 
-Result<void> SaveManager::SaveWorld(const std::string& path,
+Result<void> SaveManager::SaveWorld(const std::filesystem::path& path,
                                     const std::vector<SaveSection>& sections) {
     const std::vector<uint8_t> buffer = ComposeSaveBuffer(sections);
     if (buffer.empty()) {
         return Result<void>::Err(kSaveMagic + 12,
                                  "save buffer exceeds bounded format");
     }
-    const std::string tmp = path + kSaveExtension + ".tmp";
-    const std::string final = path + kSaveExtension;
+    std::filesystem::path final = path;
+    final += kSaveExtension;
+    std::filesystem::path tmp = final;
+    tmp += ".tmp";
     auto written = WriteFileBinary(tmp, buffer);
     if (written.IsError()) {
         return written;
@@ -184,8 +186,9 @@ Result<void> SaveManager::SaveWorld(const std::string& path,
     return ReplaceFileAtomic(tmp, final);
 }
 
-Result<std::vector<SaveSection>> SaveManager::LoadWorld(const std::string& path) {
-    const std::string final = path + kSaveExtension;
+Result<std::vector<SaveSection>> SaveManager::LoadWorld(const std::filesystem::path& path) {
+    std::filesystem::path final = path;
+    final += kSaveExtension;
     auto data = ReadFileBinary(final);
     if (data.IsError()) {
         return Result<std::vector<SaveSection>>::Err(

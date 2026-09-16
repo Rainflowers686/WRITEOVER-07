@@ -43,6 +43,8 @@ try {
     if ($Tier -eq "FAST_REQUIRED") {
         # CTest runs unit once plus the standalone public-header executable.
         Invoke-Step "unit-and-headers" "ctest" @("--test-dir", $build, "-C", $Configuration, "-V", "--output-on-failure")
+        Invoke-Step "save-paths" "python" @("scripts/test_save_paths.py", "--executable", $exe,
+            "--evidence-dir", (Join-Path $evidence "save-paths")) @("SAVE_PATH_REGRESSION=PASS")
         Invoke-Step "content" "python" @("tools/contentc/contentc.py", "--data-dir", "data", "--out-dir", "data", "--check")
         Invoke-Step "content-negative" "python" @("tools/contentc/test_contentc.py")
         Invoke-Step "schema" "python" @("tools/systemic/systemic_schema_check.py", "--data-dir", "data")

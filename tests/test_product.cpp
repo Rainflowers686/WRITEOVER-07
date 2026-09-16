@@ -16,9 +16,54 @@
 #include "writeover/render/hud.h"
 #include "writeover/render/character_renderer.h"
 #include "writeover/world/room.h"
+#include "writeover/platform/platform_api.h"
 
 namespace writeover {
 namespace {
+bool SavePathsRoundTrip(const std::filesystem::path& name) {
+    std::filesystem::path directory;
+    for (int i = 0; i < 100; ++i) {
+        const auto candidate = std::filesystem::temp_directory_path() /
+            ("writeover_native_save_" + std::to_string(i));
+        std::error_code ec;
+        if (std::filesystem::create_directory(candidate, ec)) { directory = candidate; break; }
+    }
+    WO_CHECK(!directory.empty());
+    const auto saves = directory / name;
+    WO_CHECK(std::filesystem::create_directory(saves));
+    InstallPlatformAtomicReplace();
+    struct RestoreProvider {
+        ~RestoreProvider() { SetAtomicReplaceProvider({}); }
+    } restore;
+    const std::vector<SaveSection> old_sections{{SaveSectionId::Player, {1}}};
+    const std::vector<SaveSection> new_sections{{SaveSectionId::Player, {2, 3}}};
+    for (const auto& sections : {old_sections, new_sections}) {
+        const auto result = WriteProductSaveRoles(saves, ProductSaveRole::Manual, sections);
+        WO_CHECK(result.primary_saved && result.resume_saved);
+        SaveManager reopened;
+        for (const char* role : {"pvs_manual", "pvs_resume"}) {
+            const auto loaded = reopened.LoadWorld(saves / role);
+            WO_CHECK(loaded.IsOk() && loaded.Value()[0].data == sections[0].data);
+        }
+    }
+    const auto dest = saves / "pvs_manual.wo07";
+    const auto before = ReadFileBinary(dest);
+    WO_CHECK(before.IsOk());
+    WO_CHECK(ReplaceFileAtomic(saves / "missing.tmp", dest).IsError());
+    const auto after = ReadFileBinary(dest);
+    WO_CHECK(after.IsOk() && after.Value() == before.Value());
+    WO_CHECK(!std::filesystem::exists(saves / "pvs_manual.wo07.tmp"));
+    WO_CHECK(!std::filesystem::exists(saves / "pvs_resume.wo07.tmp"));
+    std::error_code ec;
+    std::filesystem::remove(dest, ec);
+    std::filesystem::remove(saves / "pvs_resume.wo07", ec);
+    std::filesystem::remove(saves, ec);
+    std::filesystem::remove(directory, ec);
+    return true;
+}
+bool AsciiSavePaths() { return SavePathsRoundTrip("ascii-user"); }
+bool UnicodeSavePaths() { return SavePathsRoundTrip(std::filesystem::u8path(u8"测试用户数据_Ω_😀")); }
+
 bool SensoryDirectionUsesCameraBasis() {
     LocomotionState pose;
     pose.position = {0, 0, 0}; pose.yaw = 0;
@@ -233,7 +278,7 @@ bool SurfaceResizeAndRecovery() {
     WO_CHECK(!FitTerminalSurface(20, 8, caps).Usable());
     return true;
 }
-Result<void> FailSelectedSaveReplace(const std::string& tmp, const std::string& dest, void* selected) {
+Result<void> FailSelectedSaveReplace(const std::filesystem::path& tmp, const std::filesystem::path& dest, void* selected) {
     if (std::filesystem::path(dest).filename().string() == *static_cast<std::string*>(selected)) {
         return Result<void>::Err(1, "injected selected role failure");
     }
@@ -664,6 +709,8 @@ bool KnownEvidenceAndNearestInspect() {
 }
 } // namespace
 void RegisterProductTests(TestHarness& harness) {
+    harness.Add("product.save ASCII path replacement", &AsciiSavePaths);
+    harness.Add("product.save Unicode path replacement", &UnicodeSavePaths);
     harness.Add("product.sensory direction camera basis", &SensoryDirectionUsesCameraBasis);
     harness.Add("product.context hints state and continuation", &ContextHintsAreBoundedAndStateAware);
     harness.Add("product.key records acquisition and persistence", &KeyRecordsRespectAcquisition);

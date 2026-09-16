@@ -6,19 +6,20 @@
 #include "writeover/common/result.h"
 
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <vector>
 
 namespace writeover {
 
-Result<std::vector<uint8_t>> ReadFileBinary(const std::string& path);
-Result<void> WriteFileBinary(const std::string& path, const std::vector<uint8_t>& data);
+Result<std::vector<uint8_t>> ReadFileBinary(const std::filesystem::path& path);
+Result<void> WriteFileBinary(const std::filesystem::path& path, const std::vector<uint8_t>& data);
 
 // Default provider: rename-over-existing, without pre-deleting the destination.
 // POSIX replacement is atomic; the Windows runtime installs MoveFileExW-based
 // replacement. On failure the caller retains ownership of the temporary file.
-using AtomicReplaceFn = Result<void> (*)(const std::string& tmp_path,
-                                         const std::string& dest_path,
+using AtomicReplaceFn = Result<void> (*)(const std::filesystem::path& tmp_path,
+                                         const std::filesystem::path& dest_path,
                                          void* user_data);
 
 struct AtomicReplaceProvider {
@@ -27,7 +28,7 @@ struct AtomicReplaceProvider {
 };
 
 void SetAtomicReplaceProvider(AtomicReplaceProvider provider);
-Result<void> ReplaceFileAtomic(const std::string& tmp_path, const std::string& dest_path);
+Result<void> ReplaceFileAtomic(const std::filesystem::path& tmp_path, const std::filesystem::path& dest_path);
 
 // True if the two byte buffers are identical (used by save round-trip tests
 // on deterministic sections after timestamp/metadata normalization).

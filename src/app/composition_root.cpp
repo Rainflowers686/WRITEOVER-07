@@ -3388,7 +3388,7 @@ int RunComposition(const GameConfig& config) {
             ? ProductResumeName(user_data_root / "saves") : requested_load;
         requested_load.clear();
         const auto loaded = save.LoadWorld(
-            (user_data_root / "saves" / load_name).string());
+            user_data_root / "saves" / load_name);
         if (loaded.IsError()) {
             // A first death can legitimately happen before the player has made
             // a manual save.  Keep the dead state authoritative while the
@@ -6763,7 +6763,7 @@ int RunComposition(const GameConfig& config) {
             return 3;
         }
         SaveManager save;
-        const std::string save_path = (save_dir / "smoke").string();
+        const std::filesystem::path save_path = save_dir / "smoke";
         const auto res = save.SaveWorld(save_path, sections);
         if (res.IsError()) {
             std::fprintf(stderr,
