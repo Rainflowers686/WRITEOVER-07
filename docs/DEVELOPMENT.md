@@ -6,6 +6,10 @@
 
 项目使用 C++17。仓库现有 Windows presets 使用 VS2022；需要相应 C++ Build Tools、Python 3.10+ 和能读取 preset schema 6 的 CMake 3.25+。
 
+当前课程提交线在公开 `v0.2.0-candidate.1` 之后还包含 Windows 中文路径存档兼容性、
+空模块占位清理和 GCC 兼容性修正。源码基线的精确 commit、构建包和校验值以最终
+交付回执为准；不要把历史试玩包当作当前源码的二进制证明。
+
 从仓库根目录运行：
 
 ```powershell
@@ -36,7 +40,8 @@ Linux 和 macOS 的 preset 与构建目标见 [CMakePresets.json](../CMakePreset
 
 开始改代码前读 [AGENTS.md](../AGENTS.md) 及对应模块说明。更完整的系统解释见 [课堂讲解交接](production/COMPLETE_GAME_TEACHBACK.md)，最终审计入口是 [审计清单](production/POST_COMPLETE_GAME_AUDIT_MANIFEST.md)。
 
-公共接口、存档格式和字符渲染路线有项目约束。历史文档里的计划不等于已实现内容，当前版本范围以 [版本记录](release/VERSIONING.md) 为准。
+公共接口、存档格式和字符渲染路线有项目约束。历史文档里的计划不等于已实现内容，
+当前版本范围以及公开试玩版与课程源码版的区别以 [版本记录](release/VERSIONING.md) 为准。
 
 ## 验证与发布
 

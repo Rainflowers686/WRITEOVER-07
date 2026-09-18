@@ -1,9 +1,13 @@
 # Version and provenance
 
-## Current source candidate
+## Current source and public package
 
 `PRODUCT_VERSION` is `0.2.0-candidate.1`. This is a bilingual post-audit candidate,
-not Product Gold, visual acceptance or a guaranteed course grade.
+not Product Gold, visual acceptance or a guaranteed course grade. The public
+Windows Pre-release keeps this version label. The current course source may be a
+later commit on `main` containing compatibility and packaging fixes; its exact
+provenance is the commit recorded in the final delivery receipt, not the older
+public package name.
 
 The intended tag is `v0.2.0-candidate.1`; the metadata resolver requires an exact
 match. Versioned notes are in

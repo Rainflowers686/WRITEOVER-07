@@ -21,10 +21,12 @@ public:
     void Disable();
 
 private:
-    [[maybe_unused]] void* handle_ = nullptr;
-    [[maybe_unused]] uint32_t saved_mode_ = 0;
-    [[maybe_unused]] bool restored_ = false;
-    [[maybe_unused]] bool active_ = false;
+#if defined(_WIN32)
+    void* handle_ = nullptr;
+    uint32_t saved_mode_ = 0;
+    bool active_ = false;
+#endif
+    bool restored_ = false;
 };
 
 } // namespace writeover

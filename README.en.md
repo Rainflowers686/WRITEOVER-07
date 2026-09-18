@@ -143,6 +143,16 @@ The executable is unsigned. Check the release source and attached
 The [full English guide](docs/release/PLAYER_GUIDE.en.md) covers save locations
 and troubleshooting.
 
+### Public playtest versus course source
+
+The `v0.2.0-candidate.1` package above is the historical published Pre-release.
+The latest `main` source used for the course submission adds the Windows
+Unicode-path save compatibility fix, removes empty placeholders and improves
+GCC compatibility. It does not rewrite the historical Release or make the old
+playtest package represent the new source. To reproduce the course baseline,
+use the exact commit, source archive and checksums recorded in the delivery
+receipt.
+
 ## Common controls
 
 | Action | Windows default |

@@ -55,8 +55,9 @@ WBS 按已完成工作的责任领域分解，不倒推或编造成员历史工�
 Player、World、AI、Narrative；画面呈现另由 `IRenderModule` 调用。
 
 当前生产模块 `WorldModule`、`PlayerModule`、`AiModule`、`NarrativeModule` 和
-`RenderModule` 的组装实现位于 `src/app/composition_root.cpp`。不要仅看到
-`src/app/modules` 中同名文件，就把它们当成本次生产回调的唯一权威。
+`RenderModule` 的组装实现位于 `src/app/composition_root.cpp`。历史目录中曾保留
+同名的空占位文件；本轮已删除它们，生产回调应以 `composition_root.cpp` 的注册和
+连接关系为准。
 [类关系图](diagrams/architecture.mmd) 只画主要关系，避免把所有结构体挤在一张图里。
 
 | 类型或组件 | 责任 | 依赖方向 |

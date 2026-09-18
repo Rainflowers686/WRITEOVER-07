@@ -128,8 +128,8 @@ calls switch_room, and the next HUD frame reflects the new objective.
 
 ### AI
 
-IMPORTANT_FILES = src/app/modules/ai_module.cpp,
-src/ai/npc.cpp, src/ai/npc_profiles.cpp, src/ai/perception.cpp,
+IMPORTANT_FILES = src/app/composition_root.cpp, src/ai/npc.cpp,
+src/ai/npc_profiles.cpp, src/ai/perception.cpp,
 src/ai/goap.cpp, src/systemic/systemic.cpp
 
 IMPORTANT_CLASSES = AiModule, NPC, NPC profile, perception/GOAP types,
@@ -150,7 +150,7 @@ long-lived bridge to narrative and later rooms.
 
 IMPORTANT_FILES = src/world/fact_belief.cpp,
 src/systemic/systemic.cpp, src/narrative/storylet.cpp,
-src/narrative/dialog.cpp, src/app/modules/narrative_module.cpp,
+src/narrative/dialog.cpp, src/app/composition_root.cpp,
 data/facts/facts.json, data/storylets/storylets.json,
 data/text/recovery_text.txt
 
@@ -287,17 +287,19 @@ directory. Do not present automated SVG exports as a human Terminal playtest.
 Demonstration order: show the old/new door exports, explain the color-state
 regression, then compare the identical benchmark workloads. Keep CPU benchmark
 time, a synthetic cadence test and measured human display FPS as three distinct
-claims. The optimization-stage count was 233; post-audit Release now has 245.
-Use the final candidate receipt for current route/package/CI evidence.
+claims. The current Release unit suite reports 247 passing tests; that count is
+still an automated result, not a human display-FPS or first-time-play claim. Use
+the final hardening receipt for current route, package and CI evidence.
 
 ## Post audit teaching notes
 
 The following sections supersede earlier product/save/localization descriptions
 where they differ. Production adapters are currently defined in
-`composition_root.cpp`; the similarly named `src/app/modules` files are not a
-substitute for tracing the actual `RunComposition` callbacks. Its registered
-simulation order is Input, Player, World, AI, Narrative, then independent render
-presentation. Core owns scheduling, not the concrete module graph.
+`composition_root.cpp`; the former empty module placeholders were removed and
+are not a substitute for tracing the actual `RunComposition` callbacks. Its
+registered simulation order is Input, Player, World, AI, Narrative, then
+independent render presentation. Core owns scheduling, not the concrete module
+graph.
 
 ### Bilingual presentation and CJK
 
