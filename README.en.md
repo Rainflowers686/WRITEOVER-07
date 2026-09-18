@@ -14,7 +14,7 @@ A Windows x64 playtest build is out, with Simplified Chinese and English include
 
 ## What is different here
 
-- **The facility is made of characters.** Door frames, consoles, body armour, faces and the weapon in your hands are hand-authored character assets. Colour separates materials, and figures have front, back and side silhouettes.
+- **The facility is made of characters.** Door frames, consoles, body armor, faces and the weapon in your hands are hand-authored character assets. color separates materials, and figures have front, back and side silhouettes.
 - **Read the room before you decide to shoot.** A reader tells you why it refused you, a terminal keeps a record, and the person on duty knows something you do not.
 - **The building keeps consequences.** Cameras, bodies, noise, alert state, credentials, NPC memory and route facts can matter after you leave the room.
 - **Everyone here has a job.** Security patrols. A cleaner deals with what is left behind. Maintenance technicians know wiring and bypasses. Medical looks at the person before the number.
@@ -47,7 +47,7 @@ Controls are real-time keyboard and mouse. There is no command language to memor
 
 Cameras cover specific areas and can be interrupted. A person left unconscious and a person left dead are two different scenes to walk away from. Once somebody finds a body, the problem stops being about you and one guard.
 
-The game keeps those events. Who saw it, who heard about it, how far the alert level rose and who formed a memory of it can follow you into later rooms. What you did in B1 can decide which department recognises you, or make a checkpoint behave differently than it did before.
+The game keeps those events. Who saw it, who heard about it, how far the alert level rose and who formed a memory of it can follow you into later rooms. What you did in B1 can decide which department recognizes you, or make a checkpoint behave differently than it did before.
 
 The cleaner is worth watching. How you treated him and what you left in the corridor change whether he covers for you, calls Medical, or reports the scene to Security. Hiding a body does not erase it from the simulation. Someone can arrive later, find it, and start another chain of consequences.
 
@@ -59,7 +59,7 @@ The content data defines 17 NPCs across 6 factions and 7 roles. Runtime instance
 
 They respond to sight and sound. A patrolling guard can react to a noise, walk over to inspect it, and move into a combat rhythm when the threat escalates. Memory is limited, but it is used later. The same event can mean something different to Security, Maintenance, Medical or a cleaner.
 
-Dialogue is authored and behaviour is driven by game state. The engineering rules exclude runtime language models and network code, so nobody here is a chatbot. The complexity comes from perception, memory, roles and rules interacting with one another.
+Dialogue is authored and behavior is driven by game state. The engineering rules exclude runtime language models and network code, so nobody here is a chatbot. The complexity comes from perception, memory, roles and rules interacting with one another.
 
 ![NPCs and guards built from hand-authored character assets](docs/production/evidence/chapter01_creative_polish/optimization_v2_20260915/human.png)
 
@@ -96,13 +96,7 @@ Credentials, staff cooperation, terminal work and maintenance bypasses open part
 
 Three weapon slots are present: pistol, SMG and stunner. The stunner leaves people alive and still leaves a scene behind. The game distinguishes unconscious and dead states, and whether a body remains exposed or is later discovered can matter.
 
-The three campaign endings are conditionally available:
-
-- **AMEND** is the baseline resolution once the final authority state is ready.
-- **DISCLOSE** also requires the Network discovery and cooperation through Operations.
-- **BREACH** depends on upper Security progress and force / alert facts.
-
-This README does not spoil the actual ending scenes. The game decides which options exist from the facts you created.
+The three campaign endings do not all appear at the start. The evidence you gathered, the route you took and the consequences you left behind decide which options exist at the end. If you would rather work that out yourself, skip the spoiler section below; the ending names and their rough unlock conditions live there.
 
 ## Case File reflects what you actually know
 
@@ -197,22 +191,30 @@ The number follows the player from the opening record through Records, Executive
 
 The knowledge system includes Secret-class records. Some upper-route information enters the player's known state as secret knowledge instead of being treated like an ordinary hint.
 
+### Rough unlock conditions for the endings
+
+- **AMEND** is the baseline resolution once the final authority state is ready.
+- **DISCLOSE** also requires the Network discovery and cooperation through Operations.
+- **BREACH** depends on upper Security progress and force / alert facts.
+
+The scenes themselves are not described here. The game decides which options exist from the facts you created.
+
 </details>
 
 ## The whole facility is made of characters
 
-Up close, the door frames, consoles, body armour, faces and weapons are all characters. People and weapons use hand-authored character assets, with colour separating materials and different silhouettes for facing. The renderer aims for a first-person space you can read while the characters stay visible as characters.
+Up close, the door frames, consoles, body armor, faces and weapons are all characters. People and weapons use hand-authored character assets, with color separating materials and different silhouettes for facing. The renderer aims for a first-person space you can read while the characters stay visible as characters.
 
-The renderer outputs character cells directly. Colour and shading come from the palette, and depth influences glyph choice. Characters also use facing and distance variants, while doors, weapons and important props keep their own authored silhouettes.
+The renderer outputs character cells directly. color and shading come from the palette, and depth influences glyph choice. Characters also use facing and distance variants, while doors, weapons and important props keep their own authored silhouettes.
 
 ![The campaign roofline, reached from B1](docs/production/evidence/ultra_visual_20260914/roof-skyline.png)
 
 ## At a glance
 
-- 19 playable rooms, 32 scene transitions, 3 integrated campaign endings
+- 19 playable rooms, 32 authored scene transitions, 3 integrated campaign endings
 - A 41-level diegetic directory with 8 major upper destinations unlocked over time
 - Content data defines 17 NPCs across 7 roles and 6 factions
-- Stateful NPC behaviour using sight, sound, patrol, investigation, limited memory and combat escalation
+- Stateful NPC behavior using sight, sound, patrol, investigation, limited memory and combat escalation
 - Cameras, bodies, noise, alert, credentials, relationships and route facts that can outlive a room
 - Case File, Recent Events, Dialogue History and Ending Summary
 - Manual / Checkpoint / Pre-Final / Completion / Resume save roles
@@ -236,7 +238,7 @@ Platform: 64-bit Windows. The package is unsigned. Check where you downloaded it
 <summary>Version and provenance</summary>
 
 - The source `PRODUCT_VERSION` is `0.2.0-candidate.1`.
-- The latest release tag is `v0.2.0-course`. The `version.json` inside the package records the build commit, the `windows-x64` platform and the CI run. That build commit matches the delivery commit.
+- The latest release tag is `v0.2.0-course` (2026-09-18), pointing at commit `d5017c172dcd97aa36d27e7cf75282ed925611ab`; `version.json` inside the package records the same commit, the `windows-x64` platform and CI run `35290223738`.
 - The package name keeps the candidate prefix because the release pipeline generates package names from the product version.
 - `main` can carry documentation or compatibility commits made after the public package. To reproduce the course submission, use the exact delivery commit, source archive and checksums recorded in the receipt.
 
@@ -303,7 +305,7 @@ WRITEOVER-07 uses C++17. The running game combines a fixed-step simulation, DDA 
 
 ### State and authored content
 
-- Current complete-campaign documentation records 19 playable rooms, 32 transitions, 69 facts and 27 storylets.
+- Current complete-campaign documentation records 19 playable rooms and 32 authored scene transitions (31 are wired into the campaign), 69 facts and 27 storylets.
 - JSON / text remains reviewable authoring input and compiles into deterministic runtime content.
 - Package validation fails closed when required content, Character-Art or critical text is missing.
 

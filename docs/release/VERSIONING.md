@@ -2,16 +2,17 @@
 
 ## Current source and public package
 
-`PRODUCT_VERSION` is `0.2.0-candidate.1`. This is a bilingual post-audit candidate,
-not Product Gold, visual acceptance or a guaranteed course grade. The public
-Windows Pre-release keeps this version label. The current course source may be a
-later commit on `main` containing compatibility and packaging fixes; its exact
-provenance is the commit recorded in the final delivery receipt, not the older
-public package name.
+`PRODUCT_VERSION` is `0.2.0-candidate.1`. The current public download is the
+GitHub Latest Release **v0.2.0-course** (2026-09-18), whose tag resolves to
+commit `d5017c172dcd97aa36d27e7cf75282ed925611ab`. The Windows archive was
+rebuilt from that commit and keeps the existing package label
+`WRITEOVER-07-v0.2.0-candidate.1-win-x64.zip`; its `version.json` records the
+same commit and CI run `35290223738`. This is a bilingual course baseline, not
+Product Gold, visual acceptance or a guaranteed course grade.
 
-The intended tag is `v0.2.0-candidate.1`; the metadata resolver requires an exact
-match. Versioned notes are in
-[RELEASE_NOTES_v0.2.0-candidate.1.md](RELEASE_NOTES_v0.2.0-candidate.1.md).
+The earlier `v0.2.0-candidate.1` Pre-release remains published for provenance
+and no longer represents the current source. Versioned notes for that package
+are in [RELEASE_NOTES_v0.2.0-candidate.1.md](RELEASE_NOTES_v0.2.0-candidate.1.md).
 Source version alone does **not** prove that a binary was rebuilt, CI passed or
 a release was published. Final verified receipts, rather than this descriptive
 page, must establish the exact commit, CI run, assets and hashes.
