@@ -14,7 +14,7 @@ A Windows x64 playtest build is out, with Simplified Chinese and English include
 
 ## What is different here
 
-- **The facility is made of characters.** Door frames, consoles, body armor, faces and the weapon in your hands are hand-authored character assets. color separates materials, and figures have front, back and side silhouettes.
+- **The facility is made of characters.** Door frames, consoles, body armor, faces and the weapon in your hands are hand-authored character assets. Color separates materials, and figures have front, back and side silhouettes.
 - **Read the room before you decide to shoot.** A reader tells you why it refused you, a terminal keeps a record, and the person on duty knows something you do not.
 - **The building keeps consequences.** Cameras, bodies, noise, alert state, credentials, NPC memory and route facts can matter after you leave the room.
 - **Everyone here has a job.** Security patrols. A cleaner deals with what is left behind. Maintenance technicians know wiring and bypasses. Medical looks at the person before the number.
@@ -205,7 +205,7 @@ The scenes themselves are not described here. The game decides which options exi
 
 Up close, the door frames, consoles, body armor, faces and weapons are all characters. People and weapons use hand-authored character assets, with color separating materials and different silhouettes for facing. The renderer aims for a first-person space you can read while the characters stay visible as characters.
 
-The renderer outputs character cells directly. color and shading come from the palette, and depth influences glyph choice. Characters also use facing and distance variants, while doors, weapons and important props keep their own authored silhouettes.
+The renderer outputs character cells directly. Color and shading come from the palette, and depth influences glyph choice. Characters also use facing and distance variants, while doors, weapons and important props keep their own authored silhouettes.
 
 ![The campaign roofline, reached from B1](docs/production/evidence/ultra_visual_20260914/roof-skyline.png)
 
