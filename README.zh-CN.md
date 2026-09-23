@@ -1,6 +1,6 @@
 # WRITEOVER-07 · 重写协议：执行官07
 
-[English](README.en.md) · [简体中文](README.zh-CN.md) · [下载试玩](https://github.com/Rainflowers686/WRITEOVER-07/releases/latest)
+[English](README.md) · [简体中文](README.zh-CN.md) · [下载试玩](https://github.com/Rainflowers686/WRITEOVER-07/releases/latest)
 
 一款用字符搭起来的第一人称沉浸模拟游戏。你在地下 B1 醒来，带着编号、一把枪，和一份说不清你是谁的文件。
 

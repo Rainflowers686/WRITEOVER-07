@@ -1,81 +1,81 @@
-# WRITEOVER-07 · 重写协议：执行官07
+# WRITEOVER-07
 
-[English](README.en.md) · [简体中文](README.zh-CN.md) · [下载试玩](https://github.com/Rainflowers686/WRITEOVER-07/releases/latest)
+[English](README.md) · [简体中文](README.zh-CN.md) · [Download the playtest](https://github.com/Rainflowers686/WRITEOVER-07/releases/latest)
 
-一款用字符搭起来的第一人称沉浸模拟游戏。你在地下 B1 醒来，带着编号、一把枪，和一份说不清你是谁的文件。
+A first-person immersive sim built out of characters. You wake up in the basement level of a facility with a number, a weapon and a file that cannot agree on who you are.
 
-你可以读门禁为什么拒绝你，翻档案，找值班的人聊两句，用凭证或终端打开下一道门，也可以直接开枪。你在一个房间里做过的事会留下来：摄像头、被发现的身体、升高的警戒，以及某个人的记忆，都会影响后面的门怎么开。
+Read why a door refused you, dig through the records, talk to whoever is on shift, open the next checkpoint with a credential or a terminal, or shoot your way through. A room keeps what you did in it. Cameras, a body somebody finds, a raised alert level and the people who remember it decide how the next door opens.
 
-![字符构成的电梯入口，画面右下角是第一人称武器](docs/production/evidence/chapter01_creative_polish/optimization_v2_20260915/lift_front.png)
+![Character-built elevator entrance with the first-person weapon in view](docs/production/evidence/chapter01_creative_polish/optimization_v2_20260915/lift_front.png)
 
-*画面来自游戏真实的字符渲染导出。终端里的字体、字号和窗口尺寸会改变实际观感。*
+*Rendered from the game's own character cells. Font, text size and window size change how it looks in a real terminal.*
 
-Windows x64 试玩包已发布，内置简体中文与 English。[下载最新试玩版](https://github.com/Rainflowers686/WRITEOVER-07/releases/latest) · [玩家指南](docs/release/PLAYER_GUIDE.zh-CN.md)
+A Windows x64 playtest build is out, with Simplified Chinese and English included. [Download the latest playtest](https://github.com/Rainflowers686/WRITEOVER-07/releases/latest) · [Player guide](docs/release/PLAYER_GUIDE.en.md)
 
-## 它和常见的第一人称游戏有哪些不同
+## What is different here
 
-- **整座设施由字符构成。** 门框、控制台、护甲、人的侧脸和手里的枪都是手工排出来的字符素材。颜色区分材质，朝向变化有对应的正面、背面和侧面轮廓。
-- **先读懂房间，再决定要不要开枪。** 门禁会给出拒绝的理由，终端会留下记录，值班的人知道一点你不知道的事。你可以先把现场看明白，再决定怎么过。
-- **世界会记住你做过什么。** 摄像头、身体、声音、警戒、凭证、NPC 记忆和已走过的路线都会进入后续判断。
-- **这里的人各有岗位。** 安保巡逻，清洁工处理现场，维护技术管线路和旁路，医务人员先看人再看编号。他们只掌握自己那一部分信息。
-- **旁白有自己的立场。** 它用设施的语言记录你的行为，语气会变，说的话需要和现场、档案、NPC 的说法放在一起判断。
-- **地图会逐步打开。** 电梯不是一开始把所有楼层都交给你。Records、Operations、Network、Security、Archive 和 Authority 会随着你留下的事实逐步解锁。
-- **同一道门不止一种开法。** 凭证、工作人员协助、终端操作、维护旁路、安静通过，或者武力。
-- **三种结局取决于你留下了什么。** 途中取得的证据和做法，决定最后能选什么。
+- **The facility is made of characters.** Door frames, consoles, body armor, faces and the weapon in your hands are hand-authored character assets. Color separates materials, and figures have front, back and side silhouettes.
+- **Read the room before you decide to shoot.** A reader tells you why it refused you, a terminal keeps a record, and the person on duty knows something you do not.
+- **The building keeps consequences.** Cameras, bodies, noise, alert state, credentials, NPC memory and route facts can matter after you leave the room.
+- **Everyone here has a job.** Security patrols. A cleaner deals with what is left behind. Maintenance technicians know wiring and bypasses. Medical looks at the person before the number.
+- **The narrator has its own account.** It files your actions in the facility's language, and its version is worth checking against the room, the records and the people.
+- **The map opens in layers.** Records, Operations, Network, Security, Archive and Authority are not all handed to you at the start.
+- **There is more than one way through.** Credentials, cooperation, terminals, maintenance bypasses, quiet movement, or force.
+- **Three endings turn on what you leave behind.** The evidence you collect and the route you create decide what is available at the end.
 
-## 你在 B1 醒来
+## You wake up in B1
 
-医务人员先确认你能不能站起来。读卡器关心你的凭证。安保在等一个符合流程的回答。没有人急着解释你为什么在这里。
+Medical staff check whether you can stand. A reader checks your credential. Security waits for an answer that fits procedure. Nobody is in a hurry to explain why you are here.
 
-从复苏区往上走，经过校准、医疗和安检，再到档案与调度。到了那里，问题开始变化：一份文件能打开下一道门，却不一定解释发生过什么。有人愿意帮你，也有人只想把这班值完。
+From the revival area you work upward through Calibration, Medical and Security, then into Records and Dispatch. The questions change on the way. A file can open the next door without explaining what happened. Some staff will help you. Others would rather finish their shift.
 
-战役一路通到屋顶。你要弄清自己的处境，也要决定什么样的版本会被系统留下。
+The campaign reaches the roof. The harder question is not only how to leave, but which version of you the institution will keep.
 
-## 先读房间，再动手
+## Read the room first
 
-第一人称视角告诉你空间：门在哪、谁挡在路上、交火时哪里能躲。文字告诉你这里怎么运转：设备上写了什么、记录里记了什么、眼前的人为什么不肯让开。
+The first-person view handles space. Where the door is, which guard is facing you, where to take cover when a fight starts. Text handles how the place works: what the equipment says, what a record logged, why the person in front of you will not step aside.
 
-进入一个房间，可以先看设备、读提示、找工作人员交谈，再决定要不要拔枪。案件档案会整理当前目标、已知线索、已取得的记录与通行情况。错过一句话，可以打开最近事件和对话回看。
+Walk into a room and you can check the equipment, read the notices and talk to staff before you draw. The Case File collects your current objective, known leads, acquired records and access state. If you miss a line, recent events and dialogue history keep it.
 
-操作是实时键鼠控制，不需要背文字指令。游戏为单人离线设计，不是联机 MUD。
+Controls are real-time keyboard and mouse. There is no command language to memorise. This is a single-player offline game, not a multiplayer MUD.
 
-![案件档案界面，显示目标、线索、已取得记录与通行状态](docs/course/assets/case-file-zh.png)
+![Case File screen showing objectives, leads, acquired records and access status](docs/course/assets/case-file-zh.png)
 
-*案件档案中的目标、线索、已取得记录与通行状态。界面为中英双语，图中是中文版本。*
+*Objectives, leads, acquired records and access state in the Case File. The interface ships in both languages, and this capture shows the Chinese build.*
 
-## 世界会记住你做过什么
+## The building remembers what you did
 
-摄像头有覆盖范围，也可以被打断。同一个人被打晕和被打死，是两种现场。有人发现了身体，事情就不再只是你和一个守卫之间的事。
+Cameras cover specific areas and can be interrupted. A person left unconscious and a person left dead are two different scenes to walk away from. Once somebody finds a body, the problem stops being about you and one guard.
 
-游戏把这些记成事件：谁看见了、谁听说了、警戒升到哪一级、谁记住了这件事。它们会跟着你离开当前房间。B1 的处理方式可能决定后面哪个部门认得你，也可能让某个检查点和上一次不一样。
+The game keeps those events. Who saw it, who heard about it, how far the alert level rose and who formed a memory of it can follow you into later rooms. What you did in B1 can decide which department recognizes you, or make a checkpoint behave differently than it did before.
 
-清洁工值得多看一眼。你之前怎么对他、走廊里留下了什么，会影响他是替你收尾、叫医疗，还是报告给安保。身体即使被藏起来，也不等于从系统里消失。后续到场的人仍可能发现它，世界会继续沿着这个结果往下走。
+The cleaner is worth watching. How you treated him and what you left in the corridor change whether he covers for you, calls Medical, or reports the scene to Security. Hiding a body does not erase it from the simulation. Someone can arrive later, find it, and start another chain of consequences.
 
-![设施走廊中的安保装置与巡逻人员](docs/production/evidence/chapter01_creative_polish/optimization_v2_20260915/security.png)
+![Facility corridor with security hardware and a patrolling guard](docs/production/evidence/chapter01_creative_polish/optimization_v2_20260915/security.png)
 
-## 这里的人有自己的班要上
+## The people here have shifts to finish
 
-内容数据里定义了 17 个 NPC，分属 6 个派系、7 类岗位；实际运行时按场景实例化。有人按路线巡逻，有人守着自己的工位，有人只知道和自己职责有关的那部分信息。
+The content data defines 17 NPCs across 6 factions and 7 roles. Runtime instances depend on the current scene. Some walk patrol routes. Others stay at their post. Each one works with only part of the information.
 
-他们靠视野和声音判断发生了什么。巡逻中的安保会被响动吸引，会去查看，威胁升级后进入交战节奏。他们的记忆有限，但会用在之后的回应里。同一个事件，对守卫、技术员、医生和清洁工的意义并不一样。
+They respond to sight and sound. A patrolling guard can react to a noise, walk over to inspect it, and move into a combat rhythm when the threat escalates. Memory is limited, but it is used later. The same event can mean something different to Security, Maintenance, Medical or a cleaner.
 
-对白是预先写好的，行为由游戏状态驱动。项目章程禁止运行时接入大模型和网络代码，这里没有 ChatGPT 式的自由聊天 NPC。复杂感来自感知、记忆、岗位和规则互相叠加，而不是在线生成台词。
+Dialogue is authored and behavior is driven by game state. The engineering rules exclude runtime language models and network code, so nobody here is a chatbot. The complexity comes from perception, memory, roles and rules interacting with one another.
 
-![手工字符素材构成的 NPC 与守卫](docs/production/evidence/chapter01_creative_polish/optimization_v2_20260915/human.png)
+![NPCs and guards built from hand-authored character assets](docs/production/evidence/chapter01_creative_polish/optimization_v2_20260915/human.png)
 
-## 旁白不一定站在你这边
+## The narrator is not neutral
 
-> 档案区不问你是谁。它问的是，哪个版本会留下来。
+> NARRATOR / Records does not ask who you are. It asks which version will survive.
 
-旁白用设施自己的词：许可、流程、登记、归档。它把你的行为整理成它认为合适的说法，也会按自己的判断提醒你。它的叙述有时和刚刚发生的事情对不上。
+It speaks the facility's language: permission, procedure, registration, filing. It turns your actions into an account it is willing to keep, and it offers its own kind of advice. Now and then its version does not match what you just saw.
 
-所有台词都是预先写好的文字，按情境出现，并以文字呈现。当前版本没有配音，也没有用大模型实时生成旁白。你可以把它的话和记录、现场、NPC 的说法放在一起对照。
+Every line is authored text triggered by the situation and delivered as text. There is no voice acting in this build and no model writing lines while you play. Read the narrator against the records, the room and what people tell you.
 
-主菜单上那句 **THE RECORD IS NOT THE EVENT** 不是装饰。整个战役一直在追问同一件事：真正发生过的事，和最后被系统写进记录里的版本，到底是不是一回事。
+The main-menu line **THE RECORD IS NOT THE EVENT** is there for a reason. The whole campaign keeps returning to the gap between what happened and what the institution eventually records.
 
-## 设施不会一次把全部地图告诉你
+## The facility does not reveal the whole map at once
 
-电梯目录写着 41 层，但当前战役真正可玩的节点是从 B1 到屋顶的 19 个房间。上层的八个主要目的地会按进度逐步开放：
+The lift directory claims 41 levels, while the current campaign contains 19 playable rooms from B1 to the roof. Eight upper destinations become available as the required facts are earned:
 
 - 1F Arrival / Public Lobby
 - 8F Records Core
@@ -86,31 +86,31 @@ Windows x64 试玩包已发布，内置简体中文与 English。[下载最新�
 - 36F Authority Core
 - Roof / Exit
 
-目录会明确区分 **CURRENT / AVAILABLE / LOCKED / RESTRICTED / SEALED**。你看到的锁定状态不是单纯的菜单装饰，背后读的是已经发生过的事实。
+The directory distinguishes **CURRENT / AVAILABLE / LOCKED / RESTRICTED / SEALED**. Those labels read campaign state rather than acting as decorative menu text.
 
-Service Concourse、Records Archive、Power Utility、Observation Gallery 和 Transit Control 也不是一条直线。可以交谈、检查终端、回头找线索、利用凭证、制造或避免噪声，再决定是否把问题升级成武力。部分房间允许回访，之前获得的信息会在后面变成新的路线条件。
+Service Concourse, Records Archive, Power Utility, Observation Gallery and Transit Control are not one straight corridor either. You can talk, inspect a terminal, backtrack for information, use credentials, create or avoid noise, or turn the situation into a fight. Knowledge from an earlier room can become a usable route condition later.
 
-## 一个现场，不止一种过法
+## More than one way through
 
-凭证、工作人员协助、终端操作和维护旁路都能打开特定的门。安静通过、制造噪声、改变现场，在不同情境下会得到不同回应。你也可以选择武力，然后继续面对它造成的局面。
+Credentials, staff cooperation, terminal work and maintenance bypasses open particular doors. Moving quietly, making noise and changing a scene all draw different responses. Force remains available, and the room continues after you use it.
 
-武器有三个槽位：手枪、SMG 和电击器。电击器可以留下活着的人，同时留下需要处理的现场。系统会区分昏迷和死亡，身体是否暴露、是否被发现也会继续影响后续事件。
+Three weapon slots are present: pistol, SMG and stunner. The stunner leaves people alive and still leaves a scene behind. The game distinguishes unconscious and dead states, and whether a body remains exposed or is later discovered can matter.
 
-三种结局不会在开始时全部出现。你取得的证据、走过的路线和留下的后果，决定最后有哪些选择可做。想自己摸索的玩家可以跳过下面的剧透区；结局名称和大致开启条件都放在那里。
+The three campaign endings do not all appear at the start. The evidence you gathered, the route you took and the consequences you left behind decide which options exist at the end. If you would rather work that out yourself, skip the spoiler section below; the ending names and their rough unlock conditions live there.
 
-## Case File 记录的是你真正知道的东西
+## Case File reflects what you actually know
 
-案件档案会随着战役变化，不是固定任务清单。它会显示当前 Objective、下一条 Lead、已经掌握的 Evidence、Route 信息、Force trace 和已归档证据数量。
+The Case File is not a static quest list. It changes with the campaign and can show the current objective, next lead, acquired evidence, route information, a force trace and the amount of filed evidence.
 
-Recent Events 记录玩家实际感知到的重要事件。它不会凭空告诉你另一个房间正在发生什么。Dialogue History 单独保存已经看过的对话，错过一句话不需要立刻读档。
+Recent Events records important events the player could perceive. It is not an omniscient log of another room. Dialogue History keeps lines you already saw, so missing one does not automatically mean reloading.
 
-Inspect 也遵守同一条信息边界。你能检查的是当前真正看得见的身体、设备和已经获得的证据，不会因为按了一次检视键就把 NPC 的内部状态或未来结局泄露出来。
+Inspect follows the same information boundary. It describes bodies, equipment and evidence that are actually visible or known. It does not reveal an NPC's hidden internal state or future ending facts just because the examine key was pressed.
 
-## 菜单不是停在游戏外面的另一套世界
+## The menus are part of the product, not a separate mock-up
 
-启动界面提供 Continue、New Game、Controls / Help、Accessibility / Settings 和 Quit。没有可用存档时，Continue 会直接标成 unavailable。
+The boot menu includes Continue, New Game, Controls / Help, Accessibility / Settings and Quit. Continue is visibly unavailable when no usable recovery save exists.
 
-Pause Menu 会根据当前进度开放或关闭功能，包括：
+The Pause Menu changes with the current state and can expose:
 
 - Resume
 - Manual Save
@@ -126,13 +126,13 @@ Pause Menu 会根据当前进度开放或关闭功能，包括：
 - Ending Summary
 - Quit
 
-没有 Checkpoint 时会显示 unavailable。还没到最终选择时，Replay Final Choice 不会假装存在。玩家死亡后也不能 Resume 或继续覆盖手动存档。
+Checkpoint, pre-final recovery and ending summary entries show unavailable states until they are real. A dead player cannot simply Resume or overwrite a manual save.
 
-菜单输入还有额外保护。关闭菜单时，之前按住的鼠标键不会突然变成一枪。窗口失去焦点会暂停；窗口小于 48×18 个字符单元时也会暂停。窗口恢复大小只解除 resize 这一种暂停原因，不会把玩家主动按下的 Pause 一起取消。
+There are smaller protections too. Held input is fenced when a menu closes, so a mouse button pressed in the menu cannot turn into an accidental shot. Losing focus pauses the game. Shrinking the terminal below 48×18 character cells adds a separate resize pause. Enlarging the window removes that reason without cancelling a pause the player chose.
 
-## 存档、回退与结局重试
+## Saves, recovery and replaying the last decision
 
-游戏把不同用途的存档分开处理：
+Different save purposes remain separate:
 
 - Manual Save
 - Chapter Checkpoint
@@ -140,132 +140,132 @@ Pause Menu 会根据当前进度开放或关闭功能，包括：
 - Completion / Ending Save
 - Latest Resume / Recovery
 
-接近最终选择时会保留独立的 Pre-Final 恢复点。通关后，Pause Menu 可以出现 **Replay Final Choice**，让玩家回到最终决策前，而不是为了重看一个已经解锁的结局从头再打一遍。
+Near the ending, the game keeps a dedicated pre-final recovery point. After completion, **Replay Final Choice** can return to the decision without asking you to replay the entire campaign just to revisit an ending you already unlocked.
 
-成功读取旧存档后，未来时间线产生的临时提示和历史记录会被清除，避免把“还没有发生的消息”带回过去。
+Loading an older save also clears transient presentation from the future timeline. A line that only happened later should not survive in Recent Events after the world has been restored to an earlier state.
 
-读取过程会先把数据放进临时状态，完成检查后再提交到活世界。格式损坏、截断或验证失败时会拒绝这次读取，而不是留下一个只恢复了一半的游戏。文件替换也尽量保留旧的有效存档，不先粗暴删除再覆盖。
+Load is staged through temporary objects and validation before live state is committed. Truncated or malformed data is rejected rather than leaving half a world restored. File replacement is designed to preserve the previous good file if a new write fails.
 
-New Game 同样不是把坐标传回 B1。它会重新构建运行时世界，清掉旧 facts、NPC memories、objectives、storylet state 和 inventory，同时保留设置与磁盘上的既有存档。
+New Game is not a teleport back to B1. It reconstructs the runtime world, clearing old facts, NPC memories, objectives, storylet state and inventory while leaving preferences and existing files on disk.
 
-## 有些东西不会主动告诉你
+## Things the facility will not volunteer
 
-下面是轻微剧透。它们不会阻止正常通关，但愿意观察时间、楼层、摄像头和记录的玩家会看到更多。
+The section below contains mild spoilers. None of these are required just to understand the controls, but players who pay attention to times, floor labels, cameras and records can find more.
 
 <details>
-<summary>展开：隐藏路线、延迟后果与彩蛋</summary>
+<summary>Open: hidden routes, delayed consequences and small secrets</summary>
 
-### 02:10 的 Staff Route
+### The 02:10 staff route
 
-B1 有一条具体的维护换班信息：**maintenance shift change at 02:10**。它可以进入玩家知识状态，并参与 Staff Route。一个看起来像背景时间表的细节，实际可能是通行信息。
+B1 contains a specific maintenance detail: **maintenance shift change at 02:10**. It can enter player knowledge and feed a staff route. A line that looks like background scheduling can become access information.
 
-### Unlisted Observation Route
+### An unlisted observation route
 
-18F Network Node 会要求玩家寻找一条 **unlisted observation route**。它不是电梯目录里一开始就写给你的正式路线。
+At 18F Network Node, one objective is to find an **unlisted observation route**. It is not presented as a normal destination on the public lift directory.
 
-### 摄像头盲区会在后面兑现
+### A camera blind spot pays off later
 
-Observation Gallery 可以让玩家发现并制造 camera blind spot。这个知识不是只用来读一段文本，后续 Transit surveillance 会根据相关状态产生不同结果。
+Observation Gallery can expose a camera blind spot. That knowledge matters later because Transit surveillance reads the corresponding state rather than treating it as flavour text.
 
-### Power 的噪声会传到 Transit
+### Power noise travels to Transit
 
-Power Utility 可以安静配合 Technician，也可以强行 reroute。强行处理会制造 utility noise，后面的 Transit 会读取这条结果，安保响应也会跟着变化。
+Power Utility can be handled quietly with the technician or forced through a reroute. The loud solution produces utility noise. Transit later reads that consequence and Security can respond differently.
 
-### 藏起来的身体仍然可能被发现
+### A hidden body can still be found
 
-Hide Body 不是“删除对象”。游戏有身体被藏匿后 Cleaner 到场、继续发现并作出反应的路径。非致命制服和死亡也会留下不同现场。
+Hide Body does not delete an entity. The project has routes in which a cleaner later reaches a hidden body, discovers it, and responds. Non-lethal and lethal outcomes also leave different scenes behind.
 
-### 电梯里那些不能去的楼层
+### Floors that never open
 
-目录中的 **B4 SEALED / B3 NO-STOP / B2 RESTRICTED / 04 NO-STOP** 目前不是可玩地图。它们是设施尺度的一部分，也故意给玩家留下一些没有解释完的空间。
+The directory lists **B4 SEALED / B3 NO-STOP / B2 RESTRICTED / 04 NO-STOP**. They are not playable maps in the current campaign. They are part of the facility's implied scale and deliberately leave some space unexplained.
 
-### Roof 还有最后一步
+### One more thing on the roof
 
-到达 Roof 后仍有一个可以交互的最终状态终端，提示是 **READ FINAL STATUS**。结局不是屏幕一黑就把玩家赶回主菜单。
+The Roof contains a final-status terminal with the prompt **READ FINAL STATUS**. Completing an ending does not immediately throw the player back to the main menu.
 
-### SUBJECT 07 一直在变
+### SUBJECT 07 keeps changing
 
-从开场的编号、Records 的档案，到 Executive Archive、Authority Core 和 Ending Summary，游戏不断重写“Subject 07”在制度里的定义。真正的谜题不只是身份，而是谁有权决定哪个版本留下。
+The number follows the player from the opening record through Records, Executive Archive, Authority Core and Ending Summary. The mystery is not only who Subject 07 is. It is who gets to decide which version becomes official.
 
-### Secret 类型的知识
+### Secret-class knowledge
 
-知识系统里存在 Secret 类型记录。Authority 路线中的部分信息会以秘密知识进入玩家已知状态，而不是和普通提示混在一起。
+The knowledge system includes Secret-class records. Some upper-route information enters the player's known state as secret knowledge instead of being treated like an ordinary hint.
 
-### 三种结局的大致开启条件
+### Rough unlock conditions for the endings
 
-- **AMEND** 是最终决策阶段的基础可选方向。
-- **DISCLOSE** 还需要你真正发现 Network 里的信息，并在 Operations 留下合作路线。
-- **BREACH** 依赖上层安保推进，以及 force / alert 相关事实。
+- **AMEND** is the baseline resolution once the final authority state is ready.
+- **DISCLOSE** also requires the Network discovery and cooperation through Operations.
+- **BREACH** depends on upper Security progress and force / alert facts.
 
-结局内容本身不在这里展开。游戏会根据你真正做过的事，决定哪些选项出现。
+The scenes themselves are not described here. The game decides which options exist from the facts you created.
 
 </details>
 
-## 整座设施都是用字搭的
+## The whole facility is made of characters
 
-走近看，门框、控制台、护甲、人的侧脸和手里的枪都由字符组成。人物和武器使用手工设计的字符素材，材质靠颜色区分，朝向变化有对应轮廓。画面追求能读懂的第一人称空间，同时让字符本身保持可见。
+Up close, the door frames, consoles, body armor, faces and weapons are all characters. People and weapons use hand-authored character assets, with color separating materials and different silhouettes for facing. The renderer aims for a first-person space you can read while the characters stay visible as characters.
 
-渲染管线直接输出字符单元，颜色和明暗来自调色板，深度决定用哪个字符。人物还有朝向和距离层级，武器、门框和重要设备也保留自己的字符轮廓。
+The renderer outputs character cells directly. Color and shading come from the palette, and depth influences glyph choice. Characters also use facing and distance variants, while doors, weapons and important props keep their own authored silhouettes.
 
-![从 B1 通向屋顶的战役结尾画面](docs/production/evidence/ultra_visual_20260914/roof-skyline.png)
+![The campaign roofline, reached from B1](docs/production/evidence/ultra_visual_20260914/roof-skyline.png)
 
-## 一眼看完
+## At a glance
 
-- 19 个可玩房间、32 处已编写场景过渡、3 种当前战役结局
-- 41 层世界观目录，8 个上层主要可选目的地随进度解锁
-- 内容数据定义 17 个 NPC，7 类岗位，6 个派系
-- 状态型 NPC：视野、声音、巡逻、调查、有限记忆和战斗升级
-- 摄像头、身体、噪声、警戒、凭证、关系与路线会跨房间留下后果
-- Case File、Recent Events、Dialogue History、Ending Summary
-- Manual / Checkpoint / Pre-Final / Completion / Resume 多种存档角色
+- 19 playable rooms, 32 authored scene transitions, 3 integrated campaign endings
+- A 41-level diegetic directory with 8 major upper destinations unlocked over time
+- Content data defines 17 NPCs across 7 roles and 6 factions
+- Stateful NPC behavior using sight, sound, patrol, investigation, limited memory and combat escalation
+- Cameras, bodies, noise, alert, credentials, relationships and route facts that can outlive a room
+- Case File, Recent Events, Dialogue History and Ending Summary
+- Manual / Checkpoint / Pre-Final / Completion / Resume save roles
 - Replay Final Choice
-- 简体中文与 English 内置，可随时切换
-- 对比度、减弱晃动与闪烁、感知信息详略、文字停留时长、分项音量、FOV、难度和帧率上限等选项
-- 可改键，冲突检查、确认和恢复默认按键
-- 手枪、SMG、电击器三个武器槽位
+- Simplified Chinese and English, switchable in-game
+- Sensory detail, text duration, contrast, shake/flicker reduction, separate volume controls, FOV, difficulty and frame-rate settings
+- Rebindable controls with conflict checks, confirmation and restore defaults
+- Pistol, SMG and stunner weapon slots
 
-## 下载与开始
+## Download and play
 
-最新试玩包在 [Releases](https://github.com/Rainflowers686/WRITEOVER-07/releases/latest)，当前发布标签为 `v0.2.0-course`。
+The current playtest is on the [Releases page](https://github.com/Rainflowers686/WRITEOVER-07/releases/latest), under the `v0.2.0-course` tag.
 
-1. 在 Assets 里下载 `WRITEOVER-07-v0.2.0-candidate.1-win-x64.zip`，不要选 Source code。
-2. 完整解压，保持 `data` 文件夹与程序在一起，运行 `WRITEOVER-07.exe`。
-3. 首次启动先选简体中文或 English，再选“新游戏”。存在恢复存档时可以选择“继续”。
+1. In Assets, download `WRITEOVER-07-v0.2.0-candidate.1-win-x64.zip`. Do not take Source code.
+2. Extract it fully, keep the `data` folder next to the executable, and run `WRITEOVER-07.exe`.
+3. Pick Simplified Chinese or English at first launch, then start a new game. If a recovery save exists, Continue appears.
 
-平台：64 位 Windows。程序包未签名，请核对下载来源与包内 `SHA256SUMS.txt`。
+Platform: 64-bit Windows. The package is unsigned. Check where you downloaded it and verify it against the bundled `SHA256SUMS.txt`.
 
 <details>
-<summary>版本与来源</summary>
+<summary>Version and provenance</summary>
 
-- 源码中的 `PRODUCT_VERSION` 为 `0.2.0-candidate.1`。
-- 最新发布标签是 `v0.2.0-course`（2026-09-18），指向提交 `d5017c172dcd97aa36d27e7cf75282ed925611ab`；包内 `version.json` 记录同一提交、平台 `windows-x64` 与 CI run `35290223738`。
-- 包名沿用候选版前缀，是因为发布流程要求标签、包名与内部版本来自同一来源。
-- `main` 上可能有发布之后的文档或兼容性提交。复现课程提交时，以交付回执记录的 commit、源码包和校验值为准。
+- The source `PRODUCT_VERSION` is `0.2.0-candidate.1`.
+- The latest release tag is `v0.2.0-course` (2026-09-18), pointing at commit `d5017c172dcd97aa36d27e7cf75282ed925611ab`; `version.json` inside the package records the same commit, the `windows-x64` platform and CI run `35290223738`.
+- The package name keeps the candidate prefix because the release pipeline generates package names from the product version.
+- `main` can carry documentation or compatibility commits made after the public package. To reproduce the course submission, use the exact delivery commit, source archive and checksums recorded in the receipt.
 
 </details>
 
-## 常用操作
+## Controls
 
-| 操作 | Windows 默认键 |
+| Action | Windows default |
 |---|---|
-| 移动 / 观察 | WASD / 鼠标 |
-| 交互 / 检视 | F / 鼠标右键 |
-| 开火 / 装填 | 鼠标左键 / R |
-| 切换武器 | 1 手枪、2 SMG、3 电击器 |
-| 案件档案 | F1 |
-| 保存 / 读取恢复存档 | F5 / F9 |
-| 暂停 / 返回 | Esc |
+| Move / look | WASD / mouse |
+| Interact / examine | F / right mouse button |
+| Fire / reload | Left mouse button / R |
+| Select weapon | 1 pistol, 2 SMG, 3 stunner |
+| Case File | F1 |
+| Save / load recovery save | F5 / F9 |
+| Pause / back | Esc |
 
-游戏里的按键提示会读取当前绑定。改键之后，交互、开火、案件档案和加载提示不会继续假装你还在用默认按键。
+On-screen control text reads the current bindings. If you remap an action, interaction, fire, Case File and load prompts follow the new key instead of continuing to display the default.
 
-## 语言、设置与舒适度
+## Language, settings and comfort
 
-简体中文与 English 可以在设置中切换。语言属于展示偏好，不会重置战役事实或重放剧情。
+Simplified Chinese and English can be switched in settings. Language is a presentation preference, so changing it does not reset campaign facts or replay the story.
 
-当前产品菜单提供：
+The current product menu exposes:
 
-- Sensory detail：Off / Important / Detailed
-- Text duration：Short / Normal / Long
+- Sensory detail: Off / Important / Detailed
+- Text duration: Short / Normal / Long
 - Subtitles
 - High Contrast
 - Reduce Camera Shake
@@ -274,85 +274,85 @@ Hide Body 不是“删除对象”。游戏有身体被藏匿后 Cleaner 到场�
 - Master Volume
 - Narrator Volume
 - SFX Volume
-- Frame Limit：Auto / 30 / 60 / 120
+- Frame Limit: Auto / 30 / 60 / 120
 - Language
 - Field of View
-- Difficulty：Easy / Normal / Hard
+- Difficulty: Easy / Normal / Hard
 - Interaction Emphasis
 - Invert Mouse Y
 - Rebind Keys
 
-难度主要影响玩家承受的伤害，不改变证据与通行路线。Auto 帧率上限最高跟随 120 Hz 固定模拟节拍，不代表显示器上的实测帧率。
+Difficulty mainly changes damage taken rather than evidence or access routes. Auto can follow the fixed simulation cadence up to 120 Hz. That is not a promise about measured visible terminal frame rate.
 
-## 试玩前需要知道
+## Before you play
 
-游戏包含枪械、致命与非致命战斗、昏迷与死亡、藏匿身体，以及封闭机构中的悬疑情节。
+The game contains firearms, lethal and non-lethal combat, unconscious and dead characters, moving and hiding bodies, and suspense set inside a closed institution.
 
-当前下载只提供 Windows x64。Linux 与 macOS 有构建和自动化检查，但没有对应平台的下载包，这些检查也不代表同样的输入或音频体验。没有完整人物配音，没有在线 AI，也没有多人模式。
+Only Windows x64 is downloadable right now. Linux and macOS have build and automated checks, but no matching download, and those checks do not stand in for input or audio on those platforms. There is no full voice acting, no online AI and no multiplayer.
 
-自动化测试覆盖不了真人手感。第一次试玩、音频听感和通关时长仍需要人工确认。
+Automated tests do not cover how the game feels. First-session playtesting, audio impressions and completion time still need people.
 
-## 反馈
+## Feedback
 
-遇到问题请提到 [Issues](https://github.com/Rainflowers686/WRITEOVER-07/issues)，附上版本、系统、终端、所在房间和复现步骤。如果只是不知道该往哪走，也请说说当时看到的目标和提示。截图与日志请先去掉个人信息。
+Report problems in [Issues](https://github.com/Rainflowers686/WRITEOVER-07/issues) with the version, your system, the terminal, the room you were in and the steps to reproduce. If the problem was simply not knowing where to go, say what objective and hint you had at the time. Strip personal information out of screenshots and logs before posting.
 
-## 开发者信息
+## For developers
 
-项目使用 C++17。核心运行由固定步长模拟、DDA 光线投射、原生 CharCell 渲染、事件驱动系统玩法、状态型 NPC、数据驱动 facts/storylets 和事务型存档组成。
+WRITEOVER-07 uses C++17. The running game combines a fixed-step simulation, DDA raycasting, native CharCell rendering, event-driven systemic gameplay, stateful NPCs, data-driven facts/storylets and transactional saves.
 
 <details>
-<summary>展开：工程与产品完成度</summary>
+<summary>Open: engineering and product details</summary>
 
-### 状态与内容
+### State and authored content
 
-- 当前完整战役资料记录 19 个可玩房间、32 处已编写场景过渡（当前战役显式接入 31 处）、69 个 facts 和 27 个 storylets。
-- JSON / text 作为可审阅作者输入，编译成确定性的运行时内容。
-- 必需内容、Character-Art 或关键文本缺失时，包验证会失败，而不是静默缺资源继续运行。
+- Current complete-campaign documentation records 19 playable rooms and 32 authored scene transitions (31 are wired into the campaign), 69 facts and 27 storylets.
+- JSON / text remains reviewable authoring input and compiles into deterministic runtime content.
+- Package validation fails closed when required content, Character-Art or critical text is missing.
 
-### 输入与菜单
+### Input and menus
 
-- 按键可以按动作重新绑定，冲突会提示，不会悄悄覆盖。
-- 方向键保留安全菜单导航，Esc 可以取消改键。
-- UI 提示会投影当前真实按键绑定。
-- 菜单关闭时会隔离仍按住的输入，避免 Mouse1 从菜单返回后变成意外开枪。
-- 失焦和窗口过小使用独立暂停原因。
+- Gameplay actions can be rebound by action. Conflicts are reported instead of silently overwritten.
+- Arrow keys remain reserved for safe menu navigation, and Esc can cancel a binding capture.
+- UI control text projects the player's actual bindings.
+- Held menu input is fenced so closing a menu does not turn Mouse1 into an accidental shot.
+- Focus loss and undersized-terminal pauses remain independent reasons.
 
-### 双语与终端排版
+### Bilingual terminal presentation
 
-- 中英文使用同一份游戏事实，在显示阶段投影为对应语言。
-- 中文按照显示列宽处理，不把 UTF-8 字节数当作字符宽度。
-- 3D 层保持单宽字符，CJK 双宽字符留给界面合成层。
+- Chinese and English present the same underlying game events.
+- CJK layout uses displayed columns rather than UTF-8 byte counts.
+- The 3D layer keeps single-width glyphs while double-width CJK belongs to the compositor layer.
 
-### 存档
+### Save pipeline
 
-- Manual、Checkpoint、Pre-Final、Completion 和 Resume 角色分开。
-- Load 先解析并验证临时对象，再提交活状态；失败可回退。
-- 文件替换不依赖先删除旧文件。
-- 成功 Load 会清除不属于当前时间线的暂态提示。
-- New Game 重建运行时对象，避免旧 NPC memory 或 facts 泄漏进新档。
+- Manual, Checkpoint, Pre-Final, Completion and Resume roles remain separate.
+- Load parses and validates staged objects before committing live state, with rollback on failure.
+- Atomic-style replacement avoids deleting the known-good file first.
+- Successful Load clears transient presentation that belongs to a later timeline.
+- New Game reconstructs runtime ownership so old NPC memory and facts do not leak into a fresh run.
 
-### 渲染与性能
+### Rendering and performance
 
-- 固定模拟与 presentation cadence 分离。
-- DDA 负责第一人称空间，Character renderer 输出最终字符单元。
-- ANSI frame encoder 支持增量输出；完全不变的帧可以走零输出 fast path。
-- 当前性能记录中，内部 Character-Art 核心渲染约为 924 FPS 等效 CPU 吞吐，内部整帧管线约为 697 FPS 等效吞吐，重定向终端提交代理约 113.5 FPS。它们都不是可见终端帧率。模拟节拍为 120 Hz。
+- Fixed simulation and presentation cadence are separate.
+- DDA supplies first-person geometry and the Character renderer outputs the final cell grid.
+- The ANSI frame encoder supports delta output, including a zero-output fast path for fully unchanged frames.
+- Current performance records report about 924 FPS equivalent CPU throughput for the internal Character-Art render, about 697 FPS equivalent for the internal full pipeline, and about 113.5 FPS for a redirected terminal-submit proxy. None of those is measured visible terminal FPS. Simulation runs at 120 Hz.
 
-### 验证
+### Validation
 
-- 最终 Release 单元测试为 247 / 247。
-- Windows、Linux GCC、Linux Clang、macOS ARM64 均有对应 CI 构建 / 测试。
-- Linux AArch64 是 link / ELF 架构检查，不等于实体鲲鹏设备测试。
-- 还有针对完整路线、Cleaner history、藏尸 / 发现、非致命处理、security bypass、save/load 和结局条件的 deterministic replay / gate。
+- The final Release unit suite reports 247 / 247 passing tests.
+- CI builds / tests Windows, Linux GCC, Linux Clang and macOS ARM64 paths.
+- Linux AArch64 is a link / ELF architecture check, not a physical Kunpeng runtime test.
+- Deterministic routes also cover complete campaign paths, cleaner history, hidden-body discovery, non-lethal handling, security bypass, save/load and ending conditions.
 
-### 关于底层 Hidden Loop
+### About the foundation Hidden Loop
 
-叙事基础库里还保留一套更一般化的 **TruthBand × DominanceBand 四象限 ending resolver**，以及单独的 **HIDDEN_LOOP / RESIDUAL** 元条件，并有单元测试覆盖。
+The narrative foundation also contains a more general **TruthBand × DominanceBand four-quadrant ending resolver** plus a separate **HIDDEN_LOOP / RESIDUAL** meta condition, with unit coverage.
 
-这不是当前完整战役的第四或第五个可玩结局。当前集成 Campaign 仍然只有 **AMEND / DISCLOSE / BREACH** 三种结局。这里把它写出来，是为了区分“引擎层有的能力”和“当前玩家真的能打到的内容”。
+Those are engine-level capabilities, not extra integrated endings in the current campaign. The playable campaign still resolves to **AMEND / DISCLOSE / BREACH**. This distinction matters because foundation code and shipped campaign content are not the same promise.
 
 </details>
 
-[开发与构建](docs/DEVELOPMENT.md) · [课程材料](docs/course/README.md) · [版本与来源](docs/release/VERSIONING.md) · [更新说明](docs/release/RELEASE_NOTES_v0.2.0-candidate.1.md)
+[Development and building](docs/DEVELOPMENT.md) · [Course materials](docs/course/README.md) · [Version and provenance](docs/release/VERSIONING.md) · [Release notes](docs/release/RELEASE_NOTES_v0.2.0-candidate.1.md)
 
-仓库目前没有开源许可证，公开源码不代表可以再分发或商用。
+The repository has no open-source license. Public visibility does not grant redistribution or commercial use.
