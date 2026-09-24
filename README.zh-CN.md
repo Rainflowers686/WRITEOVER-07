@@ -2,10 +2,13 @@
 
 *用手工绘制终端字符呈现的第一人称沉浸模拟游戏。*
 
+![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus&logoColor=white) ![Windows x64](https://img.shields.io/badge/Windows-x64-0078D6?logo=windows&logoColor=white) ![Playtest](https://img.shields.io/badge/Status-Playtest-FC6D26)
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+
 
 **导航：**[游戏特点](#它和常见的第一人称游戏有哪些不同) · [下载与开始](#下载与开始) · [常用操作](#常用操作) · [开发者信息](#开发者信息)
+
+[English](README.md) | [简体中文](README.zh-CN.md)
 
 [下载试玩](https://github.com/Rainflowers686/WRITEOVER-07/releases/latest)
 
