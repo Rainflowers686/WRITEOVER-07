@@ -2,10 +2,13 @@
 
 *A first-person immersive sim rendered with hand-authored terminal characters.*
 
+![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus&logoColor=white) ![Windows x64](https://img.shields.io/badge/Windows-x64-0078D6?logo=windows&logoColor=white) ![Playtest](https://img.shields.io/badge/Status-Playtest-FC6D26)
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+
 
 **Guide:** [What is different](#what-is-different-here) · [Download and play](#download-and-play) · [Controls](#controls) · [For developers](#for-developers)
+
+[English](README.md) | [简体中文](README.zh-CN.md)
 
 [Download the playtest](https://github.com/Rainflowers686/WRITEOVER-07/releases/latest)
 
