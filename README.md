@@ -1,19 +1,20 @@
-# WRITEOVER-07
+<div align="center">
 
-*A first-person immersive sim rendered with hand-authored terminal characters.*
+# **WRITEOVER-07**
 
-![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus&logoColor=white) ![Windows x64](https://img.shields.io/badge/Windows-x64-0078D6?logo=windows&logoColor=white) ![Playtest](https://img.shields.io/badge/Status-Playtest-FC6D26)
+A single-player, first-person immersive sim rendered with hand-authored terminal characters.
 
+Investigate a closed facility through credentials, conversation, terminals or force. Rooms keep the consequences, and NPCs remember what happened.
 
+[![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus&logoColor=white)](#for-developers) [![Windows x64](https://img.shields.io/badge/Windows-x64-0078D6)](https://github.com/Rainflowers686/WRITEOVER-07/releases/latest) [![Playtest](https://img.shields.io/badge/status-playtest-FC6D26)](#project-status)
 
-**Guide:** [What is different](#what-is-different-here) · [Download and play](#download-and-play) · [Controls](#controls) · [For developers](#for-developers)
+[English](README.md) · [简体中文](README.zh-CN.md)
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+[Download and play](#download-and-play) · [Features](#what-is-different-here) · [Controls](#controls) · [For developers](#for-developers) · [Feedback](#feedback)
 
-[Download the playtest](https://github.com/Rainflowers686/WRITEOVER-07/releases/latest)
+</div>
 
-
-A first-person immersive sim built out of characters. You wake up in the basement level of a facility with a number, a weapon and a file that cannot agree on who you are.
+You wake up in the basement level of a facility with a number, a weapon and a file that cannot agree on who you are.
 
 Read why a door refused you, dig through the records, talk to whoever is on shift, open the next checkpoint with a credential or a terminal, or shoot your way through. A room keeps what you did in it. Cameras, a body somebody finds, a raised alert level and the people who remember it decide how the next door opens.
 
@@ -25,7 +26,7 @@ A Windows x64 playtest build is out, with Simplified Chinese and English include
 
 ## Project status
 
-Playtest status. A Windows x64 build with English and Simplified Chinese is available from the latest release.
+The game is in playtest. The latest release provides a Windows x64 build with English and Simplified Chinese. Source may include documentation or compatibility fixes made after that public package; check the version and provenance notes below when reproducing the course submission.
 
 ## What is different here
 
@@ -44,7 +45,7 @@ Medical staff check whether you can stand. A reader checks your credential. Secu
 
 From the revival area you work upward through Calibration, Medical and Security, then into Records and Dispatch. The questions change on the way. A file can open the next door without explaining what happened. Some staff will help you. Others would rather finish their shift.
 
-The campaign reaches the roof. The harder question is not only how to leave, but which version of you the institution will keep.
+The campaign reaches the roof. You also have to decide which version of you the institution will keep.
 
 ## Read the room first
 
@@ -364,10 +365,16 @@ WRITEOVER-07 uses C++17. The running game combines a fixed-step simulation, DDA 
 
 The narrative foundation also contains a more general **TruthBand × DominanceBand four-quadrant ending resolver** plus a separate **HIDDEN_LOOP / RESIDUAL** meta condition, with unit coverage.
 
-Those are engine-level capabilities, not extra integrated endings in the current campaign. The playable campaign still resolves to **AMEND / DISCLOSE / BREACH**. This distinction matters because foundation code and shipped campaign content are not the same promise.
+Those are engine-level capabilities, not extra integrated endings in the current campaign. The playable campaign still resolves to **AMEND / DISCLOSE / BREACH**. Those foundation capabilities are not additional playable endings in this campaign.
 
 </details>
 
 [Development and building](docs/DEVELOPMENT.md) · [Course materials](docs/course/README.md) · [Version and provenance](docs/release/VERSIONING.md) · [Release notes](docs/release/RELEASE_NOTES_v0.2.0-candidate.1.md)
 
-The repository has no open-source license. Public visibility does not grant redistribution or commercial use.
+## Contributing and security
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) before making changes. For security issues involving saves, content files or the runtime, follow [SECURITY.md](SECURITY.md).
+
+## License
+
+The repository has no open-source license. Redistribution or commercial use of its code, hand-authored character assets and narrative content requires separate permission.

@@ -1,19 +1,20 @@
-# WRITEOVER-07 · 重写协议：执行官07
+<div align="center">
 
-*用手工绘制终端字符呈现的第一人称沉浸模拟游戏。*
+# **WRITEOVER-07 · 重写协议：执行官07**
 
-![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus&logoColor=white) ![Windows x64](https://img.shields.io/badge/Windows-x64-0078D6?logo=windows&logoColor=white) ![Playtest](https://img.shields.io/badge/Status-Playtest-FC6D26)
+用手工绘制终端字符呈现的单人第一人称沉浸模拟游戏。
 
+调查封闭设施，用凭证、交谈、终端或武力寻找出路；房间会留下行动的后果，NPC 会记住发生过的事。
 
+[![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus&logoColor=white)](#开发者信息) [![Windows x64](https://img.shields.io/badge/Windows-x64-0078D6)](https://github.com/Rainflowers686/WRITEOVER-07/releases/latest) [![Playtest](https://img.shields.io/badge/status-playtest-FC6D26)](#项目状态)
 
-**导航：**[游戏特点](#它和常见的第一人称游戏有哪些不同) · [下载与开始](#下载与开始) · [常用操作](#常用操作) · [开发者信息](#开发者信息)
+[English](README.md) · [简体中文](README.zh-CN.md)
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+[下载试玩](#下载与开始) · [游戏特点](#它和常见的第一人称游戏有哪些不同) · [常用操作](#常用操作) · [开发者信息](#开发者信息) · [反馈](#反馈)
 
-[下载试玩](https://github.com/Rainflowers686/WRITEOVER-07/releases/latest)
+</div>
 
-
-一款用字符搭起来的第一人称沉浸模拟游戏。你在地下 B1 醒来，带着编号、一把枪，和一份说不清你是谁的文件。
+你在地下 B1 醒来，带着编号、一把枪，和一份说不清你是谁的文件。
 
 你可以读门禁为什么拒绝你，翻档案，找值班的人聊两句，用凭证或终端打开下一道门，也可以直接开枪。你在一个房间里做过的事会留下来：摄像头、被发现的身体、升高的警戒，以及某个人的记忆，都会影响后面的门怎么开。
 
@@ -25,7 +26,7 @@ Windows x64 试玩包已发布，内置简体中文与 English。[下载最新�
 
 ## 项目状态
 
-试玩阶段。最新 Release 提供包含英文和简体中文的 Windows x64 版本。
+当前处于试玩阶段，最新 Release 提供包含英文和简体中文的 Windows x64 版本。源码可能包含公开试玩包之后的文档或兼容性修正；复现课程提交时请核对下方“版本与来源”。
 
 ## 它和常见的第一人称游戏有哪些不同
 
@@ -74,7 +75,7 @@ Windows x64 试玩包已发布，内置简体中文与 English。[下载最新�
 
 他们靠视野和声音判断发生了什么。巡逻中的安保会被响动吸引，会去查看，威胁升级后进入交战节奏。他们的记忆有限，但会用在之后的回应里。同一个事件，对守卫、技术员、医生和清洁工的意义并不一样。
 
-对白是预先写好的，行为由游戏状态驱动。项目章程禁止运行时接入大模型和网络代码，这里没有 ChatGPT 式的自由聊天 NPC。复杂感来自感知、记忆、岗位和规则互相叠加，而不是在线生成台词。
+对白是预先写好的，行为由游戏状态驱动。项目章程禁止运行时接入大模型和网络代码，这里没有 ChatGPT 式的自由聊天 NPC。感知、记忆、岗位和规则共同决定他们的回应。
 
 ![手工字符素材构成的 NPC 与守卫](docs/production/evidence/chapter01_creative_polish/optimization_v2_20260915/human.png)
 
@@ -364,10 +365,16 @@ Hide Body 不是“删除对象”。游戏有身体被藏匿后 Cleaner 到场�
 
 叙事基础库里还保留一套更一般化的 **TruthBand × DominanceBand 四象限 ending resolver**，以及单独的 **HIDDEN_LOOP / RESIDUAL** 元条件，并有单元测试覆盖。
 
-这不是当前完整战役的第四或第五个可玩结局。当前集成 Campaign 仍然只有 **AMEND / DISCLOSE / BREACH** 三种结局。这里把它写出来，是为了区分“引擎层有的能力”和“当前玩家真的能打到的内容”。
+这不是当前完整战役的第四或第五个可玩结局。当前集成 Campaign 仍然只有 **AMEND / DISCLOSE / BREACH** 三种结局。这些基础能力尚未成为当前战役的额外可玩结局。
 
 </details>
 
 [开发与构建](docs/DEVELOPMENT.md) · [课程材料](docs/course/README.md) · [版本与来源](docs/release/VERSIONING.md) · [更新说明](docs/release/RELEASE_NOTES_v0.2.0-candidate.1.md)
 
-仓库目前没有开源许可证，公开源码不代表可以再分发或商用。
+## 贡献与安全
+
+修改前请阅读[贡献说明](CONTRIBUTING.md)和 [AGENTS.md](AGENTS.md)。涉及存档、内容文件或运行时安全的问题，请按[安全说明](SECURITY.md)联系维护者。
+
+## 使用许可
+
+仓库目前没有开源许可证。源码、手工字符素材与叙事内容的再分发或商用需要另行取得授权。
